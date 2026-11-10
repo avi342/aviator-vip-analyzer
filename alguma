@@ -1,0 +1,14 @@
+# AVIATOR VIP ANALYZER
+
+Aplicativo Android para registrar e analisar os multiplicadores do Aviator.
+
+## Funções
+- Registro de multiplicadores.
+- Histórico com data e hora.
+- Estatísticas automáticas.
+- Média dos resultados.
+- Preparação para captura por OCR.
+- Correção manual dos resultados.
+
+## Aviso
+O histórico não prevê resultados futuros e não garante ganhos.
