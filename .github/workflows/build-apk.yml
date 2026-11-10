@@ -25,9 +25,6 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Configurar Android
-        uses: android-actions/setup-android@v3
-
       - name: Gerar APK
         run: gradle assembleDebug
 
