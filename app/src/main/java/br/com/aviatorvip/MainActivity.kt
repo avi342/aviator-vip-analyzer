@@ -1,38 +1,48 @@
+
 package br.com.aviatorvip
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.*
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class MainActivity : Activity() {
 
-    private val resultados = mutableListOf<Double>()
+    private lateinit var status: TextView
     private lateinit var entrada: EditText
-    private lateinit var estatisticas: TextView
     private lateinit var historico: TextView
+    private val resultados = mutableListOf<Double>()
+
+    private val receptor = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            status.text = intent?.getStringExtra(
+                ScreenCaptureService.EXTRA_TEXT
+            ) ?: "Aguardando leitura..."
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val preferencias = getSharedPreferences("aviator", MODE_PRIVATE)
-        val salvos = preferencias.getString("resultados", "") ?: ""
+        val salvos = getSharedPreferences("aviator", MODE_PRIVATE)
+            .getString("resultados", "") ?: ""
 
         if (salvos.isNotEmpty()) {
             salvos.split(",").forEach {
-                it.toDoubleOrNull()?.let { valor ->
-                    resultados.add(valor)
-                }
+                it.toDoubleOrNull()?.let(resultados::add)
             }
         }
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 30, 24, 20)
+            setPadding(24, 28, 24, 20)
             setBackgroundColor(Color.rgb(15, 20, 32))
         }
 
@@ -40,34 +50,46 @@ class MainActivity : Activity() {
             text = "AVIATOR VIP ANALYZER"
             textSize = 23f
             gravity = Gravity.CENTER
-            setTextColor(Color.RED)
+            setTextColor(Color.rgb(255, 65, 145))
         }
-
         tela.addView(titulo)
 
+        val iniciar = Button(this).apply {
+            text = "INICIAR CAPTURA OCR"
+            setOnClickListener { solicitarCaptura() }
+        }
+        tela.addView(iniciar)
+
+        val parar = Button(this).apply {
+            text = "PARAR CAPTURA"
+            setOnClickListener {
+                stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
+                status.text = "Captura parada."
+            }
+        }
+        tela.addView(parar)
+
+        status = TextView(this).apply {
+            text = "Aguardando captura..."
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setPadding(0, 18, 0, 18)
+        }
+        tela.addView(status)
+
         entrada = EditText(this).apply {
-            hint = "Digite o multiplicador (ex.: 2,50)"
+            hint = "Multiplicador manual (ex.: 2,50)"
             setTextColor(Color.WHITE)
             setHintTextColor(Color.LTGRAY)
             inputType = 8194
         }
-
         tela.addView(entrada)
 
-        val botao = Button(this).apply {
+        val registrar = Button(this).apply {
             text = "REGISTRAR RESULTADO"
-            setOnClickListener { registrar() }
+            setOnClickListener { registrarResultado() }
         }
-
-        tela.addView(botao)
-
-        estatisticas = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            textSize = 16f
-            setPadding(0, 20, 0, 20)
-        }
-
-        tela.addView(estatisticas)
+        tela.addView(registrar)
 
         historico = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -78,64 +100,91 @@ class MainActivity : Activity() {
         rolagem.addView(historico)
         tela.addView(rolagem, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        val limpar = Button(this).apply {
-            text = "LIMPAR HISTÓRICO"
-            setOnClickListener {
-                resultados.clear()
-                salvar()
-                atualizar()
-            }
-        }
-
-        tela.addView(limpar)
-
         setContentView(tela)
-        atualizar()
+        atualizarHistorico()
     }
 
-    private fun registrar() {
+    private fun solicitarCaptura() {
+        val manager = getSystemService(
+            Context.MEDIA_PROJECTION_SERVICE
+        ) as MediaProjectionManager
+
+        startActivityForResult(
+            manager.createScreenCaptureIntent(), 701
+        )
+    }
+
+    @Deprecated("Compatibilidade com autorização de captura")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == 701) {
+            if (resultCode == RESULT_OK && data != null) {
+                val servico = Intent(this, ScreenCaptureService::class.java)
+                servico.action = ScreenCaptureService.ACTION_START
+                servico.putExtra(ScreenCaptureService.EXTRA_CODE, resultCode)
+                servico.putExtra(ScreenCaptureService.EXTRA_DATA, data)
+
+                if (Build.VERSION.SDK_INT >= 26) {
+                    startForegroundService(servico)
+                } else {
+                    startService(servico)
+                }
+
+                status.text = "Captura autorizada. OCR iniciando..."
+            } else {
+                status.text = "Permissão não concedida."
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val filtro = IntentFilter(ScreenCaptureService.ACTION_TEXT)
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(receptor, filtro, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(receptor, filtro)
+        }
+    }
+
+    override fun onStop() {
+        try {
+            unregisterReceiver(receptor)
+        } catch (_: Exception) {
+        }
+        super.onStop()
+    }
+
+    private fun registrarResultado() {
         val valor = entrada.text.toString()
             .replace(",", ".").toDoubleOrNull()
 
         if (valor == null || valor < 1) {
-            Toast.makeText(
-                this,
-                "Digite um multiplicador válido",
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this, "Multiplicador inválido", Toast.LENGTH_SHORT).show()
             return
         }
 
         resultados.add(0, valor)
-        salvar()
-        entrada.text.clear()
-        atualizar()
-    }
 
-    private fun salvar() {
         getSharedPreferences("aviator", MODE_PRIVATE)
             .edit()
             .putString("resultados", resultados.joinToString(","))
             .apply()
+
+        entrada.text.clear()
+        atualizarHistorico()
     }
 
-    private fun atualizar() {
-        val media = if (resultados.isEmpty()) 0.0
-            else resultados.average()
-
-        val acima2 = resultados.count { it >= 2.0 }
-        val acima10 = resultados.count { it >= 10.0 }
-
-        estatisticas.text =
-            "Rodadas registradas: ${resultados.size}\n" +
-            "Média: %.2fx\n".format(Locale.US, media) +
-            "Resultados acima de 2x: $acima2\n" +
-            "Resultados acima de 10x: $acima10\n\n" +
-            "Estatísticas do histórico, não previsões."
-
+    private fun atualizarHistorico() {
         historico.text = resultados.take(100)
-            .mapIndexed { indice, valor ->
-                "${indice + 1}. %.2fx".format(Locale.US, valor)
+            .mapIndexed { i, valor ->
+                "${i + 1}. %.2fx".format(java.util.Locale.US, valor)
             }.joinToString("\n")
     }
 }
