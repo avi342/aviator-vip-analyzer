@@ -160,15 +160,14 @@ class MainActivity : Activity() {
             registerReceiver(receptor, filtro)
         }
     }
-
-    override fun onStop() {
+    override fun onDestroy() {
         try {
             unregisterReceiver(receptor)
         } catch (_: Exception) {
         }
-        super.onStop()
+        super.onDestroy()
     }
-
+    
     private fun processarOCR(texto: String) {
         val valor = padrao.findAll(texto).lastOrNull()
             ?.groupValues?.get(1)
