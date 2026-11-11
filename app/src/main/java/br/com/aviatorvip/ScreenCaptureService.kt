@@ -119,7 +119,7 @@ class ScreenCaptureService : Service() {
             bitmap.copyPixelsFromBuffer(plano.buffer)
             imagem.close()
 
-            val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
+            val recorte = Bitmap.createBitmap(bitmap, 0, (altura * 0.60).toInt(), largura, (altura * 0.40).toInt())
             bitmap.recycle()
 
             reconhecedor.process(InputImage.fromBitmap(recorte, 0))
