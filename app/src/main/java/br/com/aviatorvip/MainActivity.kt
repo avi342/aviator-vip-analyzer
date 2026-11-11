@@ -12,19 +12,27 @@ import android.os.Bundle
 import android.graphics.Color
 import android.view.Gravity
 import android.widget.*
+import java.util.Locale
 
 class MainActivity : Activity() {
 
     private lateinit var status: TextView
     private lateinit var entrada: EditText
     private lateinit var historico: TextView
+
     private val resultados = mutableListOf<Double>()
+    private var candidatoOCR: Double? = null
+    private var leiturasDoCandidato = 0
+    private var ultimoResultadoAutomatico: Double? = null
+
+    private val padrao = Regex("""(?i)(\d{1,5}(?:[.,]\d{1,2})?)\s*x""")
 
     private val receptor = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            status.text = intent?.getStringExtra(
+            val texto = intent?.getStringExtra(
                 ScreenCaptureService.EXTRA_TEXT
-            ) ?: "Aguardando leitura..."
+            ).orEmpty()
+            processarOCR(texto)
         }
     }
 
@@ -87,7 +95,7 @@ class MainActivity : Activity() {
 
         val registrar = Button(this).apply {
             text = "REGISTRAR RESULTADO"
-            setOnClickListener { registrarResultado() }
+            setOnClickListener { registrarManual() }
         }
         tela.addView(registrar)
 
@@ -135,7 +143,7 @@ class MainActivity : Activity() {
                     startService(servico)
                 }
 
-                status.text = "Captura autorizada. OCR iniciando..."
+                status.text = "Captura autorizada. Procurando multiplicadores..."
             } else {
                 status.text = "Permissão não concedida."
             }
@@ -161,7 +169,39 @@ class MainActivity : Activity() {
         super.onStop()
     }
 
-    private fun registrarResultado() {
+    private fun processarOCR(texto: String) {
+        val valor = padrao.findAll(texto).lastOrNull()
+            ?.groupValues?.get(1)
+            ?.replace(",", ".")
+            ?.toDoubleOrNull()
+
+        if (valor == null || valor < 1.0 || valor > 100000.0) {
+            candidatoOCR = null
+            leiturasDoCandidato = 0
+            ultimoResultadoAutomatico = null
+            status.text = "OCR ativo — aguardando multiplicador..."
+            return
+        }
+
+        if (candidatoOCR == valor) {
+            leiturasDoCandidato++
+        } else {
+            candidatoOCR = valor
+            leiturasDoCandidato = 1
+        }
+
+        status.text = "Identificado %.2fx — confirmando...".format(Locale.US, valor)
+
+        if (leiturasDoCandidato >= 2 && ultimoResultadoAutomatico != valor) {
+            resultados.add(0, valor)
+            salvar()
+            atualizarHistorico()
+            ultimoResultadoAutomatico = valor
+            status.text = "Registrado automaticamente: %.2fx".format(Locale.US, valor)
+        }
+    }
+
+    private fun registrarManual() {
         val valor = entrada.text.toString()
             .replace(",", ".").toDoubleOrNull()
 
@@ -171,20 +211,22 @@ class MainActivity : Activity() {
         }
 
         resultados.add(0, valor)
+        salvar()
+        entrada.text.clear()
+        atualizarHistorico()
+    }
 
+    private fun salvar() {
         getSharedPreferences("aviator", MODE_PRIVATE)
             .edit()
             .putString("resultados", resultados.joinToString(","))
             .apply()
-
-        entrada.text.clear()
-        atualizarHistorico()
     }
 
     private fun atualizarHistorico() {
         historico.text = resultados.take(100)
             .mapIndexed { i, valor ->
-                "${i + 1}. %.2fx".format(java.util.Locale.US, valor)
+                "${i + 1}. %.2fx".format(Locale.US, valor)
             }.joinToString("\n")
     }
 }
