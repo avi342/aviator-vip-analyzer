@@ -23,7 +23,8 @@ class MainActivity : Activity() {
     private val resultados = mutableListOf<Double>()
     private var candidatoOCR: Double? = null
     private var leiturasDoCandidato = 0
-    private var ultimoResultadoAutomatico: Double? = null
+    private var historicoOCRAnterior = emptyList<Double>()
+private var primeiraLeituraOCR = true
 
     private val padrao = Regex("""(?i)(\d{1,5}(?:[.,]\d{1,2})?)\s*x""")
 
@@ -169,37 +170,59 @@ class MainActivity : Activity() {
     }
     
     private fun processarOCR(texto: String) {
-        val valor = padrao.findAll(texto).lastOrNull()
-            ?.groupValues?.get(1)
-            ?.replace(",", ".")
-            ?.toDoubleOrNull()
+    val marcador = "Histórico da ronda"
+    val inicio = texto.indexOf(marcador, ignoreCase = true)
 
-        if (valor == null || valor < 1.0 || valor > 100000.0) {
-            candidatoOCR = null
-            leiturasDoCandidato = 0
-            ultimoResultadoAutomatico = null
-            status.text = "OCR ativo — aguardando multiplicador..."
-            return
-        }
-
-        if (candidatoOCR == valor) {
-            leiturasDoCandidato++
-        } else {
-            candidatoOCR = valor
-            leiturasDoCandidato = 1
-        }
-
-        status.text = "Identificado %.2fx — confirmando...".format(Locale.US, valor)
-
-        if (leiturasDoCandidato >= 2 && ultimoResultadoAutomatico != valor) {
-            resultados.add(0, valor)
-            salvar()
-            atualizarHistorico()
-            ultimoResultadoAutomatico = valor
-            status.text = "Registrado automaticamente: %.2fx".format(Locale.US, valor)
-        }
+    if (inicio < 0) {
+        status.text = "Procurando o histórico da ronda..."
+        return
     }
 
+    val trecho = texto.substring(inicio + marcador.length)
+
+    val valores = padrao.findAll(trecho)
+        .mapNotNull {
+            it.groupValues[1]
+                .replace(",", ".")
+                .toDoubleOrNull()
+        }
+        .filter { it >= 1.0 && it <= 100000.0 }
+        .toList()
+
+    if (valores.isEmpty()) return
+
+    if (primeiraLeituraOCR) {
+        historicoOCRAnterior = valores
+        primeiraLeituraOCR = false
+        status.text = "Histórico identificado. Aguardando nova rodada..."
+        return
+    }
+
+    val anterior = historicoOCRAnterior
+
+    if (valores.size < anterior.size ||
+        valores.take(anterior.size) != anterior
+    ) {
+        historicoOCRAnterior = valores
+        status.text = "Histórico atualizado. Aguardando confirmação..."
+        return
+    }
+
+    val novos = valores.drop(anterior.size)
+
+    if (novos.isNotEmpty()) {
+        novos.forEach { valor ->
+            resultados.add(0, valor)
+        }
+
+        salvar()
+        atualizarHistorico()
+        status.text = "Novo resultado registrado!"
+    }
+
+    historicoOCRAnterior = valores
+    } 
+        
     private fun registrarManual() {
         val valor = entrada.text.toString()
             .replace(",", ".").toDoubleOrNull()
