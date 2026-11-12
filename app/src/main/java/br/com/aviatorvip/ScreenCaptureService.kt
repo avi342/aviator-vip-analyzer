@@ -123,9 +123,46 @@ class ScreenCaptureService : Service() {
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
             reconhecedor.process(InputImage.fromBitmap(recorte, 0))
-                .addOnSuccessListener { resultado ->
-                    if (resultado.text.isNotBlank()) enviar(resultado.text)
-                }
+                
+                  
+              .addOnSuccessListener { resultado ->
+    val blocos = resultado.textBlocks
+
+    val marcador = blocos.firstOrNull {
+        it.text.contains("VOOU", ignoreCase = true) ||
+        it.text.contains("PARA LONGE", ignoreCase = true)
+    }
+
+    if (marcador == null) {
+        enviar("NO_ROUND_END")
+    } else {
+        val limite = marcador.boundingBox?.bottom ?: 0
+
+        val abaixo = blocos
+            .filter {
+                it.boundingBox != null &&
+                it.boundingBox.top >= limite
+            }
+            .sortedBy { it.boundingBox!!.top }
+
+        val texto = abaixo.take(3).joinToString(" ") {
+            it.text
+        }
+
+        val regex = Regex(
+            """(\d{1,5}(?:[.,]\d{1,2})?)\s*x?""",
+            RegexOption.IGNORE_CASE
+        )
+
+        val numero = regex.find(texto)?.groupValues?.get(1)
+
+        if (numero != null) {
+            enviar("ROUND_RESULT:$numero")
+        } else {
+            enviar("ROUND_WAIT")
+        }
+    }
+}
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
                 .addOnCompleteListener { recorte.recycle() }
 
