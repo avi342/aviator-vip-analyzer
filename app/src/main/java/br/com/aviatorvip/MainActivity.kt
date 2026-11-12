@@ -527,21 +527,4 @@ private fun registrarManual() {
         // A faixa horizontal antiga foi removida; os resultados ficam na grade colorida.
     }
 
-    val item = TextView(this).apply {
-        text = "%.2fx".format(Locale.US, valor)
-        setTextColor(cor)
-        textSize = 16f
-        setPadding(18, 12, 18, 12)
-        setTypeface(null, android.graphics.Typeface.BOLD)
-    }
-
-    val parametros = LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-        LinearLayout.LayoutParams.WRAP_CONTENT
-    )
-
-    parametros.marginEnd = 8
-    historico.addView(item, parametros)
-}
-    }
 }
