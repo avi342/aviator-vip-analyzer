@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aviator VIP Analyzer</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#eef2ff;font:15px Arial,sans-serif}header{padding:22px 18px;background:linear-gradient(120deg,#111b35,#26153b);border-bottom:1px solid #34405d}h1{margin:0;font-size:25px}header p{margin:7px 0 0;color:#aab6d4}.wrap{max-width:1000px;margin:auto;padding:18px}.panel{background:#141d31;border:1px solid #293754;border-radius:13px;padding:16px;margin:0 0 15px}h2{font-size:18px;margin:0 0 12px}.row{display:flex;gap:9px;flex-wrap:wrap}input,button{font:inherit;border-radius:8px;padding:12px;border:1px solid #405174}input{background:#0d1527;color:#fff;min-width:0;flex:1}button{background:#e84c83;color:white;border:0;font-weight:bold;cursor:pointer}button.secondary{background:#293754}button.danger{background:#8d344b}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stat{background:#0d1527;border-radius:9px;padding:12px}.stat b{display:block;font-size:23px;margin-top:5px}.muted{color:#aab6d4;font-size:13px}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.chip{padding:8px 10px;border-radius:20px;font-weight:bold;background:#26334d}.blue{color:#65b8ff}.purple{color:#c59bff}.pink{color:#ff79b2}.rounds{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.round{padding:9px 11px;border-radius:8px;background:#26334d;font-weight:bold}.signal{padding:12px;border-radius:9px;background:#202d45;margin-top:10px}.ok{color:#7be0ac}.warn{color:#ffcf78}small{color:#aab6d4}@media(max-width:560px){.stats{grid-template-columns:1fr 1fr}h1{font-size:21px}}
+</style></head><body>
+<header><h1>✈ Aviator VIP Analyzer</h1><p>Painel de acompanhamento e análise estatística das rodadas</p></header>
+<main class="wrap">
+<section class="panel"><h2>Registrar multiplicador</h2><div class="row"><input id="mult" type="number" min="1" step="0.01" placeholder="Ex.: 2.35" inputmode="decimal"><button id="add">Adicionar rodada</button></div><p class="muted">Insira cada resultado manualmente. Os dados ficam salvos neste navegador.</p><div class="chips"><span class="chip blue">Azul: até 1,99x</span><span class="chip purple">Roxo: 2x a 9,99x</span><span class="chip pink">Rosa: 10x ou mais</span></div></section>
+<section class="panel"><h2>Resumo das rodadas</h2><div class="stats"><div class="stat">Rodadas registradas<b id="total">0</b></div><div class="stat">Rosas (10x+)<b id="pinkCount">0</b></div><div class="stat">Maior multiplicador<b id="max">—</b></div></div><div class="rounds" id="rounds"></div><div class="row" style="margin-top:13px"><button class="secondary" id="undo">Desfazer última</button><button class="danger" id="clear">Apagar histórico</button></div></section>
+<section class="panel"><h2>Leitura da estratégia</h2><div class="stats"><div class="stat">Rosas nas últimas 8<b id="last8">0/8</b></div><div class="stat">Rosas acumuladas<b id="pink8">0/8</b></div><div class="stat">Última rosa acima de 50x<b id="last50">Não registrada</b></div></div><div id="signal" class="signal">Registre rodadas para iniciar a análise.</div><p class="muted">A contagem mostra apenas ocorrências passadas. Multiplicadores são aleatórios; padrões anteriores não garantem nem permitem prever o próximo resultado. Não é recomendação de aposta.</p></section>
+</main>
+<script>
+(function(){
+var key='aviatorVipRoundsV1', rounds=[];
+try{rounds=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(rounds))rounds=[];}catch(e){rounds=[];}
+var $=function(id){return document.getElementById(id);};
+function color(v){return v<2?'blue':v<10?'purple':'pink';}
+function save(){try{localStorage.setItem(key,JSON.stringify(rounds));}catch(e){} render();}
+function render(){
+$('total').textContent=rounds.length;
+var pink=rounds.filter(function(v){return v>=10;});
+$('pinkCount').textContent=pink.length;
+$('max').textContent=rounds.length?Math.max.apply(null,rounds).toFixed(2)+'x':'—';
+$('rounds').innerHTML='';
+rounds.slice().reverse().slice(0,80).forEach(function(v,i){var s=document.createElement('span');s.className='round '+color(v);s.textContent=v.toFixed(2)+'x';s.title='Rodada recente '+(i+1);$('rounds').appendChild(s);});
+var last8=rounds.slice(-8).filter(function(v){return v>=10;}).length;
+$('last8').textContent=last8+'/8';
+$('pink8').textContent=Math.min(pink.length,8)+'/8';
+var last50='Não registrada';for(var i=rounds.length-1;i>=0;i--){if(rounds[i]>=50){last50=rounds[i].toFixed(2)+'x';break;}}
+$('last50').textContent=last50;
+var msg='Aguardando mais rodadas para formar um histórico.';
+if(rounds.length>=8){msg='Nas últimas 8 rodadas, foram observados '+last8+' resultados rosas (10x+). ';if(last8===8)msg+='O critério de 8 rosas nas últimas 8 foi atingido.';else msg+='O critério de 8 rosas nas últimas 8 ainda não foi atingido.';}
+$('signal').textContent=msg;
+}
+$('add').onclick=function(){var v=parseFloat($('mult').value.replace(',','.'));if(!isFinite(v)||v<1){alert('Digite um multiplicador válido, igual ou maior que 1.');return;}rounds.push(v);$('mult').value='';save();};
+$('mult').addEventListener('keydown',function(e){if(e.key==='Enter')$('add').click();});
+$('undo').onclick=function(){if(rounds.length){rounds.pop();save();}};
+$('clear').onclick=function(){if(confirm('Apagar todo o histórico salvo neste navegador?')){rounds=[];save();}};
+render();
+})();
+</script></body></html>
