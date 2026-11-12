@@ -14,6 +14,8 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.*
 import java.util.Locale
+import java.text.SimpleDateFormat
+import java.util.Date
 
 class MainActivity : Activity() {
 
@@ -32,6 +34,7 @@ private lateinit var historico: LinearLayout
     private var filtroRapido = "Todos"
     
     private val resultados = mutableListOf<Double>()
+    private val horarios = mutableListOf<String>()
     private var candidatoOCR: Double? = null
     private var leiturasDoCandidato = 0 
     private var rodadaRegistrada = false
@@ -60,6 +63,10 @@ private var primeiraLeituraOCR = true
                 it.toDoubleOrNull()?.let(resultados::add)
             }
         }
+        val horariosSalvos = getSharedPreferences("aviator", MODE_PRIVATE)
+            .getString("horarios_resultados", "") ?: ""
+        if (horariosSalvos.isNotEmpty()) horarios.addAll(horariosSalvos.split("|"))
+        while (horarios.size < resultados.size) horarios.add("--:--:--")
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -360,6 +367,7 @@ private fun processarOCR(texto: String) {
 
     if (leiturasDoCandidato >= 2) {
         resultados.add(0, valor)
+        horarios.add(0, horarioAtual())
         salvar()
         atualizarHistorico()
         atualizarGrade()
@@ -379,6 +387,7 @@ private fun registrarManual() {
         }
 
         resultados.add(0, valor)
+        horarios.add(0, horarioAtual())
         salvar()
         entrada.text.clear()
         atualizarHistorico()
@@ -390,6 +399,7 @@ private fun registrarManual() {
         getSharedPreferences("aviator", MODE_PRIVATE)
             .edit()
             .putString("resultados", resultados.joinToString(","))
+            .putString("horarios_resultados", horarios.joinToString("|"))
             .apply()
     }
 
@@ -491,8 +501,11 @@ private fun registrarManual() {
                 valor < 40.0 -> Color.rgb(215, 55, 145)
                 else -> Color.rgb(185, 45, 100)
             }
+            val indice = resultados.indexOf(valor)
+            val horario = horarios.getOrNull(indice) ?: "--:--:--"
+            val multiplicadorTexto = "%.2fx".format(Locale.US, valor)
             val item = TextView(this).apply {
-                text = "%.2fx".format(Locale.US, valor)
+                text = multiplicadorTexto
                 gravity = Gravity.CENTER
                 textSize = 12f
                 setTypeface(null, android.graphics.Typeface.BOLD)
@@ -502,6 +515,10 @@ private fun registrarManual() {
                     setColor(cor)
                     setStroke(1, Color.rgb(30, 35, 52))
                     cornerRadius = 8f
+                }
+                contentDescription = "Toque para ver o horário da rodada"
+                setOnClickListener {
+                    text = if (text == multiplicadorTexto) horario else multiplicadorTexto
                 }
             }
             val lp = GridLayout.LayoutParams().apply {
@@ -522,6 +539,10 @@ private fun registrarManual() {
             columnSpec = GridLayout.spec(0, 5)
             width = GridLayout.LayoutParams.MATCH_PARENT
         })
+    }
+
+    private fun horarioAtual(): String {
+        return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
     }
 
     private fun estilizarBotao(botao: Button, corFundo: Int, corBorda: Int) {
