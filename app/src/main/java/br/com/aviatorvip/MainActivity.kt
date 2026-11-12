@@ -404,28 +404,41 @@ private fun registrarManual() {
             }
             val horario = horarios.getOrNull(indice) ?: "--:--:--"
             val multiplicadorTexto = "%.2fx".format(Locale.US, valor)
-            val item = TextView(this).apply {
-                text = multiplicadorTexto
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                textSize = 12f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                setPadding(2, 12, 2, 12)
+                setPadding(2, 4, 2, 4)
                 background = GradientDrawable().apply {
                     setColor(cor)
                     setStroke(1, Color.rgb(30, 35, 52))
                     cornerRadius = 8f
                 }
-                contentDescription = "Toque para ver o horário da rodada"
+                val multiplicador = TextView(this@MainActivity).apply {
+                    text = multiplicadorTexto
+                    gravity = Gravity.CENTER
+                    textSize = 12f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                }
+                val hora = TextView(this@MainActivity).apply {
+                    text = horario
+                    gravity = Gravity.CENTER
+                    textSize = 8f
+                    setTextColor(Color.BLACK)
+                    visibility = android.view.View.GONE
+                }
+                addView(multiplicador)
+                addView(hora)
+                contentDescription = "Toque para mostrar ou ocultar o horário da rodada"
                 setOnClickListener {
-                    text = if (text == multiplicadorTexto) horario else multiplicadorTexto
+                    hora.visibility = if (hora.visibility == android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
                 }
             }
             val larguraTela = resources.displayMetrics.widthPixels
             val larguraCelula = (larguraTela - (12 * resources.displayMetrics.density).toInt()) / 4
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
-                height = (42 * resources.displayMetrics.density).toInt()
+                height = (48 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
                 setMargins(2, 3, 2, 3)
             }
