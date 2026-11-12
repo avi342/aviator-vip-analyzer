@@ -105,6 +105,15 @@ private var primeiraLeituraOCR = true
         topo.addView(subtitulo)
         tela.addView(topo, margem())
 
+        val abrirJogo = Button(this).apply {
+            text = "🌐  ABRIR APOSTABOOM NO ANALYZER"
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, NavegadorJogoActivity::class.java))
+            }
+            estilizarBotao(this, Color.rgb(45, 65, 105), Color.rgb(100, 175, 255))
+        }
+        tela.addView(abrirJogo)
+
         val iniciar = Button(this).apply {
             text = "▶  INICIAR CAPTURA OCR"
             setOnClickListener { solicitarCaptura() }
