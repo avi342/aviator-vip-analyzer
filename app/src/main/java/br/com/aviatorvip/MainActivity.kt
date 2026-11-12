@@ -145,6 +145,35 @@ private var primeiraLeituraOCR = true
         }
         tela.addView(status)
 
+        // Registro manual para corrigir ou inserir uma rodada quando o OCR falhar.
+        val linhaManual = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 4, 0, 12)
+        }
+        entrada = EditText(this).apply {
+            hint = "Multiplicador (ex.: 2,35)"
+            setSingleLine(true)
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.rgb(155, 165, 185))
+            setPadding(14, 8, 14, 8)
+            background = cartao(Color.rgb(27, 35, 58))
+        }
+        linhaManual.addView(entrada, LinearLayout.LayoutParams(0, 54, 1f).apply {
+            rightMargin = 8
+        })
+        val adicionarManual = Button(this).apply {
+            text = "ADICIONAR"
+            setOnClickListener { registrarManual() }
+            estilizarBotao(this, Color.rgb(35, 95, 135), Color.rgb(90, 185, 245))
+        }
+        linhaManual.addView(adicionarManual, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, 54
+        ))
+        tela.addView(linhaManual)
+
         gradeResultados = GridLayout(this).apply {
             columnCount = 4
             alignmentMode = GridLayout.ALIGN_BOUNDS
@@ -330,14 +359,9 @@ private fun registrarManual() {
     }
 
     private fun contarRosasDesdeUltimo40x(): Int {
-        var contagem = 0
-        resultados.take(300).asReversed().forEach { valor ->
-            when {
-                valor >= 40.0 -> contagem = 0
-                valor >= 10.0 && valor < 40.0 -> contagem++
-            }
-        }
-        return contagem
+        // Conta os resultados rosas nas últimas 300 rodadas.
+        // Resultados azuis, roxos e 40x+ no meio não zeram a contagem.
+        return resultados.take(300).count { it >= 10.0 && it < 40.0 }
     }
 
     private fun avaliarEstrategia() {
@@ -352,7 +376,7 @@ private fun registrarManual() {
                 .apply()
             Toast.makeText(
                 this,
-                "ALERTA: Estratégia 01 — 8 resultados rosas desde o último 40x+",
+                "ALERTA: Estratégia 01 — 8 resultados rosas nas últimas 300 rodadas",
                 Toast.LENGTH_LONG
             ).show()
         } else if (rosas < 8 && jaDisparou) {
@@ -390,7 +414,7 @@ private fun registrarManual() {
                 setPadding(4, 0, 18, 0)
             }
             val descricao = TextView(this).apply {
-                text = if (i == 1) "CICLO ROSA  •  " + rosas + "/8 resultados" else "Disponível para configurar"
+                text = if (i == 1) "CICLO ROSA  •  " + rosas + "/8 resultados rosas" else "Disponível para configurar"
                 textSize = 13f
                 setTextColor(if (i == 1) Color.WHITE else Color.rgb(145, 155, 175))
             }
@@ -495,9 +519,9 @@ private fun registrarManual() {
         val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
             .getBoolean("ciclo_rosa_disparado", false)
         painelEstrategia.text = "ESTRATÉGIA 01 — CICLO ROSA\n" +
-            "Contagem reinicia após cada resultado de 40x ou mais\n" +
+            "Conta resultados rosas (10x a 39,99x) nas últimas 300 rodadas\n" +
             "Rosas (10x a 39,99x) desde o último 40x+: $rosas de 8\n" +
-            if (ativa) "SINAL DISPARADO — observe antes de decidir" else "Aguardando completar 8 resultados"
+            if (ativa) "SINAL DISPARADO — observe antes de decidir" else "Aguardando completar 8 resultados rosas"
     }
 
     private fun atualizarHistorico() {
