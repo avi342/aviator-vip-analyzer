@@ -475,7 +475,7 @@ private fun registrarManual() {
         val minimo = campoMinimo.text.toString().replace(",", ".").toDoubleOrNull()
         val maximo = campoMaximo.text.toString().replace(",", ".").toDoubleOrNull()
         val corSelecionada = seletorCor.selectedItemPosition
-        val filtrados = resultados.take(quantidade).filter { valor ->
+        val filtrados = resultados.take(quantidade).withIndex().filter { (_, valor) ->
             val passaRapido = when (filtroRapido) {
                 ">2x" -> valor > 2.0
                 ">5x" -> valor > 5.0
@@ -494,14 +494,13 @@ private fun registrarManual() {
                 (maximo == null || valor <= maximo)
         }
         gradeResultados.removeAllViews()
-        filtrados.forEach { valor ->
+        filtrados.forEach { (indice, valor) ->
             val cor = when {
                 valor < 2.0 -> Color.rgb(30, 145, 220)
                 valor < 10.0 -> Color.rgb(112, 65, 190)
                 valor < 40.0 -> Color.rgb(215, 55, 145)
                 else -> Color.rgb(185, 45, 100)
             }
-            val indice = resultados.indexOf(valor)
             val horario = horarios.getOrNull(indice) ?: "--:--:--"
             val multiplicadorTexto = "%.2fx".format(Locale.US, valor)
             val item = TextView(this).apply {
