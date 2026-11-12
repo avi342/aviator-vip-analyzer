@@ -180,7 +180,15 @@ tela.addView(
             val b = Button(this).apply {
                 text = nome
                 textSize = 11f
-                estilizarBotao(this, Color.rgb(35, 48, 75), Color.rgb(70, 110, 165))
+                minWidth = 0
+                setTextColor(Color.WHITE)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                isAllCaps = false
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(35, 48, 75))
+                    setStroke(1, Color.rgb(90, 150, 220))
+                    cornerRadius = 12f
+                }
                 setOnClickListener { filtroRapido = nome; atualizarGrade() }
             }
             presets.addView(b, LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(3, 2, 3, 8) })
@@ -231,7 +239,12 @@ tela.addView(
             columnCount = 5
             setPadding(6, 8, 6, 8)
         }
-        tela.addView(gradeResultados, margem())
+        tela.addView(
+            gradeResultados,
+            LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = 12
+            }
+        )
 
         painelEstrategia = TextView(this).apply {
             setTextColor(Color.WHITE)
