@@ -61,26 +61,51 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.rgb(15, 20, 32))
         }
 
-        val titulo = TextView(this).apply {
-            text = "AVIATOR VIP ANALYZER"
-            textSize = 23f
+        val topo = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setTextColor(Color.rgb(255, 65, 145))
+            setPadding(18, 22, 18, 22)
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(28, 35, 65), Color.rgb(65, 24, 75), Color.rgb(24, 35, 65))
+            ).apply {
+                cornerRadius = 24f
+                setStroke(1, Color.rgb(190, 55, 150))
+            }
         }
-        tela.addView(titulo)
+        val titulo = TextView(this).apply {
+            text = "AVIATOR VIP"
+            textSize = 28f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.08f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(255, 90, 185))
+        }
+        val subtitulo = TextView(this).apply {
+            text = "ANALYZER  •  PAINEL INTELIGENTE"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.12f
+            setTextColor(Color.rgb(190, 205, 230))
+        }
+        topo.addView(titulo)
+        topo.addView(subtitulo)
+        tela.addView(topo, margem())
 
         val iniciar = Button(this).apply {
-            text = "INICIAR CAPTURA OCR"
+            text = "▶  INICIAR CAPTURA OCR"
             setOnClickListener { solicitarCaptura() }
+            estilizarBotao(this, Color.rgb(15, 125, 115), Color.rgb(75, 235, 205))
         }
         tela.addView(iniciar)
 
         val parar = Button(this).apply {
-            text = "PARAR CAPTURA"
+            text = "■  PARAR CAPTURA"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
                 status.text = "Captura parada."
             }
+            estilizarBotao(this, Color.rgb(75, 35, 65), Color.rgb(230, 85, 155))
         }
         tela.addView(parar)
 
@@ -101,8 +126,9 @@ private var primeiraLeituraOCR = true
         tela.addView(entrada)
 
         val registrar = Button(this).apply {
-            text = "REGISTRAR RESULTADO"
+            text = "＋  REGISTRAR RESULTADO"
             setOnClickListener { registrarManual() }
+            estilizarBotao(this, Color.rgb(42, 48, 85), Color.rgb(125, 145, 255))
         }
         tela.addView(registrar)
 
@@ -126,7 +152,7 @@ tela.addView(
             setTextColor(Color.WHITE)
             textSize = 15f
             setPadding(16, 18, 16, 18)
-            setBackgroundColor(Color.rgb(30, 38, 55))
+            background = cartao(Color.rgb(27, 35, 58))
         }
         tela.addView(painelEstrategia)
 
@@ -134,7 +160,7 @@ tela.addView(
             setTextColor(Color.WHITE)
             textSize = 14f
             setPadding(16, 16, 16, 16)
-            background = cartao(Color.rgb(25, 32, 49))
+            background = cartao(Color.rgb(20, 30, 52))
         }
         tela.addView(painelEstatisticas, margem())
 
@@ -349,6 +375,20 @@ private fun registrarManual() {
                 }
                 quadroEstrategias.addView(divisor, LinearLayout.LayoutParams(-1, 1))
             }
+        }
+    }
+
+    private fun estilizarBotao(botao: Button, corFundo: Int, corBorda: Int) {
+        botao.setTextColor(Color.WHITE)
+        botao.textSize = 14f
+        botao.setTypeface(null, android.graphics.Typeface.BOLD)
+        botao.isAllCaps = false
+        botao.elevation = 8f
+        botao.minimumHeight = 58
+        botao.background = GradientDrawable().apply {
+            setColor(corFundo)
+            setStroke(2, corBorda)
+            cornerRadius = 18f
         }
     }
 
