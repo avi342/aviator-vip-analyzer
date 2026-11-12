@@ -20,6 +20,7 @@ class MainActivity : Activity() {
     private lateinit var entrada: EditText
     
 private lateinit var historico: LinearLayout
+    private lateinit var painelEstrategia: TextView
     
     private val resultados = mutableListOf<Double>()
     private var candidatoOCR: Double? = null
@@ -118,8 +119,17 @@ tela.addView(
     LinearLayout.LayoutParams(-1, 90)
 )
 
+        painelEstrategia = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 15f
+            setPadding(16, 18, 16, 18)
+            setBackgroundColor(Color.rgb(30, 38, 55))
+        }
+        tela.addView(painelEstrategia)
+
         setContentView(tela)
         atualizarHistorico()
+        avaliarEstrategia()
     }
 
     private fun solicitarCaptura() {
@@ -216,6 +226,7 @@ private fun processarOCR(texto: String) {
         resultados.add(0, valor)
         salvar()
         atualizarHistorico()
+        avaliarEstrategia()
         rodadaRegistrada = true
         status.text = "Resultado registrado: $valor x"
     }
@@ -234,6 +245,7 @@ private fun registrarManual() {
         salvar()
         entrada.text.clear()
         atualizarHistorico()
+        avaliarEstrategia()
     }
 
     private fun salvar() {
@@ -241,6 +253,37 @@ private fun registrarManual() {
             .edit()
             .putString("resultados", resultados.joinToString(","))
             .apply()
+    }
+
+    private fun avaliarEstrategia() {
+        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
+        val rosas = resultados.take(300).count { it >= 10.0 && it < 40.0 }
+        val jaDisparou = prefs.getBoolean("ciclo_rosa_disparado", false)
+
+        if (rosas >= 8 && !jaDisparou) {
+            prefs.edit()
+                .putBoolean("ciclo_rosa_disparado", true)
+                .putString("ciclo_rosa_ultimo_sinal", System.currentTimeMillis().toString())
+                .apply()
+            Toast.makeText(
+                this,
+                "ALERTA: Estratégia 01 — 8 resultados rosas nas últimas 300 rodadas",
+                Toast.LENGTH_LONG
+            ).show()
+        } else if (rosas < 8 && jaDisparou) {
+            prefs.edit().putBoolean("ciclo_rosa_disparado", false).apply()
+        }
+
+        atualizarPainelEstrategia(rosas)
+    }
+
+    private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
+        val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
+            .getBoolean("ciclo_rosa_disparado", false)
+        painelEstrategia.text = "ESTRATÉGIA 01 — CICLO ROSA\\n" +
+            "Janela: últimas 300 rodadas\\n" +
+            "Resultados rosas (10x a 39,99x): $rosas de 8\\n" +
+            if (ativa) "SINAL DISPARADO — observe antes de decidir" else "Aguardando completar 8 resultados"
     }
 
     private fun atualizarHistorico() {
