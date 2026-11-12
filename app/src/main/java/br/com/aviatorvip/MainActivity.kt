@@ -423,16 +423,14 @@ private fun registrarManual() {
                 val hora = TextView(this@MainActivity).apply {
                     text = horario
                     gravity = Gravity.CENTER
-                    textSize = 8f
+                    textSize = 9f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.BLACK)
-                    visibility = android.view.View.GONE
+                    visibility = android.view.View.VISIBLE
                 }
                 addView(multiplicador)
                 addView(hora)
-                contentDescription = "Toque para mostrar ou ocultar o horário da rodada"
-                setOnClickListener {
-                    hora.visibility = if (hora.visibility == android.view.View.VISIBLE) android.view.View.GONE else android.view.View.VISIBLE
-                }
+                contentDescription = "Horário local da rodada"
             }
             val larguraTela = resources.displayMetrics.widthPixels
             val larguraCelula = (larguraTela - (12 * resources.displayMetrics.density).toInt()) / 4
