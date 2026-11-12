@@ -25,6 +25,7 @@ class MainActivity : Activity() {
 private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
     private lateinit var painelEstatisticas: TextView
+    private lateinit var quadroPadroes: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
     private lateinit var campoQuantidade: EditText
@@ -173,7 +174,22 @@ private var primeiraLeituraOCR = true
             setPadding(16, 18, 16, 18)
             background = cartao(Color.rgb(27, 35, 58))
         }
-        tela.addView(painelEstrategia)
+        tela.addView(painelEstrategia, margem())
+
+        val tituloPadroes = TextView(this).apply {
+            text = "PADRÕES IDENTIFICADOS"
+            textSize = 14f
+            setTextColor(Color.rgb(100, 205, 255))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(4, 18, 4, 8)
+        }
+        tela.addView(tituloPadroes)
+        quadroPadroes = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 12, 12, 12)
+            background = cartao(Color.rgb(12, 19, 33))
+        }
+        tela.addView(quadroPadroes, margem())
 
         painelEstatisticas = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -207,6 +223,7 @@ private var primeiraLeituraOCR = true
         atualizarHistorico()
         atualizarGrade()
         avaliarEstrategia()
+        atualizarBibliotecaPadroes()
     }
 
     private fun solicitarCaptura() {
@@ -307,6 +324,7 @@ private fun processarOCR(texto: String) {
         atualizarHistorico()
         atualizarGrade()
         avaliarEstrategia()
+        atualizarBibliotecaPadroes()
         rodadaRegistrada = true
         status.text = "Resultado registrado: $valor x"
     }
@@ -489,6 +507,84 @@ private fun processarOCR(texto: String) {
             (if (ativa) "🟢 Critério ativo" else "⏳ Aguardando condição") +
             "\n\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\n" +
             analisarCicloCronologico()
+    }
+
+
+    private fun atualizarBibliotecaPadroes() {
+        if (!::quadroPadroes.isInitialized) return
+        quadroPadroes.removeAllViews()
+        val dados = (0 until minOf(resultados.size, marcasTempo.size))
+            .map { i -> Pair(resultados[i], marcasTempo[i]) }
+            .filter { it.second > 0L }.asReversed()
+        val salvos = getSharedPreferences("aviator", MODE_PRIVATE)
+            .getStringSet("biblioteca_padroes", emptySet())?.toMutableSet() ?: mutableSetOf()
+        for (i in dados.indices) {
+            if (dados[i].first < 10.0) continue
+            var j = i + 1
+            var baixo = false
+            var alto = false
+            while (j < dados.size && dados[j].first < 10.0) {
+                val v = dados[j].first
+                if (v <= 1.50) baixo = true
+                if (v in 2.41..6.00) alto = true
+                j++
+            }
+            if (j >= dados.size || !baixo || !alto) continue
+            val minutos = kotlin.math.round((dados[j].second - dados[i].second) / 60000.0).toLong()
+            if (minutos in listOf(3L, 4L, 7L, 9L)) {
+                val sequencia = dados.subList(i + 1, j).joinToString(",") {
+                    String.format(Locale.US, "%.2f", it.first)
+                }
+                if (sequencia.isNotBlank()) salvos.add(sequencia)
+            }
+        }
+        getSharedPreferences("aviator", MODE_PRIVATE).edit()
+            .putStringSet("biblioteca_padroes", salvos).apply()
+        if (salvos.isEmpty()) {
+            quadroPadroes.addView(TextView(this).apply {
+                text = "Nenhum padrão completo identificado ainda."
+                textSize = 13f
+                setTextColor(Color.LTGRAY)
+            })
+            return
+        }
+        salvos.sorted().takeLast(20).forEachIndexed { idx, seq ->
+            val linha = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, 7, 0, 7)
+            }
+            linha.addView(TextView(this).apply {
+                text = "PADRÃO ${idx + 1}"
+                textSize = 10f
+                setTextColor(Color.LTGRAY)
+            })
+            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            seq.split(",").forEach { n ->
+                val v = n.toDoubleOrNull() ?: return@forEach
+                val cor = when {
+                    v < 2.0 -> Color.rgb(30, 145, 220)
+                    v < 10.0 -> Color.rgb(112, 65, 190)
+                    else -> Color.rgb(215, 55, 145)
+                }
+                val chip = TextView(this@MainActivity).apply {
+                    text = "${String.format(Locale.US, "%.2f", v)}x"
+                    textSize = 10f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setPadding(5, 5, 5, 5)
+                    background = GradientDrawable().apply {
+                        setColor(cor)
+                        cornerRadius = 5f
+                    }
+                }
+                chips.addView(chip, LinearLayout.LayoutParams(-2, -2).apply { rightMargin = 5 })
+            }
+            linha.addView(chips)
+            quadroPadroes.addView(linha)
+            quadroPadroes.addView(View(this).apply {
+                setBackgroundColor(Color.rgb(45, 58, 78))
+            }, LinearLayout.LayoutParams(-1, 1))
+        }
     }
 
     private fun analisarCicloCronologico(): String {
