@@ -481,24 +481,26 @@ private fun processarOCR(texto: String) {
     private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
         val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
             .getBoolean("ciclo_rosa_disparado", false)
+        painelEstrategia.textSize = 16f
+        painelEstrategia.setLineSpacing(5f, 1.0f)
         painelEstrategia.text =
-            "ESTRATÉGIA 01 — CICLO ROSA\\n" +
-            "Rosas de 10x a 39,99x nas últimas 300 rodadas: $rosas\\n" +
-            (if (ativa) "SINAL DA ESTRATÉGIA 01 ATIVO\\n" else "Aguardando o critério da Estratégia 01\\n") +
-            "\\nESTRATÉGIA 04 — CICLO CRONOLÓGICO\\n" +
+            "📊 ESTRATÉGIA 01 — CICLO ROSA\\n" +
+            "Rosas de 10x a 39,99x (últimas 300): $rosas\\n" +
+            (if (ativa) "🟢 Critério ativo" else "⏳ Aguardando condição") +
+            "\\n\\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\\n" +
             analisarCicloCronologico()
     }
 
     private fun analisarCicloCronologico(): String {
         val n = minOf(resultados.size, marcasTempo.size)
-        if (n < 3) return "Coletando rodadas com horário automático; ainda não há amostra suficiente."
+        if (n < 3) return "Ainda coletando rodadas com horário automático."
         val dados = (0 until n).map { i -> Pair(resultados[i], marcasTempo[i]) }
             .filter { it.second > 0L }.asReversed()
-        if (dados.size < 3) return "Os registros antigos sem horário exato serão ignorados nesta análise."
-        val intervalosAlvo = listOf(3L, 4L, 7L, 9L)
-        var ciclosValidos = 0
-        val contagem = mutableMapOf<Long, Int>()
-        val acertosFuturos = mutableMapOf<Long, Int>()
+        if (dados.size < 3) return "Histórico antigo sem horário exato não entra nesta análise."
+
+        val alvos = listOf(3L, 4L, 7L, 9L)
+        val ocorrencias = mutableMapOf<Long, Int>()
+        var ciclosCompletos = 0
         for (i in dados.indices) {
             if (dados[i].first < 10.0) continue
             var j = i + 1
@@ -510,37 +512,41 @@ private fun processarOCR(texto: String) {
                 if (v in 2.41..6.00) alto = true
                 j++
             }
-            if (j >= dados.size) continue
-            val minutos = (dados[j].second - dados[i].second) / 60000L
-            if (minutos in intervalosAlvo && baixo && alto) {
-                ciclosValidos++
-                contagem[minutos] = (contagem[minutos] ?: 0) + 1
-                // Conta o evento observado; não o trata como previsão antecipada.
-                acertosFuturos[minutos] = (acertosFuturos[minutos] ?: 0) + 1
+            if (j >= dados.size || !baixo || !alto) continue
+            val deltaMs = dados[j].second - dados[i].second
+            if (deltaMs <= 0L) continue
+            // Arredonda o intervalo para o minuto mais próximo: 3m30s passa a 4 min.
+            val minutos = kotlin.math.round(deltaMs / 60000.0).toLong()
+            if (minutos in alvos) {
+                ciclosCompletos++
+                ocorrencias[minutos] = (ocorrencias[minutos] ?: 0) + 1
             }
         }
+
         val ultimaRosa = dados.indexOfLast { it.first >= 10.0 }
-        if (ultimaRosa < 0) return "Ainda não apareceu rosa com horário válido no histórico."
-        val depois = dados.drop(ultimaRosa + 1)
-        val baixoAtual = depois.any { it.first <= 1.50 }
-        val altoAtual = depois.any { it.first in 2.41..6.00 }
-        val tempoDecorrido = (System.currentTimeMillis() - dados[ultimaRosa].second).coerceAtLeast(0L)
-        val minutosDecorridos = tempoDecorrido / 60000L
-        val proximoTempo = intervalosAlvo.firstOrNull { it > minutosDecorridos }
-        val leitura = when {
-            baixoAtual && altoAtual -> "Baixo e alto já apareceram desde a última rosa."
-            baixoAtual -> "Baixo identificado; aguardando alto entre 2,41x e 6,00x."
-            altoAtual -> "Alto identificado; aguardando baixo até 1,50x."
-            else -> "Monitorando multiplicadores desde a última rosa."
+        if (ultimaRosa < 0) return "Ainda não há rosa registrada com horário."
+        val desde = dados.drop(ultimaRosa + 1)
+        val baixoAtual = desde.any { it.first <= 1.50 }
+        val altoAtual = desde.any { it.first in 2.41..6.00 }
+        val segundos = ((System.currentTimeMillis() - dados[ultimaRosa].second) / 1000L).coerceAtLeast(0L)
+        val minutosDecorridos = segundos / 60L
+        val faixaAtual = when {
+            baixoAtual && altoAtual -> "🟢 BAIXO + ALTO encontrados"
+            baixoAtual -> "🟡 Baixo encontrado; falta um alto (2,41x–6x)"
+            altoAtual -> "🟡 Alto encontrado; falta um baixo (até 1,50x)"
+            else -> "🔵 Aguardando baixo e alto"
         }
-        val frequencias = if (contagem.isEmpty()) "Nenhum ciclo completo encontrado" else
-            contagem.toSortedMap().entries.joinToString(" • ") { "${it.key} min: ${it.value} ocorrência(s)" }
-        return "Ciclos completos com baixo + alto: $ciclosValidos\\n" +
-            "$frequencias\\n" +
-            "Tempo desde a última rosa: ${minutosDecorridos}min\\n" +
-            "$leitura\\n" +
-            (if (proximoTempo != null) "Próxima faixa observada a investigar: ${proximoTempo}min" else "Fora das faixas de 3, 4, 7 e 9 min") +
-            "\\nPadrões históricos são hipóteses estatísticas, não garantem a próxima rosa."
+        val proximo = alvos.firstOrNull { it > minutosDecorridos }
+        val historicoTexto = if (ocorrencias.isEmpty()) "Ainda sem ciclos completos confirmados." else
+            ocorrencias.toSortedMap().entries.joinToString("   •   ") { "${it.key} min: ${it.value}x" }
+
+        return "ÚLTIMA ROSA: ${horarios.getOrNull(resultados.indices.lastOrNull { resultados[it] >= 10.0 } ?: 0) ?: "--:--:--"}\\n" +
+            "Tempo desde a rosa: ${minutosDecorridos}min ${segundos % 60}s\\n" +
+            "$faixaAtual\\n" +
+            "Ciclos históricos com baixo + alto: $ciclosCompletos\\n" +
+            "Frequência: $historicoTexto\\n" +
+            (if (proximo != null) "Próxima faixa a observar: ${proximo} min" else "Faixas 3, 4, 7 e 9 min já passaram") +
+            "\\n\\n⚠️ Frequência histórica não garante a próxima rosa."
     }
 
     private fun atualizarHistorico() {
