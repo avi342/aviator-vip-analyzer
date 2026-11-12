@@ -484,10 +484,10 @@ private fun processarOCR(texto: String) {
         painelEstrategia.textSize = 16f
         painelEstrategia.setLineSpacing(5f, 1.0f)
         painelEstrategia.text =
-            "📊 ESTRATÉGIA 01 — CICLO ROSA\\n" +
-            "Rosas de 10x a 39,99x (últimas 300): $rosas\\n" +
+            "📊 ESTRATÉGIA 01 — CICLO ROSA\n" +
+            "Rosas de 10x a 39,99x (últimas 300): $rosas\n" +
             (if (ativa) "🟢 Critério ativo" else "⏳ Aguardando condição") +
-            "\\n\\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\\n" +
+            "\n\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\n" +
             analisarCicloCronologico()
     }
 
@@ -540,13 +540,13 @@ private fun processarOCR(texto: String) {
         val historicoTexto = if (ocorrencias.isEmpty()) "Ainda sem ciclos completos confirmados." else
             ocorrencias.toSortedMap().entries.joinToString("   •   ") { "${it.key} min: ${it.value}x" }
 
-        return "ÚLTIMA ROSA: ${horarios.getOrNull(resultados.indices.lastOrNull { resultados[it] >= 10.0 } ?: 0) ?: "--:--:--"}\\n" +
-            "Tempo desde a rosa: ${minutosDecorridos}min ${segundos % 60}s\\n" +
-            "$faixaAtual\\n" +
-            "Ciclos históricos com baixo + alto: $ciclosCompletos\\n" +
-            "Frequência: $historicoTexto\\n" +
+        return "ÚLTIMA ROSA: ${horarios.getOrNull(resultados.indices.lastOrNull { resultados[it] >= 10.0 } ?: 0) ?: "--:--:--"}\n" +
+            "Tempo desde a rosa: ${minutosDecorridos}min ${segundos % 60}s\n" +
+            "$faixaAtual\n" +
+            "Ciclos históricos com baixo + alto: $ciclosCompletos\n" +
+            "Frequência: $historicoTexto\n" +
             (if (proximo != null) "Próxima faixa a observar: ${proximo} min" else "Faixas 3, 4, 7 e 9 min já passaram") +
-            "\\n\\n⚠️ Frequência histórica não garante a próxima rosa."
+            "\n\n⚠️ Frequência histórica não garante a próxima rosa."
     }
 
     private fun atualizarHistorico() {
