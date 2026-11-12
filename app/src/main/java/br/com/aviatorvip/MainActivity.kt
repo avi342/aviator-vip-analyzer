@@ -280,9 +280,9 @@ private fun registrarManual() {
     private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
         val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
             .getBoolean("ciclo_rosa_disparado", false)
-        painelEstrategia.text = "ESTRATÉGIA 01 — CICLO ROSA\\n" +
-            "Janela: últimas 300 rodadas\\n" +
-            "Resultados rosas (10x a 39,99x): $rosas de 8\\n" +
+        painelEstrategia.text = "ESTRATÉGIA 01 — CICLO ROSA\n" +
+            "Janela: últimas 300 rodadas\n" +
+            "Resultados rosas (10x a 39,99x): $rosas de 8\n" +
             if (ativa) "SINAL DISPARADO — observe antes de decidir" else "Aguardando completar 8 resultados"
     }
 
