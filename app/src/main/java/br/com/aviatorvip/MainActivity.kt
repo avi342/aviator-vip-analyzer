@@ -130,37 +130,6 @@ private var primeiraLeituraOCR = true
         }
         tela.addView(status)
 
-        entrada = EditText(this).apply {
-            hint = "Multiplicador manual (ex.: 2,50)"
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
-            inputType = 8194
-        }
-        tela.addView(entrada)
-
-        val registrar = Button(this).apply {
-            text = "＋  REGISTRAR RESULTADO"
-            setOnClickListener { registrarManual() }
-            estilizarBotao(this, Color.rgb(42, 48, 85), Color.rgb(125, 145, 255))
-        }
-        tela.addView(registrar)
-
-      
-historico = LinearLayout(this).apply {
-    orientation = LinearLayout.HORIZONTAL
-    gravity = Gravity.CENTER_VERTICAL
-}
-
-val rolagem = HorizontalScrollView(this).apply {
-    isHorizontalScrollBarEnabled = true
-    addView(historico)
-}
-
-tela.addView(
-    rolagem,
-    LinearLayout.LayoutParams(-1, 90)
-)
-
         val painelFiltros = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(14, 14, 14, 14)
@@ -180,13 +149,13 @@ tela.addView(
                 listOf("Todas as cores", "Azul (1,00x–1,99x)", "Roxo (2x–9,99x)", "Rosa (10x–39,99x)", "40x ou mais"))
         }
         painelFiltros.addView(seletorCor)
-
-        val aplicar = Button(this).apply {
-            text = "APLICAR FILTROS"
-            estilizarBotao(this, Color.rgb(20, 100, 170), Color.rgb(70, 180, 255))
-            setOnClickListener { atualizarGrade() }
+        seletorCor.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                atualizarGrade()
+            }
         }
-        painelFiltros.addView(aplicar)
+
         tela.addView(painelFiltros, margem())
 
         gradeResultados = GridLayout(this).apply {
@@ -373,9 +342,20 @@ private fun registrarManual() {
             .apply()
     }
 
+    private fun contarRosasDesdeUltimo40x(): Int {
+        var contagem = 0
+        resultados.take(300).asReversed().forEach { valor ->
+            when {
+                valor >= 40.0 -> contagem = 0
+                valor >= 10.0 && valor < 40.0 -> contagem++
+            }
+        }
+        return contagem
+    }
+
     private fun avaliarEstrategia() {
         val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
-        val rosas = resultados.take(300).count { it >= 10.0 && it < 40.0 }
+        val rosas = contarRosasDesdeUltimo40x()
         val jaDisparou = prefs.getBoolean("ciclo_rosa_disparado", false)
 
         if (rosas >= 8 && !jaDisparou) {
@@ -385,7 +365,7 @@ private fun registrarManual() {
                 .apply()
             Toast.makeText(
                 this,
-                "ALERTA: Estratégia 01 — 8 resultados rosas nas últimas 300 rodadas",
+                "ALERTA: Estratégia 01 — 8 resultados rosas desde o último 40x+",
                 Toast.LENGTH_LONG
             ).show()
         } else if (rosas < 8 && jaDisparou) {
@@ -405,7 +385,7 @@ private fun registrarManual() {
         painelEstatisticas.text =
             "RESUMO DAS ÚLTIMAS " + janela.size + " RODADAS\n" +
             "Azuis: " + azuis + "  •  Roxos: " + roxos + "\n" +
-            "Rosas (10x–39,99x): " + rosas + "  •  40x+: " + altos + "\n" +
+            "Rosas no ciclo atual: " + rosas + "  •  40x+: " + altos + "\n" +
             "Média da janela: " + "%.2fx".format(Locale.US, media)
 
         quadroEstrategias.removeAllViews()
@@ -538,8 +518,8 @@ private fun registrarManual() {
         val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
             .getBoolean("ciclo_rosa_disparado", false)
         painelEstrategia.text = "ESTRATÉGIA 01 — CICLO ROSA\n" +
-            "Janela: últimas 300 rodadas\n" +
-            "Resultados rosas (10x a 39,99x): $rosas de 8\n" +
+            "Contagem reinicia após cada resultado de 40x ou mais\n" +
+            "Rosas (10x a 39,99x) desde o último 40x+: $rosas de 8\n" +
             if (ativa) "SINAL DISPARADO — observe antes de decidir" else "Aguardando completar 8 resultados"
     }
 
