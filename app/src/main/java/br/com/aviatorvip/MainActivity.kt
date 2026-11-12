@@ -236,8 +236,11 @@ tela.addView(
         tela.addView(painelFiltros, margem())
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 5
+            columnCount = 4
+            alignmentMode = GridLayout.ALIGN_BOUNDS
+            useDefaultMargins = false
             setPadding(6, 8, 6, 8)
+            setBackgroundColor(Color.rgb(20, 28, 45))
         }
         tela.addView(
             gradeResultados,
@@ -533,11 +536,13 @@ private fun registrarManual() {
                     text = if (text == multiplicadorTexto) horario else multiplicadorTexto
                 }
             }
+            val larguraTela = resources.displayMetrics.widthPixels
+            val larguraCelula = (larguraTela - (12 * resources.displayMetrics.density).toInt()) / 4
             val lp = GridLayout.LayoutParams().apply {
-                width = 0
-                height = GridLayout.LayoutParams.WRAP_CONTENT
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-                setMargins(3, 3, 3, 3)
+                width = larguraCelula
+                height = (42 * resources.displayMetrics.density).toInt()
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
+                setMargins(2, 3, 2, 3)
             }
             gradeResultados.addView(item, lp)
         }
@@ -548,7 +553,7 @@ private fun registrarManual() {
             setPadding(6, 8, 6, 8)
         }
         gradeResultados.addView(resumo, GridLayout.LayoutParams().apply {
-            columnSpec = GridLayout.spec(0, 5)
+            columnSpec = GridLayout.spec(0, 4)
             width = GridLayout.LayoutParams.MATCH_PARENT
         })
     }
