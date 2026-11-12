@@ -141,7 +141,7 @@ bitmap.recycle()
         val abaixo = blocos
             .filter {
                 it.boundingBox != null &&
-                it.boundingBox.top >= limite
+               it.boundingBox!!.top >= limite
             }
             .sortedBy { it.boundingBox!!.top }
 
