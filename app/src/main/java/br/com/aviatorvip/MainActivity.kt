@@ -130,34 +130,6 @@ private var primeiraLeituraOCR = true
         }
         tela.addView(status)
 
-        val painelFiltros = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(14, 14, 14, 14)
-            background = cartao(Color.rgb(20, 29, 47))
-        }
-        campoQuantidade = EditText(this).apply {
-            hint = "Quantidade de rodadas (ex.: 200)"
-            setText("200")
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
-            inputType = 2
-        }
-        painelFiltros.addView(campoQuantidade)
-
-        seletorCor = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
-                listOf("Todas as cores", "Azul (1,00x–1,99x)", "Roxo (2x–9,99x)", "Rosa (10x–39,99x)", "40x ou mais"))
-        }
-        painelFiltros.addView(seletorCor)
-        seletorCor.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
-                atualizarGrade()
-            }
-        }
-
-        tela.addView(painelFiltros, margem())
-
         gradeResultados = GridLayout(this).apply {
             columnCount = 4
             alignmentMode = GridLayout.ALIGN_BOUNDS
@@ -421,18 +393,7 @@ private fun registrarManual() {
 
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
-        val quantidade = campoQuantidade.text.toString().toIntOrNull()?.coerceIn(1, 1000) ?: 200
-        val corSelecionada = seletorCor.selectedItemPosition
-        val filtrados = resultados.take(quantidade).withIndex().filter { (_, valor) ->
-            val passaCor = when (corSelecionada) {
-                1 -> valor < 2.0
-                2 -> valor >= 2.0 && valor < 10.0
-                3 -> valor >= 10.0 && valor < 40.0
-                4 -> valor >= 40.0
-                else -> true
-            }
-            passaCor
-        }
+        val filtrados = resultados.take(200).withIndex()
         gradeResultados.removeAllViews()
         filtrados.forEach { (indice, valor) ->
             val cor = when {
@@ -470,16 +431,6 @@ private fun registrarManual() {
             }
             gradeResultados.addView(item, lp)
         }
-        val resumo = TextView(this).apply {
-            text = "Exibindo " + filtrados.size + " multiplicadores"
-            setTextColor(Color.LTGRAY)
-            textSize = 11f
-            setPadding(6, 8, 6, 8)
-        }
-        gradeResultados.addView(resumo, GridLayout.LayoutParams().apply {
-            columnSpec = GridLayout.spec(0, 4)
-            width = GridLayout.LayoutParams.MATCH_PARENT
-        })
     }
 
     private fun horarioAtual(): String {
