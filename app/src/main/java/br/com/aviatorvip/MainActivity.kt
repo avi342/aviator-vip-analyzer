@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
+import android.view.View
 import android.widget.*
 import java.util.Locale
 import java.text.SimpleDateFormat
