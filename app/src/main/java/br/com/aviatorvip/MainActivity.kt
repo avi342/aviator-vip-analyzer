@@ -35,6 +35,7 @@ private lateinit var historico: LinearLayout
     
     private val resultados = mutableListOf<Double>()
     private val horarios = mutableListOf<String>()
+    private val marcasTempo = mutableListOf<Long>()
     private var candidatoOCR: Double? = null
     private var leiturasDoCandidato = 0 
     private var rodadaRegistrada = false
@@ -67,6 +68,12 @@ private var primeiraLeituraOCR = true
             .getString("horarios_resultados", "") ?: ""
         if (horariosSalvos.isNotEmpty()) horarios.addAll(horariosSalvos.split("|"))
         while (horarios.size < resultados.size) horarios.add("--:--:--")
+        val temposSalvos = getSharedPreferences("aviator", MODE_PRIVATE)
+            .getString("tempos_resultados", "") ?: ""
+        if (temposSalvos.isNotEmpty()) temposSalvos.split(",").forEach {
+            it.toLongOrNull()?.let(marcasTempo::add)
+        }
+        while (marcasTempo.size < resultados.size) marcasTempo.add(0L)
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -145,34 +152,6 @@ private var primeiraLeituraOCR = true
         }
         tela.addView(status)
 
-        // Registro manual para corrigir ou inserir uma rodada quando o OCR falhar.
-        val linhaManual = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, 4, 0, 12)
-        }
-        entrada = EditText(this).apply {
-            hint = "Multiplicador (ex.: 2,35)"
-            setSingleLine(true)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.rgb(155, 165, 185))
-            setPadding(14, 8, 14, 8)
-            background = cartao(Color.rgb(27, 35, 58))
-        }
-        linhaManual.addView(entrada, LinearLayout.LayoutParams(0, 54, 1f).apply {
-            rightMargin = 8
-        })
-        val adicionarManual = Button(this).apply {
-            text = "ADICIONAR"
-            setOnClickListener { registrarManual() }
-            estilizarBotao(this, Color.rgb(35, 95, 135), Color.rgb(90, 185, 245))
-        }
-        linhaManual.addView(adicionarManual, LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT, 54
-        ))
-        tela.addView(linhaManual)
 
         gradeResultados = GridLayout(this).apply {
             columnCount = 4
@@ -323,6 +302,7 @@ private fun processarOCR(texto: String) {
     if (leiturasDoCandidato >= 2) {
         resultados.add(0, valor)
         horarios.add(0, horarioAtual())
+        marcasTempo.add(0, System.currentTimeMillis())
         salvar()
         atualizarHistorico()
         atualizarGrade()
@@ -331,30 +311,13 @@ private fun processarOCR(texto: String) {
         status.text = "Resultado registrado: $valor x"
     }
 }
-private fun registrarManual() {
-       
-    val valor = entrada.text.toString()
-            .replace(",", ".").toDoubleOrNull()
-
-        if (valor == null || valor < 1) {
-            Toast.makeText(this, "Multiplicador inválido", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        resultados.add(0, valor)
-        horarios.add(0, horarioAtual())
-        salvar()
-        entrada.text.clear()
-        atualizarHistorico()
-        atualizarGrade()
-        avaliarEstrategia()
-    }
 
     private fun salvar() {
         getSharedPreferences("aviator", MODE_PRIVATE)
             .edit()
             .putString("resultados", resultados.joinToString(","))
             .putString("horarios_resultados", horarios.joinToString("|"))
+            .putString("tempos_resultados", marcasTempo.joinToString(","))
             .apply()
     }
 
@@ -518,10 +481,66 @@ private fun registrarManual() {
     private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
         val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
             .getBoolean("ciclo_rosa_disparado", false)
-        painelEstrategia.text = "ESTRATÉGIA 01 — CICLO ROSA\n" +
-            "Conta resultados rosas (10x a 39,99x) nas últimas 300 rodadas\n" +
-            "Rosas (10x a 39,99x) desde o último 40x+: $rosas de 8\n" +
-            if (ativa) "SINAL DISPARADO — observe antes de decidir" else "Aguardando completar 8 resultados rosas"
+        painelEstrategia.text =
+            "ESTRATÉGIA 01 — CICLO ROSA\\n" +
+            "Rosas de 10x a 39,99x nas últimas 300 rodadas: $rosas\\n" +
+            (if (ativa) "SINAL DA ESTRATÉGIA 01 ATIVO\\n" else "Aguardando o critério da Estratégia 01\\n") +
+            "\\nESTRATÉGIA 04 — CICLO CRONOLÓGICO\\n" +
+            analisarCicloCronologico()
+    }
+
+    private fun analisarCicloCronologico(): String {
+        val n = minOf(resultados.size, marcasTempo.size)
+        if (n < 3) return "Coletando rodadas com horário automático; ainda não há amostra suficiente."
+        val dados = (0 until n).map { i -> Pair(resultados[i], marcasTempo[i]) }
+            .filter { it.second > 0L }.asReversed()
+        if (dados.size < 3) return "Os registros antigos sem horário exato serão ignorados nesta análise."
+        val intervalosAlvo = listOf(3L, 4L, 7L, 9L)
+        var ciclosValidos = 0
+        val contagem = mutableMapOf<Long, Int>()
+        val acertosFuturos = mutableMapOf<Long, Int>()
+        for (i in dados.indices) {
+            if (dados[i].first < 10.0) continue
+            var j = i + 1
+            var baixo = false
+            var alto = false
+            while (j < dados.size && dados[j].first < 10.0) {
+                val v = dados[j].first
+                if (v <= 1.50) baixo = true
+                if (v in 2.41..6.00) alto = true
+                j++
+            }
+            if (j >= dados.size) continue
+            val minutos = (dados[j].second - dados[i].second) / 60000L
+            if (minutos in intervalosAlvo && baixo && alto) {
+                ciclosValidos++
+                contagem[minutos] = (contagem[minutos] ?: 0) + 1
+                // Conta o evento observado; não o trata como previsão antecipada.
+                acertosFuturos[minutos] = (acertosFuturos[minutos] ?: 0) + 1
+            }
+        }
+        val ultimaRosa = dados.indexOfLast { it.first >= 10.0 }
+        if (ultimaRosa < 0) return "Ainda não apareceu rosa com horário válido no histórico."
+        val depois = dados.drop(ultimaRosa + 1)
+        val baixoAtual = depois.any { it.first <= 1.50 }
+        val altoAtual = depois.any { it.first in 2.41..6.00 }
+        val tempoDecorrido = (System.currentTimeMillis() - dados[ultimaRosa].second).coerceAtLeast(0L)
+        val minutosDecorridos = tempoDecorrido / 60000L
+        val proximoTempo = intervalosAlvo.firstOrNull { it > minutosDecorridos }
+        val leitura = when {
+            baixoAtual && altoAtual -> "Baixo e alto já apareceram desde a última rosa."
+            baixoAtual -> "Baixo identificado; aguardando alto entre 2,41x e 6,00x."
+            altoAtual -> "Alto identificado; aguardando baixo até 1,50x."
+            else -> "Monitorando multiplicadores desde a última rosa."
+        }
+        val frequencias = if (contagem.isEmpty()) "Nenhum ciclo completo encontrado" else
+            contagem.toSortedMap().entries.joinToString(" • ") { "${it.key} min: ${it.value} ocorrência(s)" }
+        return "Ciclos completos com baixo + alto: $ciclosValidos\\n" +
+            "$frequencias\\n" +
+            "Tempo desde a última rosa: ${minutosDecorridos}min\\n" +
+            "$leitura\\n" +
+            (if (proximoTempo != null) "Próxima faixa observada a investigar: ${proximoTempo}min" else "Fora das faixas de 3, 4, 7 e 9 min") +
+            "\\nPadrões históricos são hipóteses estatísticas, não garantem a próxima rosa."
     }
 
     private fun atualizarHistorico() {
