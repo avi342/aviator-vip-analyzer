@@ -106,9 +106,15 @@ private var primeiraLeituraOCR = true
         tela.addView(topo, margem())
 
         val abrirJogo = Button(this).apply {
-            text = "🌐  ABRIR APOSTABOOM NO ANALYZER"
+            text = "🌐  ABRIR APOSTABOOM"
             setOnClickListener {
-                startActivity(Intent(this@MainActivity, NavegadorJogoActivity::class.java))
+                try {
+                    val url = android.net.Uri.parse("https://www.apostaboom.bet/casino/spribe/aviator-vip")
+                    val intent = Intent(Intent.ACTION_VIEW, url)
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "Não foi possível abrir a ApostaBoom. Verifique se o Chrome está instalado.", Toast.LENGTH_LONG).show()
+                }
             }
             estilizarBotao(this, Color.rgb(45, 65, 105), Color.rgb(100, 175, 255))
         }
