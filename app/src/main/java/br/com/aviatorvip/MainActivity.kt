@@ -18,11 +18,13 @@ class MainActivity : Activity() {
 
     private lateinit var status: TextView
     private lateinit var entrada: EditText
-    private lateinit var historico: TextView
-
+    
+private lateinit var historico: LinearLayout
+    
     private val resultados = mutableListOf<Double>()
     private var candidatoOCR: Double? = null
-    private var leiturasDoCandidato = 0
+    private var leiturasDoCandidato = 0 
+    private var rodadaRegistrada = false
     private var historicoOCRAnterior = emptyList<Double>()
 private var primeiraLeituraOCR = true
 
@@ -100,14 +102,21 @@ private var primeiraLeituraOCR = true
         }
         tela.addView(registrar)
 
-        historico = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            textSize = 15f
-        }
+      
+historico = LinearLayout(this).apply {
+    orientation = LinearLayout.HORIZONTAL
+    gravity = Gravity.CENTER_VERTICAL
+}
 
-        val rolagem = ScrollView(this)
-        rolagem.addView(historico)
-        tela.addView(rolagem, LinearLayout.LayoutParams(-1, 0, 1f))
+val rolagem = HorizontalScrollView(this).apply {
+    isHorizontalScrollBarEnabled = true
+    addView(historico)
+}
+
+tela.addView(
+    rolagem,
+    LinearLayout.LayoutParams(-1, 90)
+)
 
         setContentView(tela)
         atualizarHistorico()
@@ -169,62 +178,51 @@ private var primeiraLeituraOCR = true
         super.onDestroy()
     }
     
-    private fun processarOCR(texto: String) {
-    val marcador = "Histórico da ronda"
-    val inicio = texto.indexOf(marcador, ignoreCase = true)
+  
+private fun processarOCR(texto: String) {
 
-    if (inicio < 0) {
-        status.text = "Procurando o histórico da ronda..."
+    if (texto == "NO_ROUND_END") {
+        candidatoOCR = null
+        leiturasDoCandidato = 0
+        rodadaRegistrada = false
+        status.text = "Aguardando o fim da rodada..."
         return
     }
 
-    val trecho = texto.substring(inicio + marcador.length)
-
-    val valores = padrao.findAll(trecho)
-        .mapNotNull {
-            it.groupValues[1]
-                .replace(",", ".")
-                .toDoubleOrNull()
-        }
-        .filter { it >= 1.0 && it <= 100000.0 }
-        .toList()
-
-    if (valores.isEmpty()) return
-
-    if (primeiraLeituraOCR) {
-        historicoOCRAnterior = valores
-        primeiraLeituraOCR = false
-        status.text = "Histórico identificado. Aguardando nova rodada..."
+    if (texto == "ROUND_WAIT") {
+        status.text = "Lendo multiplicador..."
         return
     }
 
-    val anterior = historicoOCRAnterior
+    if (!texto.startsWith("ROUND_RESULT:")) return
 
-    if (valores.size < anterior.size ||
-        valores.take(anterior.size) != anterior
-    ) {
-        historicoOCRAnterior = valores
-        status.text = "Histórico atualizado. Aguardando confirmação..."
-        return
+    val valor = texto.substringAfter("ROUND_RESULT:")
+        .replace(",", ".")
+        .toDoubleOrNull() ?: return
+
+    if (valor < 1.0 || valor > 100000.0) return
+    if (rodadaRegistrada) return
+
+    if (candidatoOCR == valor) {
+        leiturasDoCandidato++
+    } else {
+        candidatoOCR = valor
+        leiturasDoCandidato = 1
     }
 
-    val novos = valores.drop(anterior.size)
+    status.text = "Confirmando resultado: $valor x"
 
-    if (novos.isNotEmpty()) {
-        novos.forEach { valor ->
-            resultados.add(0, valor)
-        }
-
+    if (leiturasDoCandidato >= 2) {
+        resultados.add(0, valor)
         salvar()
         atualizarHistorico()
-        status.text = "Novo resultado registrado!"
+        rodadaRegistrada = true
+        status.text = "Resultado registrado: $valor x"
     }
-
-    historicoOCRAnterior = valores
-    } 
-        
-    private fun registrarManual() {
-        val valor = entrada.text.toString()
+}
+private fun registrarManual() {
+       
+    val valor = entrada.text.toString()
             .replace(",", ".").toDoubleOrNull()
 
         if (valor == null || valor < 1) {
@@ -246,9 +244,31 @@ private var primeiraLeituraOCR = true
     }
 
     private fun atualizarHistorico() {
-        historico.text = resultados.take(100)
-            .mapIndexed { i, valor ->
-                "${i + 1}. %.2fx".format(Locale.US, valor)
-            }.joinToString("\n")
+        historico.removeAllViews()
+
+resultados.take(100).forEach { valor ->
+
+    val cor = when {
+        valor < 2.0 -> Color.rgb(48, 160, 230)
+        valor < 10.0 -> Color.rgb(145, 70, 220)
+        else -> Color.rgb(236, 69, 160)
+    }
+
+    val item = TextView(this).apply {
+        text = "%.2fx".format(Locale.US, valor)
+        setTextColor(cor)
+        textSize = 16f
+        setPadding(18, 12, 18, 12)
+        setTypeface(null, android.graphics.Typeface.BOLD)
+    }
+
+    val parametros = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+    )
+
+    parametros.marginEnd = 8
+    historico.addView(item, parametros)
+}
     }
 }
