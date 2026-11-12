@@ -524,14 +524,7 @@ private fun registrarManual() {
     }
 
     private fun atualizarHistorico() {
-        historico.removeAllViews()
-
-resultados.take(100).forEach { valor ->
-
-    val cor = when {
-        valor < 2.0 -> Color.rgb(48, 160, 230)
-        valor < 10.0 -> Color.rgb(145, 70, 220)
-        else -> Color.rgb(236, 69, 160)
+        // A faixa horizontal antiga foi removida; os resultados ficam na grade colorida.
     }
 
     val item = TextView(this).apply {
