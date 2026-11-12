@@ -10,6 +10,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.*
 import java.util.Locale
@@ -21,6 +22,8 @@ class MainActivity : Activity() {
     
 private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
+    private lateinit var painelEstatisticas: TextView
+    private lateinit var quadroEstrategias: LinearLayout
     
     private val resultados = mutableListOf<Double>()
     private var candidatoOCR: Double? = null
@@ -127,7 +130,35 @@ tela.addView(
         }
         tela.addView(painelEstrategia)
 
-        setContentView(tela)
+        painelEstatisticas = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 14f
+            setPadding(16, 16, 16, 16)
+            background = cartao(Color.rgb(25, 32, 49))
+        }
+        tela.addView(painelEstatisticas, margem())
+
+        val cabecalho = TextView(this).apply {
+            text = "CENTRAL DE ESTRATÉGIAS  •  8 SLOTS"
+            textSize = 14f
+            setTextColor(Color.rgb(255, 90, 175))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(4, 18, 4, 8)
+        }
+        tela.addView(cabecalho)
+        quadroEstrategias = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 10, 12, 10)
+            background = cartao(Color.rgb(22, 28, 43))
+        }
+        tela.addView(quadroEstrategias, margem())
+
+        val rolagemTela = ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(Color.rgb(10, 14, 24))
+            addView(tela)
+        }
+        setContentView(rolagemTela)
         atualizarHistorico()
         avaliarEstrategia()
     }
@@ -275,6 +306,64 @@ private fun registrarManual() {
         }
 
         atualizarPainelEstrategia(rosas)
+        atualizarPainelVisual(rosas)
+    }
+
+    private fun atualizarPainelVisual(rosas: Int) {
+        val janela = resultados.take(300)
+        val azuis = janela.count { it < 2.0 }
+        val roxos = janela.count { it >= 2.0 && it < 10.0 }
+        val altos = janela.count { it >= 40.0 }
+        val media = if (janela.isEmpty()) 0.0 else janela.average()
+        painelEstatisticas.text =
+            "RESUMO DAS ÚLTIMAS " + janela.size + " RODADAS\n" +
+            "Azuis: " + azuis + "  •  Roxos: " + roxos + "\n" +
+            "Rosas (10x–39,99x): " + rosas + "  •  40x+: " + altos + "\n" +
+            "Média da janela: " + "%.2fx".format(Locale.US, media)
+
+        quadroEstrategias.removeAllViews()
+        for (i in 1..8) {
+            val linha = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(8, 12, 8, 12)
+            }
+            val numero = TextView(this).apply {
+                text = "%02d".format(i)
+                textSize = 16f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(if (i == 1) Color.rgb(255, 90, 175) else Color.rgb(135, 150, 175))
+                setPadding(4, 0, 18, 0)
+            }
+            val descricao = TextView(this).apply {
+                text = if (i == 1) "CICLO ROSA  •  " + rosas + "/8 resultados" else "Disponível para configurar"
+                textSize = 13f
+                setTextColor(if (i == 1) Color.WHITE else Color.rgb(145, 155, 175))
+            }
+            linha.addView(numero)
+            linha.addView(descricao)
+            quadroEstrategias.addView(linha)
+            if (i < 8) {
+                val divisor = android.view.View(this).apply {
+                    setBackgroundColor(Color.rgb(48, 56, 75))
+                }
+                quadroEstrategias.addView(divisor, LinearLayout.LayoutParams(-1, 1))
+            }
+        }
+    }
+
+    private fun cartao(cor: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(cor)
+            setStroke(1, Color.rgb(65, 80, 115))
+            cornerRadius = 18f
+        }
+    }
+
+    private fun margem(): LinearLayout.LayoutParams {
+        return LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = 12
+        }
     }
 
     private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
