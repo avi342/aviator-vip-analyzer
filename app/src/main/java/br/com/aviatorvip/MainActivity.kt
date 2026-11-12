@@ -161,40 +161,11 @@ tela.addView(
     LinearLayout.LayoutParams(-1, 90)
 )
 
-        val tituloGrade = TextView(this).apply {
-            text = "HISTÓRICO ANALÍTICO  •  GRADE DE MULTIPLICADORES"
-            textSize = 14f
-            setTextColor(Color.rgb(90, 190, 255))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(4, 18, 4, 10)
-        }
-        tela.addView(tituloGrade)
-
         val painelFiltros = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(14, 14, 14, 14)
             background = cartao(Color.rgb(20, 29, 47))
         }
-        val presets = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        listOf("Todos", ">2x", ">5x", ">10x").forEach { nome ->
-            val b = Button(this).apply {
-                text = nome
-                textSize = 11f
-                minWidth = 0
-                setTextColor(Color.WHITE)
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                isAllCaps = false
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(35, 48, 75))
-                    setStroke(1, Color.rgb(90, 150, 220))
-                    cornerRadius = 12f
-                }
-                setOnClickListener { filtroRapido = nome; atualizarGrade() }
-            }
-            presets.addView(b, LinearLayout.LayoutParams(0, 48, 1f).apply { setMargins(3, 2, 3, 8) })
-        }
-        painelFiltros.addView(presets)
-
         campoQuantidade = EditText(this).apply {
             hint = "Quantidade de rodadas (ex.: 200)"
             setText("200")
@@ -203,23 +174,6 @@ tela.addView(
             inputType = 2
         }
         painelFiltros.addView(campoQuantidade)
-
-        val faixa = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        campoMinimo = EditText(this).apply {
-            hint = "Multiplicador mínimo"
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
-            inputType = 8194
-        }
-        campoMaximo = EditText(this).apply {
-            hint = "Multiplicador máximo"
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
-            inputType = 8194
-        }
-        faixa.addView(campoMinimo, LinearLayout.LayoutParams(0, -2, 1f))
-        faixa.addView(campoMaximo, LinearLayout.LayoutParams(0, -2, 1f))
-        painelFiltros.addView(faixa)
 
         seletorCor = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
@@ -488,16 +442,8 @@ private fun registrarManual() {
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
         val quantidade = campoQuantidade.text.toString().toIntOrNull()?.coerceIn(1, 1000) ?: 200
-        val minimo = campoMinimo.text.toString().replace(",", ".").toDoubleOrNull()
-        val maximo = campoMaximo.text.toString().replace(",", ".").toDoubleOrNull()
         val corSelecionada = seletorCor.selectedItemPosition
         val filtrados = resultados.take(quantidade).withIndex().filter { (_, valor) ->
-            val passaRapido = when (filtroRapido) {
-                ">2x" -> valor > 2.0
-                ">5x" -> valor > 5.0
-                ">10x" -> valor > 10.0
-                else -> true
-            }
             val passaCor = when (corSelecionada) {
                 1 -> valor < 2.0
                 2 -> valor >= 2.0 && valor < 10.0
@@ -505,9 +451,7 @@ private fun registrarManual() {
                 4 -> valor >= 40.0
                 else -> true
             }
-            passaRapido && passaCor &&
-                (minimo == null || valor >= minimo) &&
-                (maximo == null || valor <= maximo)
+            passaCor
         }
         gradeResultados.removeAllViews()
         filtrados.forEach { (indice, valor) ->
@@ -547,7 +491,7 @@ private fun registrarManual() {
             gradeResultados.addView(item, lp)
         }
         val resumo = TextView(this).apply {
-            text = "Exibindo " + filtrados.size + " resultados • filtro: " + filtroRapido
+            text = "Exibindo " + filtrados.size + " multiplicadores"
             setTextColor(Color.LTGRAY)
             textSize = 11f
             setPadding(6, 8, 6, 8)
