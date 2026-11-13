@@ -500,7 +500,7 @@ private fun atualizarPainelEstrategia() {
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
-        val configuracoes = listOf(2 to 2.0, 2 to 5.0, 3 to 2.0, 3 to 5.0, 4 to 2.0, 4 to 5.0, 5 to 2.0, 5 to 5.0)
+        val configuracoes = listOf(2 to 2.0, 2 to 5.0, 2 to 10.0, 3 to 2.0, 3 to 5.0, 3 to 10.0)
         configuracoes.forEachIndexed { indice, config ->
             val tamanho = config.first
             val alvo = config.second
