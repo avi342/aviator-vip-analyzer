@@ -30,6 +30,8 @@ private lateinit var historico: LinearLayout
     private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
+    private lateinit var botaoHistorico: Button
+    private var historicoExpandido = false
     private lateinit var campoQuantidade: EditText
     private lateinit var campoMinimo: EditText
     private lateinit var campoMaximo: EditText
@@ -154,7 +156,7 @@ private var primeiraLeituraOCR = true
             textSize = 11f
             gravity = Gravity.CENTER_VERTICAL
             includeFontPadding = true
-            minHeight = (24 * resources.displayMetrics.density).toInt()
+            minHeight = (30 * resources.displayMetrics.density).toInt()
             setTextColor(Color.WHITE)
             setPadding(2, 2, 2, 2)
         }
@@ -162,7 +164,7 @@ private var primeiraLeituraOCR = true
 
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 8
+            columnCount = 9
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
@@ -174,6 +176,23 @@ private var primeiraLeituraOCR = true
                 bottomMargin = 4
             }
         )
+        botaoHistorico = Button(this).apply {
+            text = "⌄ VER HISTÓRICO COMPLETO"
+            textSize = 9f
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            minimumHeight = (25 * resources.displayMetrics.density).toInt()
+            minHeight = minimumHeight
+            minimumWidth = 0
+            setPadding(2, 0, 2, 0)
+            background = cartao(Color.rgb(25, 31, 49))
+            setOnClickListener {
+                historicoExpandido = !historicoExpandido
+                atualizarGrade()
+            }
+        }
+        tela.addView(botaoHistorico, LinearLayout.LayoutParams(-1, (27 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 3 })
+
 
         painelEstrategia = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -426,7 +445,7 @@ private fun atualizarPainelVisual() {
 
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
-        val filtrados = resultados.take(200).withIndex()
+        val filtrados = resultados.take(if (historicoExpandido) resultados.size else 18).withIndex()
         gradeResultados.removeAllViews()
         filtrados.forEach { (indice, valor) ->
             val cor = when {
@@ -465,9 +484,9 @@ private fun atualizarPainelVisual() {
                 addView(hora)
                 contentDescription = "Horário local da rodada"
             }
-            val larguraTela = resources.displayMetrics.widthPixels
             val densidade = resources.displayMetrics.density
-            val larguraCelula = ((larguraTela - (42 * densidade).toInt()) / 8).coerceAtLeast(1)
+            val larguraDisponivel = if (gradeResultados.width > 0) gradeResultados.width else resources.displayMetrics.widthPixels
+            val larguraCelula = ((larguraDisponivel - (12 * densidade).toInt()) / 9).coerceAtLeast(1)
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
                 height = (23 * resources.displayMetrics.density).toInt()
@@ -476,6 +495,8 @@ private fun atualizarPainelVisual() {
             }
             gradeResultados.addView(item, lp)
         }
+        botaoHistorico.text = if (historicoExpandido) "⌃ RECOLHER HISTÓRICO" else "⌄ VER HISTÓRICO COMPLETO"
+        botaoHistorico.visibility = if (resultados.size > 18) View.VISIBLE else View.GONE
     }
 
     private fun horarioAtual(): String {
