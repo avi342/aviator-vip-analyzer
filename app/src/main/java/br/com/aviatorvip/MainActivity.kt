@@ -21,6 +21,7 @@ import java.util.Date
 class MainActivity : Activity() {
 
     private lateinit var status: TextView
+    private lateinit var contadorDezX: TextView
     private lateinit var entrada: EditText
     
 private lateinit var historico: LinearLayout
@@ -151,16 +152,27 @@ private var primeiraLeituraOCR = true
         controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
         tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
 
+        val linhaStatus = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         status = TextView(this).apply {
             text = "Aguardando captura..."
             textSize = 11f
             gravity = Gravity.CENTER_VERTICAL
             includeFontPadding = true
-            minHeight = (30 * resources.displayMetrics.density).toInt()
             setTextColor(Color.WHITE)
             setPadding(2, 2, 2, 2)
         }
-        tela.addView(status)
+        contadorDezX = TextView(this).apply {
+            text = "10x: --"
+            textSize = 9f
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            setTextColor(Color.rgb(255, 105, 190))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(2, 2, 4, 2)
+            maxLines = 1
+        }
+        linhaStatus.addView(status, LinearLayout.LayoutParams(0, (30 * resources.displayMetrics.density).toInt(), 1f))
+        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, (30 * resources.displayMetrics.density).toInt()))
+        tela.addView(linhaStatus)
 
 
         gradeResultados = GridLayout(this).apply {
@@ -364,6 +376,7 @@ private fun processarOCR(texto: String) {
         marcasTempo.add(0, System.currentTimeMillis())
         salvar()
         atualizarHistorico()
+        atualizarContadorDezX()
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
@@ -460,29 +473,28 @@ private fun atualizarPainelVisual() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(0, 1, 0, 1)
-                background = GradientDrawable().apply {
-                    setColor(cor)
-                    setStroke(1, Color.rgb(30, 35, 52))
-                    cornerRadius = 8f
-                }
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
                     textSize = 9f
                     setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.WHITE)
+                    setTextColor(cor)
+                    maxLines = 1
+                    setSingleLine(true)
                 }
                 val hora = TextView(this@MainActivity).apply {
                     text = horario
                     gravity = Gravity.CENTER
                     textSize = 6f
                     setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.BLACK)
+                    setTextColor(Color.WHITE)
                     visibility = android.view.View.VISIBLE
+                    maxLines = 1
+                    setSingleLine(true)
                 }
                 addView(multiplicador)
                 addView(hora)
-                contentDescription = "Horário local da rodada"
+                contentDescription = "Multiplicador $multiplicadorTexto, horário $horario"
             }
             val densidade = resources.displayMetrics.density
             val larguraDisponivel = if (gradeResultados.width > 0) gradeResultados.width else resources.displayMetrics.widthPixels
@@ -497,6 +509,22 @@ private fun atualizarPainelVisual() {
         }
         botaoHistorico.text = if (historicoExpandido) "⌃ RECOLHER HISTÓRICO" else "⌄ VER HISTÓRICO COMPLETO"
         botaoHistorico.visibility = if (resultados.size > 18) View.VISIBLE else View.GONE
+    }
+
+    private fun atualizarContadorDezX() {
+        if (!::contadorDezX.isInitialized) return
+        val indice = resultados.indexOfFirst { it >= 10.0 }
+        if (indice < 0) {
+            contadorDezX.text = "Último 10x: --"
+            return
+        }
+        val instante = marcasTempo.getOrNull(indice) ?: 0L
+        if (instante <= 0L) {
+            contadorDezX.text = "Último 10x: --"
+            return
+        }
+        val minutos = ((System.currentTimeMillis() - instante).coerceAtLeast(0L) / 60000L)
+        contadorDezX.text = "Último 10x: " + String.format(Locale.getDefault(), "%02d min", minutos)
     }
 
     private fun horarioAtual(): String {
