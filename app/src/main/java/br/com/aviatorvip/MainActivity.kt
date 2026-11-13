@@ -152,8 +152,11 @@ private var primeiraLeituraOCR = true
         status = TextView(this).apply {
             text = "Aguardando captura..."
             textSize = 11f
+            gravity = Gravity.CENTER_VERTICAL
+            includeFontPadding = true
+            minHeight = (24 * resources.displayMetrics.density).toInt()
             setTextColor(Color.WHITE)
-            setPadding(0, 3, 0, 3)
+            setPadding(2, 2, 2, 2)
         }
         tela.addView(status)
 
@@ -185,13 +188,13 @@ private var primeiraLeituraOCR = true
             textSize = 14f
             setTextColor(Color.rgb(100, 205, 255))
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(4, 18, 4, 8)
+            setPadding(4, 7, 4, 4)
         }
         tituloPadroes.text = "CENTRAL DE ESTRATÉGIAS • 8 SLOTS"
         tela.addView(tituloPadroes)
         quadroPadroes = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(9, 9, 9, 9)
+            setPadding(5, 5, 5, 5)
             background = cartao(Color.rgb(12, 19, 33))
         }
         tela.addView(quadroPadroes, margem())
@@ -206,7 +209,7 @@ private var primeiraLeituraOCR = true
         tela.addView(tituloDezX)
         quadroDezX = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(9, 9, 9, 9)
+            setPadding(5, 5, 5, 5)
             background = cartao(Color.rgb(24, 12, 30))
         }
         tela.addView(quadroDezX, margem())
@@ -446,14 +449,14 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 7f
+                    textSize = 9f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
                 }
                 val hora = TextView(this@MainActivity).apply {
                     text = horario
                     gravity = Gravity.CENTER
-                    textSize = 5f
+                    textSize = 6f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.BLACK)
                     visibility = android.view.View.VISIBLE
@@ -467,9 +470,9 @@ private fun atualizarPainelVisual() {
             val larguraCelula = ((larguraTela - (42 * densidade).toInt()) / 8).coerceAtLeast(1)
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
-                height = (27 * resources.displayMetrics.density).toInt()
+                height = (23 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
-                setMargins(2, 3, 2, 3)
+                setMargins(1, 2, 1, 2)
             }
             gradeResultados.addView(item, lp)
         }
@@ -506,7 +509,7 @@ private fun atualizarPainelVisual() {
 
     private fun margem(): LinearLayout.LayoutParams {
         return LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 12
+            bottomMargin = 5
         }
     }
 private fun atualizarPainelEstrategia() {
@@ -540,7 +543,7 @@ private fun atualizarPainelEstrategia() {
                 } else {
                     acertos.toString() + " de " + ocorrencias + " • frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
                 }
-                val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(10, 12, 10, 12) }
+                val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(6, 5, 6, 5) }
                 linha.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
                 linha.addView(TextView(this).apply { text = detalhe; textSize = 14f; setTextColor(Color.WHITE); setPadding(0, 5, 0, 2) })
                 destino.addView(linha)
@@ -549,7 +552,7 @@ private fun atualizarPainelEstrategia() {
         }
         montar(quadroPadroes, principais, Color.rgb(70, 195, 255))
         montar(quadroDezX, especiais, Color.rgb(255, 75, 180))
-        quadroDezX.addView(TextView(this).apply { text = "Indicadores independentes: somente resultados acima de 10x."; textSize = 12f; setTextColor(Color.LTGRAY); setPadding(4, 14, 4, 4) })
+        quadroDezX.addView(TextView(this).apply { text = "Indicadores independentes: somente resultados acima de 10x."; textSize = 10f; setTextColor(Color.LTGRAY); setPadding(4, 5, 4, 2) })
     }
 
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
