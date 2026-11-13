@@ -275,6 +275,7 @@ private var primeiraLeituraOCR = true
         }
         setContentView(rolagemTela)
         atualizarHistorico()
+        atualizarContadorDezX()
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
