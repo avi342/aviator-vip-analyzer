@@ -163,7 +163,7 @@ private var primeiraLeituraOCR = true
         }
         contadorDezX = TextView(this).apply {
             text = "10x: --"
-            textSize = 9f
+            textSize = 11f
             gravity = Gravity.CENTER_VERTICAL or Gravity.END
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -506,18 +506,20 @@ private fun atualizarPainelVisual() {
 
     private fun atualizarContadorDezX() {
         if (!::contadorDezX.isInitialized) return
+        // resultados[0] é a rodada mais recente. O índice do último 10x
+        // equivale à quantidade de rodadas/casas desde aquele multiplicador.
         val indice = resultados.indexOfFirst { it >= 10.0 }
         if (indice < 0) {
-            contadorDezX.text = "Último 10x: --"
+            contadorDezX.text = "Último 10x: (--) "
             return
         }
         val instante = marcasTempo.getOrNull(indice) ?: 0L
-        if (instante <= 0L) {
-            contadorDezX.text = "Último 10x: --"
-            return
-        }
-        val minutos = ((System.currentTimeMillis() - instante).coerceAtLeast(0L) / 60000L)
-        contadorDezX.text = "Último 10x: " + String.format(Locale.getDefault(), "%02d min", minutos)
+        val casasDesdeDezX = indice
+        val tempo = if (instante > 0L) {
+            val minutos = ((System.currentTimeMillis() - instante).coerceAtLeast(0L) / 60000L)
+            String.format(Locale.getDefault(), "%02d min", minutos)
+        } else ""
+        contadorDezX.text = "Último 10x: ($casasDesdeDezX) $tempo"
     }
 
     private fun horarioAtual(): String {
@@ -583,7 +585,7 @@ private fun atualizarPainelEstrategia() {
                 } else if (ocorrencias < 5) {
                     "Amostra insuficiente: " + ocorrencias + " ocorrências"
                 } else {
-                    acertos.toString() + " de " + ocorrencias + " • frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
+                    acertos.toString() + " de " + ocorrencias + "       •       frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
                 }
                 val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(6, 5, 6, 5) }
                 linha.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
