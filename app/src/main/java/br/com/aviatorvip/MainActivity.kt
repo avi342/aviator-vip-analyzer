@@ -84,7 +84,7 @@ private var primeiraLeituraOCR = true
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(3, 3, 3, 3)
-            setBackgroundColor(Color.rgb(15, 20, 32))
+            setBackgroundColor(Color.BLACK)
         }
 
         val topo = LinearLayout(this).apply {
@@ -224,23 +224,16 @@ private var primeiraLeituraOCR = true
         // Cabeçalho da central removido para liberar espaço.
         quadroPadroes = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(5, 5, 5, 5)
-            background = cartao(Color.rgb(12, 19, 33))
+            setPadding(2, 2, 2, 2)
+            setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroPadroes, margem())
 
-        val tituloDezX = TextView(this).apply {
-            text = "CENTRAL ESPECIAL • ACIMA DE 10x"
-            textSize = 16f
-            setTextColor(Color.rgb(255, 75, 180))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(4, 18, 4, 8)
-        }
-        tela.addView(tituloDezX)
+        // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(5, 5, 5, 5)
-            background = cartao(Color.rgb(24, 12, 30))
+            setPadding(2, 2, 2, 2)
+            setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroDezX, margem())
 
@@ -269,7 +262,7 @@ private var primeiraLeituraOCR = true
 
         val rolagemTela = ScrollView(this).apply {
             isFillViewport = true
-            setBackgroundColor(Color.rgb(10, 14, 24))
+            setBackgroundColor(Color.BLACK)
             addView(tela)
         }
         setContentView(rolagemTela)
@@ -472,11 +465,11 @@ private fun atualizarPainelVisual() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(0, 1, 0, 1)
+                setPadding(0, 0, 0, 0)
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 9f
+                    textSize = 10f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(cor)
                     maxLines = 1
@@ -503,7 +496,7 @@ private fun atualizarPainelVisual() {
                 width = larguraCelula
                 height = (23 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
-                setMargins(1, 2, 1, 2)
+                setMargins(0, 1, 0, 1)
             }
             gradeResultados.addView(item, lp)
         }
