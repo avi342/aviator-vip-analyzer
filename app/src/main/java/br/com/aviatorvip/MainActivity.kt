@@ -27,6 +27,7 @@ private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
     private lateinit var painelEstatisticas: TextView
     private lateinit var quadroPadroes: LinearLayout
+    private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
     private lateinit var campoQuantidade: EditText
@@ -192,6 +193,21 @@ private var primeiraLeituraOCR = true
             background = cartao(Color.rgb(12, 19, 33))
         }
         tela.addView(quadroPadroes, margem())
+
+        val tituloDezX = TextView(this).apply {
+            text = "CENTRAL ESPECIAL • ACIMA DE 10x"
+            textSize = 16f
+            setTextColor(Color.rgb(255, 75, 180))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(4, 18, 4, 8)
+        }
+        tela.addView(tituloDezX)
+        quadroDezX = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 12, 12, 12)
+            background = cartao(Color.rgb(24, 12, 30))
+        }
+        tela.addView(quadroDezX, margem())
 
         painelEstatisticas = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -498,30 +514,36 @@ private fun atualizarPainelEstrategia() {
     }
 
     private fun atualizarBibliotecaPadroes() {
-        if (!::quadroPadroes.isInitialized) return
+        if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
         quadroPadroes.removeAllViews()
-        val configuracoes = listOf(2 to 2.0, 2 to 5.0, 2 to 10.0, 3 to 2.0, 3 to 5.0, 3 to 10.0)
-        configuracoes.forEachIndexed { indice, config ->
-            val tamanho = config.first
-            val alvo = config.second
-            val medicao = medirPadrao(tamanho, alvo)
-            val ocorrencias = medicao.first
-            val acertos = medicao.second
-            val titulo = "PADRÃO DE " + tamanho + " RODADAS → PRÓXIMA > " + alvo.toInt() + "x"
-            val detalhe = if (resultados.size < tamanho) {
-                "Aguardando " + tamanho + " rodadas para iniciar a leitura"
-            } else if (ocorrencias < 5) {
-                "Amostra insuficiente: " + ocorrencias + " ocorrências"
-            } else {
-                acertos.toString() + " de " + ocorrencias + " • frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
+        quadroDezX.removeAllViews()
+        val principais = listOf(2 to 2.0, 2 to 5.0, 3 to 2.0, 3 to 5.0)
+        val especiais = listOf(2 to 10.0, 3 to 10.0)
+        fun montar(destino: LinearLayout, itens: List<Pair<Int, Double>>, cor: Int) {
+            itens.forEachIndexed { indice, item ->
+                val tamanho = item.first
+                val alvo = item.second
+                val dados = medirPadrao(tamanho, alvo)
+                val ocorrencias = dados.first
+                val acertos = dados.second
+                val titulo = "PADRÃO DE " + tamanho + " RODADAS → PRÓXIMA > " + alvo.toInt() + "x"
+                val detalhe = if (resultados.size < tamanho) {
+                    "Aguardando " + tamanho + " rodadas para iniciar a leitura"
+                } else if (ocorrencias < 5) {
+                    "Amostra insuficiente: " + ocorrencias + " ocorrências"
+                } else {
+                    acertos.toString() + " de " + ocorrencias + " • frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
+                }
+                val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(10, 12, 10, 12) }
+                linha.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
+                linha.addView(TextView(this).apply { text = detalhe; textSize = 14f; setTextColor(Color.WHITE); setPadding(0, 5, 0, 2) })
+                destino.addView(linha)
+                if (indice < itens.lastIndex) destino.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 55, 75)) }, LinearLayout.LayoutParams(-1, 1))
             }
-            val slot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(10, 12, 10, 12) }
-            slot.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Color.rgb(95, 195, 245)) })
-            slot.addView(TextView(this).apply { text = detalhe; textSize = 14f; setTextColor(Color.WHITE); setPadding(0, 5, 0, 2) })
-            quadroPadroes.addView(slot)
-            if (indice < configuracoes.lastIndex) quadroPadroes.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 55, 75)) }, LinearLayout.LayoutParams(-1, 1))
         }
-        quadroPadroes.addView(TextView(this).apply { text = "Frequências calculadas com o histórico capturado. Resultados passados não garantem a próxima rodada."; textSize = 12f; setTextColor(Color.LTGRAY); setPadding(4, 14, 4, 4) })
+        montar(quadroPadroes, principais, Color.rgb(70, 195, 255))
+        montar(quadroDezX, especiais, Color.rgb(255, 75, 180))
+        quadroDezX.addView(TextView(this).apply { text = "Indicadores independentes: somente resultados acima de 10x."; textSize = 12f; setTextColor(Color.LTGRAY); setPadding(4, 14, 4, 4) })
     }
 
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
