@@ -201,7 +201,7 @@ private var primeiraLeituraOCR = true
         tela.addView(painelEstatisticas, margem())
 
         val cabecalho = TextView(this).apply {
-            text = "ESTRATÉGIA ÚNICA • SEQUÊNCIA DE 2 RODADAS"
+            text = "ESTRATÉGIA PRINCIPAL • PADRÃO DE 2 RODADAS"
             textSize = 14f
             setTextColor(Color.rgb(255, 90, 175))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -351,37 +351,36 @@ private fun avaliarEstrategia() {
     }
 private fun atualizarPainelVisual() {
         if (!::painelEstatisticas.isInitialized || !::quadroEstrategias.isInitialized) return
-        val j20 = resultados.take(20)
-        val j50 = resultados.take(50)
-        val j100 = resultados.take(100)
-        fun resumo(lista: List<Double>): String {
-            if (lista.isEmpty()) return "sem dados"
-            val b = lista.count { it < 2.0 }
-            val m = lista.count { it >= 2.0 && it < 5.0 }
-            val a = lista.count { it >= 5.0 && it < 10.0 }
-            val h = lista.count { it >= 10.0 }
-            return "1–1,99x: $b | 2–4,99x: $m | 5–9,99x: $a | 10x+: $h"
-        }
-        painelEstatisticas.text = "DISTRIBUIÇÃO DO HISTÓRICO\n" +
-            "Últimas 20: ${j20.size} rodadas\n${resumo(j20)}\n\n" +
-            "Últimas 50: ${j50.size} rodadas\n${resumo(j50)}\n\n" +
-            "Últimas 100: ${j100.size} rodadas\n${resumo(j100)}\n\n" +
-            "Frequências descritivas; não são previsão da próxima rodada."
+        val janela = resultados.take(100)
+        val abaixo2 = janela.count { it < 2.0 }
+        val acima2 = janela.count { it >= 2.0 }
+        painelEstatisticas.text =
+            "RESUMO DO HISTÓRICO (ÚLTIMAS 100)\\n" +
+            "Rodadas disponíveis: ${janela.size}\\n" +
+            "Abaixo de 2x: $abaixo2 • 2x ou mais: $acima2\\n\\n" +
+            "A distribuição é apenas descritiva; não prevê a próxima rodada."
         quadroEstrategias.removeAllViews()
-        val (ocorrencias, acertos) = testarPadraoRecente(2, 2.0)
+        val ocorrencias = contarOcorrenciasDuasRodadas()
+        val acertos = contarAcertosDuasRodadas()
         val taxa = if (ocorrencias == 0) 0.0 else acertos * 100.0 / ocorrencias
-        val categorias = resultados.take(2).asReversed().map { categoriaTexto(it) }
-        val sequencia = if (categorias.size == 2) categorias.joinToString(" → ") else "aguardando 2 resultados"
+        val sequencia = if (resultados.size >= 2) {
+            "${categoriaTexto(resultados[1])} → ${categoriaTexto(resultados[0])}"
+        } else "Aguardando duas rodadas"
+        val texto = buildString {
+            append("PADRÃO DE 2 RODADAS → PRÓXIMA > 2x\\n")
+            append("Sequência atual: $sequencia\\n\\n")
+            if (ocorrencias == 0) {
+                append("Ainda não há ocorrências anteriores dessa sequência.")
+            } else {
+                append("$acertos de $ocorrencias • frequência observada: ${"%.1f".format(Locale.US, taxa)}%")
+            }
+            append("\\n\\n")
+            append("O número mostra quantas vezes essa mesma sequência apareceu no histórico e quantas vezes a rodada seguinte foi ≥ 2x.")
+            append("\\nAmostras pequenas podem oscilar bastante; frequência passada não garante o próximo resultado.")
+        }
         quadroEstrategias.addView(TextView(this).apply {
-            text = "SEQUÊNCIA ATUAL: $sequencia\n" +
-                "O teste procura essa mesma sequência no histórico e verifica se a rodada seguinte passou de 2x.\n\n" +
-                if (ocorrencias < 20) {
-                    "Amostra ainda pequena: $acertos acertos em $ocorrencias ocorrências. São necessários mais dados para avaliar estabilidade."
-                } else {
-                    "$acertos de $ocorrencias ocorrências • frequência histórica: ${"%.1f".format(Locale.US, taxa)}%"
-                } +
-                "\n\nA frequência é retrospectiva e não representa a chance real da próxima rodada."
-            textSize = 14f
+            text = texto
+            textSize = 15f
             setTextColor(Color.WHITE)
             setPadding(8, 12, 8, 12)
         })
@@ -394,6 +393,46 @@ private fun atualizarPainelVisual() {
         v < 20.0 -> "ROSA (10–19,99x)"
         v < 50.0 -> "ROSA (20–49,99x)"
         else -> "ROSA (50x+)"
+    }
+
+    // resultados[0] é o mais recente. Para cada ocorrência histórica,
+    // comparamos duas rodadas anteriores e avaliamos a rodada seguinte.
+    private fun contarOcorrenciasDuasRodadas(): Int {
+        if (resultados.size < 3) return 0
+        val atualAntiga = categoria(resultados[1])
+        val atualRecente = categoria(resultados[0])
+        var total = 0
+        for (alvo in 1 until resultados.size - 1) {
+            if (categoria(resultados[alvo + 1]) == atualRecente &&
+                categoria(resultados[alvo + 2]) == atualAntiga) {
+                total++
+            }
+        }
+        return total
+    }
+
+    private fun contarAcertosDuasRodadas(): Int {
+        if (resultados.size < 3) return 0
+        val atualAntiga = categoria(resultados[1])
+        val atualRecente = categoria(resultados[0])
+        var acertos = 0
+        for (alvo in 1 until resultados.size - 1) {
+            if (categoria(resultados[alvo + 1]) == atualRecente &&
+                categoria(resultados[alvo + 2]) == atualAntiga &&
+                resultados[alvo] >= 2.0) {
+                acertos++
+            }
+        }
+        return acertos
+    }
+
+    private fun categoria(v: Double): Int = when {
+        v < 2.0 -> 0
+        v < 5.0 -> 1
+        v < 10.0 -> 2
+        v < 20.0 -> 3
+        v < 50.0 -> 4
+        else -> 5
     }
 
     private fun atualizarGrade() {
@@ -484,21 +523,22 @@ private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
         painelEstrategia.textSize = 15f
         painelEstrategia.text =
-            "ESTRATÉGIA ÚNICA — DUAS RODADAS\n" +
-            "Objetivo estatístico: medir quantas vezes a mesma sequência de duas categorias foi seguida por um resultado acima de 2x.\n\n" +
-            "Rodadas armazenadas: ${resultados.size}\n" +
-            "Somente este teste ficará ativo. Nenhuma entrada automática é feita."
+            "ESTRATÉGIA PRINCIPAL — DUAS RODADAS → PRÓXIMA ≥ 2x\\n" +
+            "Rodadas armazenadas: ${resultados.size}\\n" +
+            "O aplicativo acompanha somente esta combinação e atualiza a frequência quando chega uma nova rodada.\\n\\n" +
+            "O histórico serve para medir ocorrências anteriores; não é garantia de resultado futuro."
     }
 
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroPadroes.addView(TextView(this).apply {
-            text = "ESTRATÉGIA ATIVA\nSequência de 2 rodadas → mede a frequência histórica de resultado seguinte acima de 2x. Outros detectores foram retirados desta tela."
+            text = "ÚNICA ESTRATÉGIA ATIVA\\nPadrão de 2 rodadas → próxima ≥ 2x. Os outros sete testes foram retirados. A frequência é recalculada com o histórico capturado."
             textSize = 13f
             setTextColor(Color.LTGRAY)
         })
     }
+
 private fun analisarCicloCronologico(): String {
         return "Análise cronológica antiga desativada. O motor novo compara sequências e resultados posteriores."
     }
