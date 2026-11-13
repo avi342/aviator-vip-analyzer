@@ -484,9 +484,9 @@ private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
         painelEstrategia.textSize = 15f
         painelEstrategia.text =
-            "🧠 NOVO MOTOR — ANÁLISE ADAPTATIVA\\n" +
-            "Rodadas armazenadas: ${resultados.size}\\n" +
-            "Oito testes com sequências de 2 a 5 rodadas, comparadas com resultados históricos seguintes acima de 2x e 5x.\\n\\n" +
+            "🧠 NOVO MOTOR — ANÁLISE ADAPTATIVA\n" +
+            "Rodadas armazenadas: ${resultados.size}\n" +
+            "Oito testes com sequências de 2 a 5 rodadas, comparadas com resultados históricos seguintes acima de 2x e 5x.\n\n" +
             "As taxas são frequências observadas no histórico, não garantia nem vantagem comprovada."
     }
 
