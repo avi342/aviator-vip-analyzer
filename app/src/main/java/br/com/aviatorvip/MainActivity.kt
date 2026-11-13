@@ -175,7 +175,7 @@ private var primeiraLeituraOCR = true
             setPadding(16, 18, 16, 18)
             background = cartao(Color.rgb(27, 35, 58))
         }
-        tela.addView(painelEstrategia, margem())
+
 
         val tituloPadroes = TextView(this).apply {
             text = "PADRÕES IDENTIFICADOS"
@@ -184,6 +184,7 @@ private var primeiraLeituraOCR = true
             setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(4, 18, 4, 8)
         }
+        tituloPadroes.text = "CENTRAL DE ESTRATÉGIAS • 8 SLOTS"
         tela.addView(tituloPadroes)
         quadroPadroes = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -198,7 +199,7 @@ private var primeiraLeituraOCR = true
             setPadding(16, 16, 16, 16)
             background = cartao(Color.rgb(20, 30, 52))
         }
-        tela.addView(painelEstatisticas, margem())
+
 
         val cabecalho = TextView(this).apply {
             text = "ESTRATÉGIA PRINCIPAL • PADRÃO DE 2 RODADAS"
@@ -207,13 +208,13 @@ private var primeiraLeituraOCR = true
             setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(4, 18, 4, 8)
         }
-        tela.addView(cabecalho)
+
         quadroEstrategias = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(12, 10, 12, 10)
             background = cartao(Color.rgb(22, 28, 43))
         }
-        tela.addView(quadroEstrategias, margem())
+
 
         val rolagemTela = ScrollView(this).apply {
             isFillViewport = true
@@ -350,40 +351,7 @@ private fun avaliarEstrategia() {
         atualizarPainelVisual()
     }
 private fun atualizarPainelVisual() {
-        if (!::painelEstatisticas.isInitialized || !::quadroEstrategias.isInitialized) return
-        val janela = resultados.take(100)
-        val abaixo2 = janela.count { it < 2.0 }
-        val acima2 = janela.count { it >= 2.0 }
-        painelEstatisticas.text =
-            "RESUMO DO HISTÓRICO (ÚLTIMAS 100)\\n" +
-            "Rodadas disponíveis: ${janela.size}\\n" +
-            "Abaixo de 2x: $abaixo2 • 2x ou mais: $acima2\\n\\n" +
-            "A distribuição é apenas descritiva; não prevê a próxima rodada."
-        quadroEstrategias.removeAllViews()
-        val ocorrencias = contarOcorrenciasDuasRodadas()
-        val acertos = contarAcertosDuasRodadas()
-        val taxa = if (ocorrencias == 0) 0.0 else acertos * 100.0 / ocorrencias
-        val sequencia = if (resultados.size >= 2) {
-            "${categoriaTexto(resultados[1])} → ${categoriaTexto(resultados[0])}"
-        } else "Aguardando duas rodadas"
-        val texto = buildString {
-            append("PADRÃO DE 2 RODADAS → PRÓXIMA > 2x\\n")
-            append("Sequência atual: $sequencia\\n\\n")
-            if (ocorrencias == 0) {
-                append("Ainda não há ocorrências anteriores dessa sequência.")
-            } else {
-                append("$acertos de $ocorrencias • frequência observada: ${"%.1f".format(Locale.US, taxa)}%")
-            }
-            append("\\n\\n")
-            append("O número mostra quantas vezes essa mesma sequência apareceu no histórico e quantas vezes a rodada seguinte foi ≥ 2x.")
-            append("\\nAmostras pequenas podem oscilar bastante; frequência passada não garante o próximo resultado.")
-        }
-        quadroEstrategias.addView(TextView(this).apply {
-            text = texto
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            setPadding(8, 12, 8, 12)
-        })
+        atualizarBibliotecaPadroes()
     }
 
     private fun categoriaTexto(v: Double): String = when {
@@ -532,11 +500,44 @@ private fun atualizarPainelEstrategia() {
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
-        quadroPadroes.addView(TextView(this).apply {
-            text = "ÚNICA ESTRATÉGIA ATIVA\\nPadrão de 2 rodadas → próxima ≥ 2x. Os outros sete testes foram retirados. A frequência é recalculada com o histórico capturado."
-            textSize = 13f
-            setTextColor(Color.LTGRAY)
-        })
+        val configuracoes = listOf(2 to 2.0, 2 to 5.0, 3 to 2.0, 3 to 5.0, 4 to 2.0, 4 to 5.0, 5 to 2.0, 5 to 5.0)
+        configuracoes.forEachIndexed { indice, config ->
+            val tamanho = config.first
+            val alvo = config.second
+            val medicao = medirPadrao(tamanho, alvo)
+            val ocorrencias = medicao.first
+            val acertos = medicao.second
+            val titulo = "PADRÃO DE " + tamanho + " RODADAS → PRÓXIMA > " + alvo.toInt() + "x"
+            val detalhe = if (resultados.size < tamanho) {
+                "Aguardando " + tamanho + " rodadas para iniciar a leitura"
+            } else if (ocorrencias < 5) {
+                "Amostra insuficiente: " + ocorrencias + " ocorrências"
+            } else {
+                acertos.toString() + " de " + ocorrencias + " • frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
+            }
+            val slot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(10, 12, 10, 12) }
+            slot.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(Color.rgb(95, 195, 245)) })
+            slot.addView(TextView(this).apply { text = detalhe; textSize = 14f; setTextColor(Color.WHITE); setPadding(0, 5, 0, 2) })
+            quadroPadroes.addView(slot)
+            if (indice < configuracoes.lastIndex) quadroPadroes.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 55, 75)) }, LinearLayout.LayoutParams(-1, 1))
+        }
+        quadroPadroes.addView(TextView(this).apply { text = "Frequências calculadas com o histórico capturado. Resultados passados não garantem a próxima rodada."; textSize = 12f; setTextColor(Color.LTGRAY); setPadding(4, 14, 4, 4) })
+    }
+
+    private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
+        if (resultados.size <= tamanho) return 0 to 0
+        val padraoAtual = (tamanho - 1 downTo 0).map { categoria(resultados[it]) }
+        var ocorrencias = 0
+        var acertos = 0
+        for (indiceSeguinte in 0 until resultados.size - tamanho) {
+            var corresponde = true
+            for (posicao in 0 until tamanho) {
+                val indiceHistorico = indiceSeguinte + tamanho - posicao
+                if (categoria(resultados[indiceHistorico]) != padraoAtual[posicao]) { corresponde = false; break }
+            }
+            if (corresponde) { ocorrencias++; if (resultados[indiceSeguinte] > alvo) acertos++ }
+        }
+        return ocorrencias to acertos
     }
 
 private fun analisarCicloCronologico(): String {
