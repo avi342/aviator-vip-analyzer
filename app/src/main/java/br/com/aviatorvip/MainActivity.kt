@@ -80,14 +80,14 @@ private var primeiraLeituraOCR = true
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(6, 6, 6, 6)
+            setPadding(3, 3, 3, 3)
             setBackgroundColor(Color.rgb(15, 20, 32))
         }
 
         val topo = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(4, 4, 4, 4)
+            setPadding(2, 2, 2, 2)
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 intArrayOf(Color.rgb(28, 35, 65), Color.rgb(65, 24, 75), Color.rgb(24, 35, 65))
@@ -98,7 +98,7 @@ private var primeiraLeituraOCR = true
         }
         val titulo = TextView(this).apply {
             text = "AVIATOR VIP"
-            textSize = 13f
+            textSize = 10f
             gravity = Gravity.CENTER
             letterSpacing = 0.08f
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -106,9 +106,9 @@ private var primeiraLeituraOCR = true
         }
         val subtitulo = TextView(this).apply {
             text = "ANALYZER  •  PAINEL INTELIGENTE"
-            textSize = 7f
+            textSize = 6f
             gravity = Gravity.CENTER
-            letterSpacing = 0.04f
+            letterSpacing = 0.02f
             setTextColor(Color.rgb(190, 205, 230))
         }
         topo.addView(titulo)
@@ -120,9 +120,15 @@ private var primeiraLeituraOCR = true
             gravity = Gravity.CENTER
         }
         val iniciar = Button(this).apply {
-            text = "▶ Iniciar OCR"
+            text = "▶ OCR"
             setOnClickListener { solicitarCaptura() }
             estilizarBotao(this, Color.rgb(15, 125, 115), Color.rgb(75, 235, 205))
+            textSize = 8f
+            minimumHeight = 0
+            minHeight = 0
+            minimumWidth = 0
+            setPadding(2, 0, 2, 0)
+            isAllCaps = false
         }
         val parar = Button(this).apply {
             text = "■ Parar"
@@ -131,16 +137,23 @@ private var primeiraLeituraOCR = true
                 status.text = "Captura parada."
             }
             estilizarBotao(this, Color.rgb(75, 35, 65), Color.rgb(230, 85, 155))
+            textSize = 8f
+            minimumHeight = 0
+            minHeight = 0
+            minimumWidth = 0
+            setPadding(2, 0, 2, 0)
+            isAllCaps = false
         }
-        controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, (32 * resources.displayMetrics.density).toInt(), 1f).apply { marginEnd = 3 })
-        controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, (32 * resources.displayMetrics.density).toInt(), 1f).apply { marginStart = 3 })
-        tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, (36 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 3 })
+        val alturaControle = (23 * resources.displayMetrics.density).toInt()
+        controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginEnd = 2 })
+        controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
+        tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
 
         status = TextView(this).apply {
             text = "Aguardando captura..."
-            textSize = 14f
+            textSize = 11f
             setTextColor(Color.WHITE)
-            setPadding(0, 14, 0, 14)
+            setPadding(0, 3, 0, 3)
         }
         tela.addView(status)
 
@@ -149,7 +162,7 @@ private var primeiraLeituraOCR = true
             columnCount = 8
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
-            setPadding(2, 3, 2, 3)
+            setPadding(1, 1, 1, 1)
             setBackgroundColor(Color.rgb(20, 28, 45))
         }
         tela.addView(
@@ -424,7 +437,7 @@ private fun atualizarPainelVisual() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(1, 2, 1, 2)
+                setPadding(0, 1, 0, 1)
                 background = GradientDrawable().apply {
                     setColor(cor)
                     setStroke(1, Color.rgb(30, 35, 52))
@@ -433,14 +446,14 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 8f
+                    textSize = 7f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
                 }
                 val hora = TextView(this@MainActivity).apply {
                     text = horario
                     gravity = Gravity.CENTER
-                    textSize = 6f
+                    textSize = 5f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.BLACK)
                     visibility = android.view.View.VISIBLE
@@ -451,10 +464,10 @@ private fun atualizarPainelVisual() {
             }
             val larguraTela = resources.displayMetrics.widthPixels
             val densidade = resources.displayMetrics.density
-            val larguraCelula = ((larguraTela - (56 * densidade).toInt()) / 8).coerceAtLeast(1)
+            val larguraCelula = ((larguraTela - (42 * densidade).toInt()) / 8).coerceAtLeast(1)
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
-                height = (34 * resources.displayMetrics.density).toInt()
+                height = (27 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
                 setMargins(2, 3, 2, 3)
             }
@@ -468,18 +481,18 @@ private fun atualizarPainelVisual() {
 
     private fun estilizarBotao(botao: Button, corFundo: Int, corBorda: Int) {
         botao.setTextColor(Color.WHITE)
-        botao.textSize = 9f
+        botao.textSize = 8f
         botao.setTypeface(null, android.graphics.Typeface.BOLD)
         botao.isAllCaps = false
         botao.elevation = 1f
-        botao.minimumHeight = (30 * resources.displayMetrics.density).toInt()
+        botao.minimumHeight = (23 * resources.displayMetrics.density).toInt()
         botao.minHeight = botao.minimumHeight
         botao.minimumWidth = 0
         botao.setPadding(2, 0, 2, 0)
         botao.background = GradientDrawable().apply {
             setColor(corFundo)
-            setStroke(2, corBorda)
-            cornerRadius = 9f
+            setStroke(1, corBorda)
+            cornerRadius = 7f
         }
     }
 
