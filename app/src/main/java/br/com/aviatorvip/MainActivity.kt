@@ -180,7 +180,7 @@ private var primeiraLeituraOCR = true
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
-            setBackgroundColor(Color.rgb(20, 28, 45))
+            setBackgroundColor(Color.BLACK)
         }
         tela.addView(
             gradeResultados,
@@ -221,8 +221,7 @@ private var primeiraLeituraOCR = true
             setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(4, 7, 4, 4)
         }
-        tituloPadroes.text = "CENTRAL DE ESTRATÉGIAS • 8 SLOTS"
-        tela.addView(tituloPadroes)
+        // Cabeçalho da central removido para liberar espaço.
         quadroPadroes = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(5, 5, 5, 5)
@@ -484,12 +483,12 @@ private fun atualizarPainelVisual() {
                     setSingleLine(true)
                 }
                 val hora = TextView(this@MainActivity).apply {
-                    text = horario
+                    text = if (valor >= 10.0) horario else ""
                     gravity = Gravity.CENTER
                     textSize = 6f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
-                    visibility = android.view.View.VISIBLE
+                    visibility = if (valor >= 10.0) android.view.View.VISIBLE else android.view.View.GONE
                     maxLines = 1
                     setSingleLine(true)
                 }
@@ -602,7 +601,7 @@ private fun atualizarPainelEstrategia() {
         }
         montar(quadroPadroes, principais, Color.rgb(70, 195, 255))
         montar(quadroDezX, especiais, Color.rgb(255, 75, 180))
-        quadroDezX.addView(TextView(this).apply { text = "Indicadores independentes: somente resultados acima de 10x."; textSize = 10f; setTextColor(Color.LTGRAY); setPadding(4, 5, 4, 2) })
+        // Texto explicativo removido para economizar espaço.
     }
 
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
