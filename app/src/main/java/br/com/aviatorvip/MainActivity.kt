@@ -80,25 +80,25 @@ private var primeiraLeituraOCR = true
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 20, 18, 16)
+            setPadding(6, 6, 6, 6)
             setBackgroundColor(Color.rgb(15, 20, 32))
         }
 
         val topo = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(14, 16, 14, 16)
+            setPadding(4, 4, 4, 4)
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 intArrayOf(Color.rgb(28, 35, 65), Color.rgb(65, 24, 75), Color.rgb(24, 35, 65))
             ).apply {
-                cornerRadius = 24f
+                cornerRadius = 12f
                 setStroke(1, Color.rgb(190, 55, 150))
             }
         }
         val titulo = TextView(this).apply {
             text = "AVIATOR VIP"
-            textSize = 25f
+            textSize = 13f
             gravity = Gravity.CENTER
             letterSpacing = 0.08f
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -106,46 +106,35 @@ private var primeiraLeituraOCR = true
         }
         val subtitulo = TextView(this).apply {
             text = "ANALYZER  •  PAINEL INTELIGENTE"
-            textSize = 11f
+            textSize = 7f
             gravity = Gravity.CENTER
-            letterSpacing = 0.12f
+            letterSpacing = 0.04f
             setTextColor(Color.rgb(190, 205, 230))
         }
         topo.addView(titulo)
         topo.addView(subtitulo)
         tela.addView(topo, margem())
 
-        val abrirJogo = Button(this).apply {
-            text = "🌐  ABRIR APOSTABOOM"
-            setOnClickListener {
-                try {
-                    val url = android.net.Uri.parse("https://www.apostaboom.bet/casino/spribe/aviator-vip")
-                    val intent = Intent(Intent.ACTION_VIEW, url)
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(this@MainActivity, "Não foi possível abrir a ApostaBoom. Verifique se o Chrome está instalado.", Toast.LENGTH_LONG).show()
-                }
-            }
-            estilizarBotao(this, Color.rgb(45, 65, 105), Color.rgb(100, 175, 255))
+        val controlesCaptura = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
-        tela.addView(abrirJogo)
-
         val iniciar = Button(this).apply {
-            text = "▶  INICIAR CAPTURA OCR"
+            text = "▶ Iniciar OCR"
             setOnClickListener { solicitarCaptura() }
             estilizarBotao(this, Color.rgb(15, 125, 115), Color.rgb(75, 235, 205))
         }
-        tela.addView(iniciar)
-
         val parar = Button(this).apply {
-            text = "■  PARAR CAPTURA"
+            text = "■ Parar"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
                 status.text = "Captura parada."
             }
             estilizarBotao(this, Color.rgb(75, 35, 65), Color.rgb(230, 85, 155))
         }
-        tela.addView(parar)
+        controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, (32 * resources.displayMetrics.density).toInt(), 1f).apply { marginEnd = 3 })
+        controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, (32 * resources.displayMetrics.density).toInt(), 1f).apply { marginStart = 3 })
+        tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, (36 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 3 })
 
         status = TextView(this).apply {
             text = "Aguardando captura..."
@@ -157,16 +146,16 @@ private var primeiraLeituraOCR = true
 
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 4
+            columnCount = 8
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
-            setPadding(6, 8, 6, 8)
+            setPadding(2, 3, 2, 3)
             setBackgroundColor(Color.rgb(20, 28, 45))
         }
         tela.addView(
             gradeResultados,
             LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 12
+                bottomMargin = 4
             }
         )
 
@@ -435,7 +424,7 @@ private fun atualizarPainelVisual() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(2, 4, 2, 4)
+                setPadding(1, 2, 1, 2)
                 background = GradientDrawable().apply {
                     setColor(cor)
                     setStroke(1, Color.rgb(30, 35, 52))
@@ -444,14 +433,14 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 12f
+                    textSize = 8f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
                 }
                 val hora = TextView(this@MainActivity).apply {
                     text = horario
                     gravity = Gravity.CENTER
-                    textSize = 9f
+                    textSize = 6f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.BLACK)
                     visibility = android.view.View.VISIBLE
@@ -461,10 +450,11 @@ private fun atualizarPainelVisual() {
                 contentDescription = "Horário local da rodada"
             }
             val larguraTela = resources.displayMetrics.widthPixels
-            val larguraCelula = (larguraTela - (12 * resources.displayMetrics.density).toInt()) / 4
+            val densidade = resources.displayMetrics.density
+            val larguraCelula = ((larguraTela - (56 * densidade).toInt()) / 8).coerceAtLeast(1)
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
-                height = (48 * resources.displayMetrics.density).toInt()
+                height = (34 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
                 setMargins(2, 3, 2, 3)
             }
@@ -478,15 +468,18 @@ private fun atualizarPainelVisual() {
 
     private fun estilizarBotao(botao: Button, corFundo: Int, corBorda: Int) {
         botao.setTextColor(Color.WHITE)
-        botao.textSize = 14f
+        botao.textSize = 9f
         botao.setTypeface(null, android.graphics.Typeface.BOLD)
         botao.isAllCaps = false
-        botao.elevation = 8f
-        botao.minimumHeight = 52
+        botao.elevation = 1f
+        botao.minimumHeight = (30 * resources.displayMetrics.density).toInt()
+        botao.minHeight = botao.minimumHeight
+        botao.minimumWidth = 0
+        botao.setPadding(2, 0, 2, 0)
         botao.background = GradientDrawable().apply {
             setColor(corFundo)
             setStroke(2, corBorda)
-            cornerRadius = 18f
+            cornerRadius = 9f
         }
     }
 
