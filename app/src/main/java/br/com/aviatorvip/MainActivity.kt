@@ -340,354 +340,115 @@ private fun processarOCR(texto: String) {
             .apply()
     }
 
-    private fun contarRosasDesdeUltimo40x(): Int {
-        // Conta os resultados rosas nas últimas 300 rodadas.
-        // Resultados azuis, roxos e 40x+ no meio não zeram a contagem.
-        return resultados.take(300).count { it >= 10.0 && it < 40.0 }
+    // Motor adaptativo experimental: descreve o histórico sem presumir que prevê a próxima rodada.
+    private data class ResumoJanela(
+        val total: Int,
+        val abaixo2: Int,
+        val de2a10: Int,
+        val de10a50: Int,
+        val acima50: Int,
+        val media: Double
+    )
+
+    private fun resumirJanela(tamanho: Int): ResumoJanela {
+        val janela = resultados.take(tamanho)
+        return ResumoJanela(
+            total = janela.size,
+            abaixo2 = janela.count { it < 2.0 },
+            de2a10 = janela.count { it >= 2.0 && it < 10.0 },
+            de10a50 = janela.count { it >= 10.0 && it < 50.0 },
+            acima50 = janela.count { it >= 50.0 },
+            media = if (janela.isEmpty()) 0.0 else janela.average()
+        )
     }
 
     private fun avaliarEstrategia() {
-        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
-        val rosas = contarRosasDesdeUltimo40x()
-        val jaDisparou = prefs.getBoolean("ciclo_rosa_disparado", false)
-
-        if (rosas >= 8 && !jaDisparou) {
-            prefs.edit()
-                .putBoolean("ciclo_rosa_disparado", true)
-                .putString("ciclo_rosa_ultimo_sinal", System.currentTimeMillis().toString())
-                .apply()
-            Toast.makeText(
-                this,
-                "ALERTA: Estratégia 01 — 8 resultados rosas nas últimas 300 rodadas",
-                Toast.LENGTH_LONG
-            ).show()
-        } else if (rosas < 8 && jaDisparou) {
-            prefs.edit().putBoolean("ciclo_rosa_disparado", false).apply()
-        }
-
-        atualizarPainelEstrategia(rosas)
-        atualizarPainelVisual(rosas)
+        if (!::painelEstrategia.isInitialized) return
+        atualizarPainelEstrategia()
+        atualizarPainelVisual()
+        atualizarBibliotecaPadroes()
     }
 
-    private fun atualizarPainelVisual(rosas: Int) {
-        val janela = resultados.take(300)
-        val azuis = janela.count { it < 2.0 }
-        val roxos = janela.count { it >= 2.0 && it < 10.0 }
-        val altos = janela.count { it >= 40.0 }
-        val media = if (janela.isEmpty()) 0.0 else janela.average()
-        painelEstatisticas.text =
-            "RESUMO DAS ÚLTIMAS " + janela.size + " RODADAS\n" +
-            "Azuis: " + azuis + "  •  Roxos: " + roxos + "\n" +
-            "Rosas no ciclo atual: " + rosas + "  •  40x+: " + altos + "\n" +
-            "Média da janela: " + "%.2fx".format(Locale.US, media)
-
-        quadroEstrategias.removeAllViews()
-        for (i in 1..8) {
-            val linha = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(8, 12, 8, 12)
-            }
-            val numero = TextView(this).apply {
-                text = "%02d".format(i)
-                textSize = 16f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(if (i == 1) Color.rgb(255, 90, 175) else Color.rgb(135, 150, 175))
-                setPadding(4, 0, 18, 0)
-            }
-            val descricao = TextView(this).apply {
-                text = if (i == 1) "CICLO ROSA  •  " + rosas + "/8 resultados rosas" else "Disponível para configurar"
-                textSize = 13f
-                setTextColor(if (i == 1) Color.WHITE else Color.rgb(145, 155, 175))
-            }
-            linha.addView(numero)
-            linha.addView(descricao)
-            quadroEstrategias.addView(linha)
-            if (i < 8) {
-                val divisor = android.view.View(this).apply {
-                    setBackgroundColor(Color.rgb(48, 56, 75))
-                }
-                quadroEstrategias.addView(divisor, LinearLayout.LayoutParams(-1, 1))
-            }
-        }
-    }
-
-    private fun atualizarGrade() {
-        if (!::gradeResultados.isInitialized) return
-        val filtrados = resultados.take(200).withIndex()
-        gradeResultados.removeAllViews()
-        filtrados.forEach { (indice, valor) ->
-            val cor = when {
-                valor < 2.0 -> Color.rgb(30, 145, 220)
-                valor < 10.0 -> Color.rgb(112, 65, 190)
-                valor < 40.0 -> Color.rgb(215, 55, 145)
-                else -> Color.rgb(185, 45, 100)
-            }
-            val horario = horarios.getOrNull(indice) ?: "--:--:--"
-            val multiplicadorTexto = "%.2fx".format(Locale.US, valor)
-            val item = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(2, 4, 2, 4)
-                background = GradientDrawable().apply {
-                    setColor(cor)
-                    setStroke(1, Color.rgb(30, 35, 52))
-                    cornerRadius = 8f
-                }
-                val multiplicador = TextView(this@MainActivity).apply {
-                    text = multiplicadorTexto
-                    gravity = Gravity.CENTER
-                    textSize = 12f
-                    setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.WHITE)
-                }
-                val hora = TextView(this@MainActivity).apply {
-                    text = horario
-                    gravity = Gravity.CENTER
-                    textSize = 9f
-                    setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.BLACK)
-                    visibility = android.view.View.VISIBLE
-                }
-                addView(multiplicador)
-                addView(hora)
-                contentDescription = "Horário local da rodada"
-            }
-            val larguraTela = resources.displayMetrics.widthPixels
-            val larguraCelula = (larguraTela - (12 * resources.displayMetrics.density).toInt()) / 4
-            val lp = GridLayout.LayoutParams().apply {
-                width = larguraCelula
-                height = (48 * resources.displayMetrics.density).toInt()
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
-                setMargins(2, 3, 2, 3)
-            }
-            gradeResultados.addView(item, lp)
-        }
-    }
-
-    private fun horarioAtual(): String {
-        return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-    }
-
-    private fun estilizarBotao(botao: Button, corFundo: Int, corBorda: Int) {
-        botao.setTextColor(Color.WHITE)
-        botao.textSize = 14f
-        botao.setTypeface(null, android.graphics.Typeface.BOLD)
-        botao.isAllCaps = false
-        botao.elevation = 8f
-        botao.minimumHeight = 58
-        botao.background = GradientDrawable().apply {
-            setColor(corFundo)
-            setStroke(2, corBorda)
-            cornerRadius = 18f
-        }
-    }
-
-    private fun cartao(cor: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(cor)
-            setStroke(1, Color.rgb(65, 80, 115))
-            cornerRadius = 18f
-        }
-    }
-
-    private fun margem(): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-            bottomMargin = 12
-        }
-    }
-
-    private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
-        val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getBoolean("ciclo_rosa_disparado", false)
-        painelEstrategia.textSize = 16f
+    private fun atualizarPainelEstrategia() {
+        val r20 = resumirJanela(20)
+        val r50 = resumirJanela(50)
+        val r100 = resumirJanela(100)
+        painelEstrategia.textSize = 15f
         painelEstrategia.setLineSpacing(5f, 1.0f)
         painelEstrategia.text =
-            "📊 ESTRATÉGIA 01 — CICLO ROSA\n" +
-            "Rosas de 10x a 39,99x (últimas 300): $rosas\n" +
-            (if (ativa) "🟢 Critério ativo" else "⏳ Aguardando condição") +
-            "\n\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\n" +
-            analisarCicloCronologico()
+            "🧠 MOTOR ADAPTATIVO — EXPERIMENTAL\n" +
+            "Histórico registrado: ${resultados.size} rodadas\n" +
+            "Janela 20: ${r20.total} resultados | abaixo de 2x: ${r20.abaixo2} | 2x+: ${r20.total - r20.abaixo2}\n" +
+            "Janela 50: ${r50.total} resultados | 10x+: ${r50.de10a50 + r50.acima50}\n" +
+            "Janela 100: ${r100.total} resultados | 50x+: ${r100.acima50}\n\n" +
+            "Os indicadores descrevem frequências observadas. Não representam previsão nem garantia da próxima rodada."
     }
 
+    private fun atualizarPainelVisual() {
+        if (!::painelEstatisticas.isInitialized || !::quadroEstrategias.isInitialized) return
+        val r20 = resumirJanela(20)
+        val r50 = resumirJanela(50)
+        val r100 = resumirJanela(100)
+        painelEstatisticas.text =
+            "DISTRIBUIÇÃO POR JANELA\n" +
+            "20 rodadas: <2x ${r20.abaixo2} • 2–9,99x ${r20.de2a10} • 10–49,99x ${r20.de10a50} • 50x+ ${r20.acima50}\n" +
+            "50 rodadas: <2x ${r50.abaixo2} • 2–9,99x ${r50.de2a10} • 10–49,99x ${r50.de10a50} • 50x+ ${r50.acima50}\n" +
+            "100 rodadas: <2x ${r100.abaixo2} • 2–9,99x ${r100.de2a10} • 10–49,99x ${r100.de10a50} • 50x+ ${r100.acima50}\n" +
+            "Média nas últimas 100: ${String.format(Locale.US, "%.2f", r100.media)}x"
+
+        quadroEstrategias.removeAllViews()
+        val janelas = listOf(20, 50, 100)
+        janelas.forEach { n ->
+            val resumo = resumirJanela(n)
+            val linha = TextView(this).apply {
+                text = "JANELA ${n}: ${resumo.total}/${n} rodadas carregadas"
+                textSize = 13f
+                setTextColor(Color.WHITE)
+                setPadding(8, 10, 8, 10)
+            }
+            quadroEstrategias.addView(linha)
+        }
+        val nota = TextView(this).apply {
+            text = "Os 8 espaços de estratégia ficam reservados. Nenhum gatilho antigo está ativo nesta versão."
+            textSize = 12f
+            setTextColor(Color.LTGRAY)
+            setPadding(8, 10, 8, 10)
+        }
+        quadroEstrategias.addView(nota)
+    }
 
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
-        adicionarReconhecedoresExpandidos()
-        val dados = (0 until minOf(resultados.size, marcasTempo.size))
-            .map { i -> Pair(resultados[i], marcasTempo[i]) }
-            .filter { it.second > 0L }.asReversed()
-        val salvos = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getStringSet("biblioteca_padroes", emptySet())?.toMutableSet() ?: mutableSetOf()
-        for (i in dados.indices) {
-            if (dados[i].first < 10.0) continue
-            var j = i + 1
-            var baixo = false
-            var alto = false
-            while (j < dados.size && dados[j].first < 10.0) {
-                val v = dados[j].first
-                if (v <= 1.50) baixo = true
-                if (v in 2.41..6.00) alto = true
-                j++
-            }
-            if (j >= dados.size || !baixo || !alto) continue
-            val minutos = kotlin.math.round((dados[j].second - dados[i].second) / 60000.0).toLong()
-            if (minutos in listOf(3L, 4L, 7L, 9L)) {
-                val sequencia = dados.subList(i + 1, j).joinToString(",") {
-                    String.format(Locale.US, "%.2f", it.first)
-                }
-                if (sequencia.isNotBlank()) salvos.add(sequencia)
-            }
-        }
-        getSharedPreferences("aviator", MODE_PRIVATE).edit()
-            .putStringSet("biblioteca_padroes", salvos).apply()
-        if (salvos.isEmpty()) {
-            quadroPadroes.addView(TextView(this).apply {
-                text = "Nenhum padrão completo identificado ainda."
-                textSize = 13f
-                setTextColor(Color.LTGRAY)
-            })
-            return
-        }
-        salvos.sorted().takeLast(20).forEachIndexed { idx, seq ->
-            val linha = LinearLayout(this).apply {
+        val janelas = listOf(20, 50, 100)
+        janelas.forEach { n ->
+            val resumo = resumirJanela(n)
+            val taxaBaixa = if (resumo.total == 0) 0.0 else resumo.abaixo2 * 100.0 / resumo.total
+            val taxaAlta = if (resumo.total == 0) 0.0 else (resumo.de10a50 + resumo.acima50) * 100.0 / resumo.total
+            val bloco = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(0, 7, 0, 7)
+                setPadding(8, 8, 8, 8)
             }
-            linha.addView(TextView(this).apply {
-                text = "PADRÃO ${idx + 1}"
-                textSize = 10f
-                setTextColor(Color.LTGRAY)
+            bloco.addView(TextView(this).apply {
+                text = "JANELA ${n} RODADAS"
+                textSize = 13f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(100, 205, 255))
             })
-            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            seq.split(",").forEach { n ->
-                val v = n.toDoubleOrNull() ?: return@forEach
-                val cor = when {
-                    v < 2.0 -> Color.rgb(30, 145, 220)
-                    v < 10.0 -> Color.rgb(112, 65, 190)
-                    else -> Color.rgb(215, 55, 145)
-                }
-                val chip = TextView(this@MainActivity).apply {
-                    text = "${String.format(Locale.US, "%.2f", v)}x"
-                    textSize = 10f
-                    gravity = Gravity.CENTER
-                    setTextColor(Color.WHITE)
-                    setPadding(5, 5, 5, 5)
-                    background = GradientDrawable().apply {
-                        setColor(cor)
-                        cornerRadius = 5f
-                    }
-                }
-                chips.addView(chip, LinearLayout.LayoutParams(-2, -2).apply { rightMargin = 5 })
-            }
-            linha.addView(chips)
-            quadroPadroes.addView(linha)
-            quadroPadroes.addView(View(this).apply {
-                setBackgroundColor(Color.rgb(45, 58, 78))
-            }, LinearL
-    // Reconhecedores ampliados: observações e candidatos não são previsões.
-    private fun adicionarReconhecedoresExpandidos() {
-        val recentes = resultados.take(6)
-        val rosas = resultados.take(300).count { it >= 10.0 && it < 40.0 }
-        val rosaIndex = resultados.indexOfFirst { it >= 10.0 }
-        val depoisDaRosa = if (rosaIndex > 0) resultados.take(rosaIndex).reversed() else emptyList()
-        val casas = listOf(2, 3, 4, 5, 9, 13).mapNotNull { p -> depoisDaRosa.getOrNull(p - 1)?.let { p to it } }
-        val baixasEspelho = casas.count { it.second < 2.0 }
-        val mediasEspelho = casas.count { it.second >= 2.0 && it.second < 10.0 }
-        val baixas = recentes.count { it < 2.0 }
-        val medias = recentes.count { it >= 2.0 && it < 10.0 }
-        val cronologico = resultados.take(8).reversed()
-        val baixoAlto = cronologico.zipWithNext().any { (a, b) -> a < 2.0 && b in 3.0..5.99 }
-        val recuperacao = recentes.size >= 4 && baixas >= 2 && medias >= 1
-        val espelhoAtivo = baixasEspelho + mediasEspelho >= 2
-        val ativos = listOf(rosas >= 3, espelhoAtivo, baixoAlto, recuperacao).count { it }
-        data class Sinal(val nome: String, val nivel: String, val detalhe: String)
-        val sinais = listOf(
-            Sinal("01 · CICLO ROSA", when { rosas >= 8 -> "CRITÉRIO ATINGIDO"; rosas >= 5 -> "CANDIDATO"; rosas >= 3 -> "OBSERVAÇÃO"; else -> "SEM SINAL" }, "$rosas/8 rosas de 10x a 39,99x nas últimas 300 rodadas."),
-            Sinal("02 · ESPELHO DAS CASAS", when { casas.size >= 6 && baixasEspelho >= 2 -> "CRITÉRIO ATINGIDO"; espelhoAtivo -> "CANDIDATO"; rosaIndex >= 0 -> "OBSERVAÇÃO"; else -> "SEM SINAL" }, if (rosaIndex < 0) "Aguardando resultado de 10x+." else "Casas: ${casas.size}/6; baixas: $baixasEspelho; intermediárias: $mediasEspelho."),
-            Sinal("03 · BAIXO + ALTO", if (baixoAlto) "CANDIDATO" else if (baixas >= 2) "OBSERVAÇÃO" else "SEM SINAL", "Últimas 6: $baixas azuis e $medias roxos; busca baixa seguida de 3x–5,99x."),
-            Sinal("04 · CICLO DE RECUPERAÇÃO", if (recuperacao) "CANDIDATO" else if (baixas > 0 && medias > 0) "OBSERVAÇÃO" else "SEM SINAL", "Últimas 6 rodadas: $baixas azuis e $medias roxos."),
-            Sinal("05 · GATILHO COMBINADO", when { ativos >= 3 -> "CRITÉRIO ATINGIDO"; ativos >= 2 -> "CANDIDATO"; ativos == 1 -> "OBSERVAÇÃO"; else -> "SEM SINAL" }, "$ativos reconhecedores com sinal ativo; não é previsão da próxima rodada.")
-        )
-        sinais.forEach { s ->
-            val cor = when (s.nivel) {
-                "CRITÉRIO ATINGIDO" -> Color.rgb(75, 220, 150)
-                "CANDIDATO" -> Color.rgb(100, 190, 255)
-                "OBSERVAÇÃO" -> Color.rgb(255, 200, 90)
-                else -> Color.LTGRAY
-            }
-            val bloco = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(8, 9, 8, 9) }
-            bloco.addView(TextView(this).apply { text = "${s.nome}  •  ${s.nivel}"; textSize = 13f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
-            bloco.addView(TextView(this).apply { text = s.detalhe; textSize = 12f; setTextColor(Color.WHITE); setPadding(0, 4, 0, 0) })
+            bloco.addView(TextView(this).apply {
+                text = "Abaixo de 2x: ${String.format(Locale.US, "%.1f", taxaBaixa)}% | 10x ou mais: ${String.format(Locale.US, "%.1f", taxaAlta)}%"
+                textSize = 12f
+                setTextColor(Color.WHITE)
+                setPadding(0, 4, 0, 0)
+            })
             quadroPadroes.addView(bloco)
         }
         quadroPadroes.addView(TextView(this).apply {
-            text = "Sinais estatísticos do histórico; não garantem a próxima rodada."
-            textSize = 11f; setTextColor(Color.LTGRAY); setPadding(8, 8, 8, 12)
+            text = "MODO DE OBSERVAÇÃO: o motor compara janelas e registra frequências. Só haverá gatilhos depois de testes históricos e validação fora da amostra."
+            textSize = 11f
+            setTextColor(Color.LTGRAY)
+            setPadding(8, 10, 8, 10)
         })
-    }
-
-ayout.LayoutParams(-1, 1))
-        }
-    }
-
-    private fun analisarCicloCronologico(): String {
-        val n = minOf(resultados.size, marcasTempo.size)
-        if (n < 3) return "Ainda coletando rodadas com horário automático."
-        val dados = (0 until n).map { i -> Pair(resultados[i], marcasTempo[i]) }
-            .filter { it.second > 0L }.asReversed()
-        if (dados.size < 3) return "Histórico antigo sem horário exato não entra nesta análise."
-
-        val alvos = listOf(3L, 4L, 7L, 9L)
-        val ocorrencias = mutableMapOf<Long, Int>()
-        var ciclosCompletos = 0
-        for (i in dados.indices) {
-            if (dados[i].first < 10.0) continue
-            var j = i + 1
-            var baixo = false
-            var alto = false
-            while (j < dados.size && dados[j].first < 10.0) {
-                val v = dados[j].first
-                if (v <= 1.50) baixo = true
-                if (v in 2.41..6.00) alto = true
-                j++
-            }
-            if (j >= dados.size || !baixo || !alto) continue
-            val deltaMs = dados[j].second - dados[i].second
-            if (deltaMs <= 0L) continue
-            // Arredonda o intervalo para o minuto mais próximo: 3m30s passa a 4 min.
-            val minutos = kotlin.math.round(deltaMs / 60000.0).toLong()
-            if (minutos in alvos) {
-                ciclosCompletos++
-                ocorrencias[minutos] = (ocorrencias[minutos] ?: 0) + 1
-            }
-        }
-
-        val ultimaRosa = dados.indexOfLast { it.first >= 10.0 }
-        if (ultimaRosa < 0) return "Ainda não há rosa registrada com horário."
-        val desde = dados.drop(ultimaRosa + 1)
-        val baixoAtual = desde.any { it.first <= 1.50 }
-        val altoAtual = desde.any { it.first in 2.41..6.00 }
-        val segundos = ((System.currentTimeMillis() - dados[ultimaRosa].second) / 1000L).coerceAtLeast(0L)
-        val minutosDecorridos = segundos / 60L
-        val faixaAtual = when {
-            baixoAtual && altoAtual -> "🟢 BAIXO + ALTO encontrados"
-            baixoAtual -> "🟡 Baixo encontrado; falta um alto (2,41x–6x)"
-            altoAtual -> "🟡 Alto encontrado; falta um baixo (até 1,50x)"
-            else -> "🔵 Aguardando baixo e alto"
-        }
-        val proximo = alvos.firstOrNull { it > minutosDecorridos }
-        val historicoTexto = if (ocorrencias.isEmpty()) "Ainda sem ciclos completos confirmados." else
-            ocorrencias.toSortedMap().entries.joinToString("   •   ") { "${it.key} min: ${it.value}x" }
-
-        return "ÚLTIMA ROSA: ${horarios.getOrNull(resultados.indices.lastOrNull { resultados[it] >= 10.0 } ?: 0) ?: "--:--:--"}\n" +
-            "Tempo desde a rosa: ${minutosDecorridos}min ${segundos % 60}s\n" +
-            "$faixaAtual\n" +
-            "Ciclos históricos com baixo + alto: $ciclosCompletos\n" +
-            "Frequência: $historicoTexto\n" +
-            (if (proximo != null) "Próxima faixa a observar: ${proximo} min" else "Faixas 3, 4, 7 e 9 min já passaram") +
-            "\n\n⚠️ Frequência histórica não garante a próxima rosa."
     }
 
     private fun atualizarHistorico() {
