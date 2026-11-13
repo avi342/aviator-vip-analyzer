@@ -201,7 +201,7 @@ private var primeiraLeituraOCR = true
         tela.addView(painelEstatisticas, margem())
 
         val cabecalho = TextView(this).apply {
-            text = "CENTRAL DE ESTRATÉGIAS  •  8 SLOTS"
+            text = "ESTRATÉGIA ÚNICA • SEQUÊNCIA DE 2 RODADAS"
             textSize = 14f
             setTextColor(Color.rgb(255, 90, 175))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -362,38 +362,38 @@ private fun atualizarPainelVisual() {
             val h = lista.count { it >= 10.0 }
             return "1–1,99x: $b | 2–4,99x: $m | 5–9,99x: $a | 10x+: $h"
         }
-        painelEstatisticas.text = "MOTOR ESTATÍSTICO ADAPTATIVO\n" +
-            "Últimas 20: ${j20.size} rodadas\n${resumo(j20)}\n\n" +
-            "Últimas 50: ${j50.size} rodadas\n${resumo(j50)}\n\n" +
-            "Últimas 100: ${j100.size} rodadas\n${resumo(j100)}\n\n" +
-            "Frequências históricas, não previsões garantidas."
+        painelEstatisticas.text = "DISTRIBUIÇÃO DO HISTÓRICO\\n" +
+            "Últimas 20: ${j20.size} rodadas\\n${resumo(j20)}\\n\\n" +
+            "Últimas 50: ${j50.size} rodadas\\n${resumo(j50)}\\n\\n" +
+            "Últimas 100: ${j100.size} rodadas\\n${resumo(j100)}\\n\\n" +
+            "Frequências descritivas; não são previsão da próxima rodada."
         quadroEstrategias.removeAllViews()
-        for (n in listOf(2, 3, 4, 5)) {
-            for (alvo in listOf(2.0, 5.0)) {
-                val (ocorrencias, acertos) = testarPadraoRecente(n, alvo)
-                val taxa = if (ocorrencias == 0) 0.0 else acertos * 100.0 / ocorrencias
-                val linha = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(8, 10, 8, 10)
-                }
-                linha.addView(TextView(this).apply {
-                    text = "PADRÃO DE $n RODADAS → PRÓXIMA > ${alvo.toInt()}x"
-                    textSize = 13f
-                    setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.rgb(100, 205, 255))
-                })
-                linha.addView(TextView(this).apply {
-                    text = if (ocorrencias < 5) "Amostra insuficiente: $ocorrencias ocorrências" else
-                        "$acertos de $ocorrencias • frequência observada: ${"%.1f".format(Locale.US, taxa)}%"
-                    textSize = 12f
-                    setTextColor(Color.WHITE)
-                })
-                quadroEstrategias.addView(linha)
-                quadroEstrategias.addView(View(this).apply {
-                    setBackgroundColor(Color.rgb(48, 56, 75))
-                }, LinearLayout.LayoutParams(-1, 1))
-            }
-        }
+        val (ocorrencias, acertos) = testarPadraoRecente(2, 2.0)
+        val taxa = if (ocorrencias == 0) 0.0 else acertos * 100.0 / ocorrencias
+        val categorias = resultados.take(2).asReversed().map { categoriaTexto(it) }
+        val sequencia = if (categorias.size == 2) categorias.joinToString(" → ") else "aguardando 2 resultados"
+        quadroEstrategias.addView(TextView(this).apply {
+            text = "SEQUÊNCIA ATUAL: $sequencia\\n" +
+                "O teste procura essa mesma sequência no histórico e verifica se a rodada seguinte passou de 2x.\\n\\n" +
+                if (ocorrencias < 20) {
+                    "Amostra ainda pequena: $acertos acertos em $ocorrencias ocorrências. São necessários mais dados para avaliar estabilidade."
+                } else {
+                    "$acertos de $ocorrencias ocorrências • frequência histórica: ${"%.1f".format(Locale.US, taxa)}%"
+                } +
+                "\\n\\nA frequência é retrospectiva e não representa a chance real da próxima rodada."
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setPadding(8, 12, 8, 12)
+        })
+    }
+
+    private fun categoriaTexto(v: Double): String = when {
+        v < 2.0 -> "AZUL (<2x)"
+        v < 5.0 -> "ROXO (2–4,99x)"
+        v < 10.0 -> "ROXO (5–9,99x)"
+        v < 20.0 -> "ROSA (10–19,99x)"
+        v < 50.0 -> "ROSA (20–49,99x)"
+        else -> "ROSA (50x+)"
     }
 
     private fun atualizarGrade() {
@@ -484,17 +484,17 @@ private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
         painelEstrategia.textSize = 15f
         painelEstrategia.text =
-            "🧠 NOVO MOTOR — ANÁLISE ADAPTATIVA\n" +
-            "Rodadas armazenadas: ${resultados.size}\n" +
-            "Oito testes com sequências de 2 a 5 rodadas, comparadas com resultados históricos seguintes acima de 2x e 5x.\n\n" +
-            "As taxas são frequências observadas no histórico, não garantia nem vantagem comprovada."
+            "ESTRATÉGIA ÚNICA — DUAS RODADAS\\n" +
+            "Objetivo estatístico: medir quantas vezes a mesma sequência de duas categorias foi seguida por um resultado acima de 2x.\\n\\n" +
+            "Rodadas armazenadas: ${resultados.size}\\n" +
+            "Somente este teste ficará ativo. Nenhuma entrada automática é feita."
     }
 
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroPadroes.addView(TextView(this).apply {
-            text = "BIBLIOTECA ADAPTATIVA\nAs combinações são comparadas com ocorrências anteriores. A amostra mínima é necessária antes de exibir uma frequência."
+            text = "ESTRATÉGIA ATIVA\\nSequência de 2 rodadas → mede a frequência histórica de resultado seguinte acima de 2x. Outros detectores foram retirados desta tela."
             textSize = 13f
             setTextColor(Color.LTGRAY)
         })
@@ -517,7 +517,7 @@ private fun analisarCicloCronologico(): String {
             v < 50.0 -> 4
             else -> 5
         }
-        val atual = (0 until tamanho).map { categoria(resultados[it]) }
+        val atual = (0 until tamanho).map { categoria(resultados[tamanho - 1 - it]) }
         var ocorrencias = 0
         var acertos = 0
         for (inicio in tamanho + 1 until resultados.size) {
