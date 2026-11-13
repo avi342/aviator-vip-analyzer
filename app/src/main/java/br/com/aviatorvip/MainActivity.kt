@@ -345,69 +345,53 @@ private fun processarOCR(texto: String) {
         // Resultados azuis, roxos e 40x+ no meio não zeram a contagem.
         return resultados.take(300).count { it >= 10.0 && it < 40.0 }
     }
-
-    private fun avaliarEstrategia() {
-        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
-        val rosas = contarRosasDesdeUltimo40x()
-        val jaDisparou = prefs.getBoolean("ciclo_rosa_disparado", false)
-
-        if (rosas >= 8 && !jaDisparou) {
-            prefs.edit()
-                .putBoolean("ciclo_rosa_disparado", true)
-                .putString("ciclo_rosa_ultimo_sinal", System.currentTimeMillis().toString())
-                .apply()
-            Toast.makeText(
-                this,
-                "ALERTA: Estratégia 01 — 8 resultados rosas nas últimas 300 rodadas",
-                Toast.LENGTH_LONG
-            ).show()
-        } else if (rosas < 8 && jaDisparou) {
-            prefs.edit().putBoolean("ciclo_rosa_disparado", false).apply()
-        }
-
-        atualizarPainelEstrategia(rosas)
-        atualizarPainelVisual(rosas)
+private fun avaliarEstrategia() {
+        atualizarPainelEstrategia()
+        atualizarPainelVisual()
     }
-
-    private fun atualizarPainelVisual(rosas: Int) {
-        val janela = resultados.take(300)
-        val azuis = janela.count { it < 2.0 }
-        val roxos = janela.count { it >= 2.0 && it < 10.0 }
-        val altos = janela.count { it >= 40.0 }
-        val media = if (janela.isEmpty()) 0.0 else janela.average()
-        painelEstatisticas.text =
-            "RESUMO DAS ÚLTIMAS " + janela.size + " RODADAS\n" +
-            "Azuis: " + azuis + "  •  Roxos: " + roxos + "\n" +
-            "Rosas no ciclo atual: " + rosas + "  •  40x+: " + altos + "\n" +
-            "Média da janela: " + "%.2fx".format(Locale.US, media)
-
+private fun atualizarPainelVisual() {
+        if (!::painelEstatisticas.isInitialized || !::quadroEstrategias.isInitialized) return
+        val j20 = resultados.take(20)
+        val j50 = resultados.take(50)
+        val j100 = resultados.take(100)
+        fun resumo(lista: List<Double>): String {
+            if (lista.isEmpty()) return "sem dados"
+            val b = lista.count { it < 2.0 }
+            val m = lista.count { it >= 2.0 && it < 5.0 }
+            val a = lista.count { it >= 5.0 && it < 10.0 }
+            val h = lista.count { it >= 10.0 }
+            return "1–1,99x: $b | 2–4,99x: $m | 5–9,99x: $a | 10x+: $h"
+        }
+        painelEstatisticas.text = "MOTOR ESTATÍSTICO ADAPTATIVO\n" +
+            "Últimas 20: ${j20.size} rodadas\n${resumo(j20)}\n\n" +
+            "Últimas 50: ${j50.size} rodadas\n${resumo(j50)}\n\n" +
+            "Últimas 100: ${j100.size} rodadas\n${resumo(j100)}\n\n" +
+            "Frequências históricas, não previsões garantidas."
         quadroEstrategias.removeAllViews()
-        for (i in 1..8) {
-            val linha = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(8, 12, 8, 12)
-            }
-            val numero = TextView(this).apply {
-                text = "%02d".format(i)
-                textSize = 16f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(if (i == 1) Color.rgb(255, 90, 175) else Color.rgb(135, 150, 175))
-                setPadding(4, 0, 18, 0)
-            }
-            val descricao = TextView(this).apply {
-                text = if (i == 1) "CICLO ROSA  •  " + rosas + "/8 resultados rosas" else "Disponível para configurar"
-                textSize = 13f
-                setTextColor(if (i == 1) Color.WHITE else Color.rgb(145, 155, 175))
-            }
-            linha.addView(numero)
-            linha.addView(descricao)
-            quadroEstrategias.addView(linha)
-            if (i < 8) {
-                val divisor = android.view.View(this).apply {
-                    setBackgroundColor(Color.rgb(48, 56, 75))
+        for (n in listOf(2, 3, 4, 5)) {
+            for (alvo in listOf(2.0, 5.0)) {
+                val (ocorrencias, acertos) = testarPadraoRecente(n, alvo)
+                val taxa = if (ocorrencias == 0) 0.0 else acertos * 100.0 / ocorrencias
+                val linha = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(8, 10, 8, 10)
                 }
-                quadroEstrategias.addView(divisor, LinearLayout.LayoutParams(-1, 1))
+                linha.addView(TextView(this).apply {
+                    text = "PADRÃO DE $n RODADAS → PRÓXIMA > ${alvo.toInt()}x"
+                    textSize = 13f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(Color.rgb(100, 205, 255))
+                })
+                linha.addView(TextView(this).apply {
+                    text = if (ocorrencias < 5) "Amostra insuficiente: $ocorrencias ocorrências" else
+                        "$acertos de $ocorrencias • frequência observada: ${"%.1f".format(Locale.US, taxa)}%"
+                    textSize = 12f
+                    setTextColor(Color.WHITE)
+                })
+                quadroEstrategias.addView(linha)
+                quadroEstrategias.addView(View(this).apply {
+                    setBackgroundColor(Color.rgb(48, 56, 75))
+                }, LinearLayout.LayoutParams(-1, 1))
             }
         }
     }
@@ -496,8 +480,14 @@ private fun processarOCR(texto: String) {
             bottomMargin = 12
         }
     }
-
-    private fun atualizarPainelEstrategia(rosas: Int = resultados.take(300).count { it >= 10.0 && it < 40.0 }) {
+private fun atualizarPainelEstrategia(rosas: Int = 0) {
+        if (!::painelEstrategia.isInitialized) return
+        painelEstrategia.textSize = 15f
+        painelEstrategia.text = "🧠 NOVO MOTOR — ANÁLISE ADAPTATIVA\n" +
+            "Rodadas armazenadas: ${resultados.size}\n" +
+            "Estratégias antigas desativadas. Oito testes com sequências de 2 a 5 rodadas para resultados seguintes acima de 2x e 5x.\n\n" +
+            "As taxas são frequências observadas no histórico, não garantia nem vantagem comprovada."
+    }) {
         val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
             .getBoolean("ciclo_rosa_disparado", false)
         painelEstrategia.textSize = 16f
@@ -509,145 +499,50 @@ private fun processarOCR(texto: String) {
             "\n\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\n" +
             analisarCicloCronologico()
     }
-
-
-    private fun atualizarBibliotecaPadroes() {
+private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
-        val dados = (0 until minOf(resultados.size, marcasTempo.size))
-            .map { i -> Pair(resultados[i], marcasTempo[i]) }
-            .filter { it.second > 0L }.asReversed()
-        val salvos = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getStringSet("biblioteca_padroes", emptySet())?.toMutableSet() ?: mutableSetOf()
-        for (i in dados.indices) {
-            if (dados[i].first < 10.0) continue
-            var j = i + 1
-            var baixo = false
-            var alto = false
-            while (j < dados.size && dados[j].first < 10.0) {
-                val v = dados[j].first
-                if (v <= 1.50) baixo = true
-                if (v in 2.41..6.00) alto = true
-                j++
-            }
-            if (j >= dados.size || !baixo || !alto) continue
-            val minutos = kotlin.math.round((dados[j].second - dados[i].second) / 60000.0).toLong()
-            if (minutos in listOf(3L, 4L, 7L, 9L)) {
-                val sequencia = dados.subList(i + 1, j).joinToString(",") {
-                    String.format(Locale.US, "%.2f", it.first)
-                }
-                if (sequencia.isNotBlank()) salvos.add(sequencia)
-            }
-        }
-        getSharedPreferences("aviator", MODE_PRIVATE).edit()
-            .putStringSet("biblioteca_padroes", salvos).apply()
-        if (salvos.isEmpty()) {
-            quadroPadroes.addView(TextView(this).apply {
-                text = "Nenhum padrão completo identificado ainda."
-                textSize = 13f
-                setTextColor(Color.LTGRAY)
-            })
-            return
-        }
-        salvos.sorted().takeLast(20).forEachIndexed { idx, seq ->
-            val linha = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(0, 7, 0, 7)
-            }
-            linha.addView(TextView(this).apply {
-                text = "PADRÃO ${idx + 1}"
-                textSize = 10f
-                setTextColor(Color.LTGRAY)
-            })
-            val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            seq.split(",").forEach { n ->
-                val v = n.toDoubleOrNull() ?: return@forEach
-                val cor = when {
-                    v < 2.0 -> Color.rgb(30, 145, 220)
-                    v < 10.0 -> Color.rgb(112, 65, 190)
-                    else -> Color.rgb(215, 55, 145)
-                }
-                val chip = TextView(this@MainActivity).apply {
-                    text = "${String.format(Locale.US, "%.2f", v)}x"
-                    textSize = 10f
-                    gravity = Gravity.CENTER
-                    setTextColor(Color.WHITE)
-                    setPadding(5, 5, 5, 5)
-                    background = GradientDrawable().apply {
-                        setColor(cor)
-                        cornerRadius = 5f
-                    }
-                }
-                chips.addView(chip, LinearLayout.LayoutParams(-2, -2).apply { rightMargin = 5 })
-            }
-            linha.addView(chips)
-            quadroPadroes.addView(linha)
-            quadroPadroes.addView(View(this).apply {
-                setBackgroundColor(Color.rgb(45, 58, 78))
-            }, LinearLayout.LayoutParams(-1, 1))
-        }
+        quadroPadroes.addView(TextView(this).apply {
+            text = "BIBLIOTECA ADAPTATIVA\nAs combinações são comparadas com ocorrências anteriores. A amostra mínima é necessária antes de exibir uma frequência."
+            textSize = 13f
+            setTextColor(Color.LTGRAY)
+        })
     }
-
-    private fun analisarCicloCronologico(): String {
-        val n = minOf(resultados.size, marcasTempo.size)
-        if (n < 3) return "Ainda coletando rodadas com horário automático."
-        val dados = (0 until n).map { i -> Pair(resultados[i], marcasTempo[i]) }
-            .filter { it.second > 0L }.asReversed()
-        if (dados.size < 3) return "Histórico antigo sem horário exato não entra nesta análise."
-
-        val alvos = listOf(3L, 4L, 7L, 9L)
-        val ocorrencias = mutableMapOf<Long, Int>()
-        var ciclosCompletos = 0
-        for (i in dados.indices) {
-            if (dados[i].first < 10.0) continue
-            var j = i + 1
-            var baixo = false
-            var alto = false
-            while (j < dados.size && dados[j].first < 10.0) {
-                val v = dados[j].first
-                if (v <= 1.50) baixo = true
-                if (v in 2.41..6.00) alto = true
-                j++
-            }
-            if (j >= dados.size || !baixo || !alto) continue
-            val deltaMs = dados[j].second - dados[i].second
-            if (deltaMs <= 0L) continue
-            // Arredonda o intervalo para o minuto mais próximo: 3m30s passa a 4 min.
-            val minutos = kotlin.math.round(deltaMs / 60000.0).toLong()
-            if (minutos in alvos) {
-                ciclosCompletos++
-                ocorrencias[minutos] = (ocorrencias[minutos] ?: 0) + 1
-            }
-        }
-
-        val ultimaRosa = dados.indexOfLast { it.first >= 10.0 }
-        if (ultimaRosa < 0) return "Ainda não há rosa registrada com horário."
-        val desde = dados.drop(ultimaRosa + 1)
-        val baixoAtual = desde.any { it.first <= 1.50 }
-        val altoAtual = desde.any { it.first in 2.41..6.00 }
-        val segundos = ((System.currentTimeMillis() - dados[ultimaRosa].second) / 1000L).coerceAtLeast(0L)
-        val minutosDecorridos = segundos / 60L
-        val faixaAtual = when {
-            baixoAtual && altoAtual -> "🟢 BAIXO + ALTO encontrados"
-            baixoAtual -> "🟡 Baixo encontrado; falta um alto (2,41x–6x)"
-            altoAtual -> "🟡 Alto encontrado; falta um baixo (até 1,50x)"
-            else -> "🔵 Aguardando baixo e alto"
-        }
-        val proximo = alvos.firstOrNull { it > minutosDecorridos }
-        val historicoTexto = if (ocorrencias.isEmpty()) "Ainda sem ciclos completos confirmados." else
-            ocorrencias.toSortedMap().entries.joinToString("   •   ") { "${it.key} min: ${it.value}x" }
-
-        return "ÚLTIMA ROSA: ${horarios.getOrNull(resultados.indices.lastOrNull { resultados[it] >= 10.0 } ?: 0) ?: "--:--:--"}\n" +
-            "Tempo desde a rosa: ${minutosDecorridos}min ${segundos % 60}s\n" +
-            "$faixaAtual\n" +
-            "Ciclos históricos com baixo + alto: $ciclosCompletos\n" +
-            "Frequência: $historicoTexto\n" +
-            (if (proximo != null) "Próxima faixa a observar: ${proximo} min" else "Faixas 3, 4, 7 e 9 min já passaram") +
-            "\n\n⚠️ Frequência histórica não garante a próxima rosa."
+private fun analisarCicloCronologico(): String {
+        return "Análise cronológica antiga desativada. O motor novo compara sequências e resultados posteriores."
     }
 
     private fun atualizarHistorico() {
         // A faixa horizontal antiga foi removida; os resultados ficam na grade colorida.
+    }
+
+    private fun testarPadraoRecente(tamanho: Int, alvo: Double): Pair<Int, Int> {
+        if (resultados.size <= tamanho + 1) return Pair(0, 0)
+        fun categoria(v: Double): Int = when {
+            v < 2.0 -> 0
+            v < 5.0 -> 1
+            v < 10.0 -> 2
+            v < 20.0 -> 3
+            v < 50.0 -> 4
+            else -> 5
+        }
+        val atual = (0 until tamanho).map { categoria(resultados[it]) }
+        var ocorrencias = 0
+        var acertos = 0
+        for (inicio in tamanho + 1 until resultados.size) {
+            var igual = true
+            for (k in 0 until tamanho) {
+                if (categoria(resultados[inicio - tamanho + k]) != atual[k]) {
+                    igual = false
+                    break
+                }
+            }
+            if (igual) {
+                ocorrencias++
+                if (resultados[inicio - tamanho - 1] > alvo) acertos++
+            }
+        }
+        return Pair(ocorrencias, acertos)
     }
 
 }
