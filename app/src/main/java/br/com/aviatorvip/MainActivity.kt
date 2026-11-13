@@ -480,26 +480,17 @@ private fun atualizarPainelVisual() {
             bottomMargin = 12
         }
     }
-private fun atualizarPainelEstrategia(rosas: Int = 0) {
+private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
         painelEstrategia.textSize = 15f
-        painelEstrategia.text = "🧠 NOVO MOTOR — ANÁLISE ADAPTATIVA\n" +
-            "Rodadas armazenadas: ${resultados.size}\n" +
-            "Estratégias antigas desativadas. Oito testes com sequências de 2 a 5 rodadas para resultados seguintes acima de 2x e 5x.\n\n" +
-            "As taxas são frequências observadas no histórico, não garantia nem vantagem comprovada."
-    }) {
-        val ativa = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getBoolean("ciclo_rosa_disparado", false)
-        painelEstrategia.textSize = 16f
-        painelEstrategia.setLineSpacing(5f, 1.0f)
         painelEstrategia.text =
-            "📊 ESTRATÉGIA 01 — CICLO ROSA\n" +
-            "Rosas de 10x a 39,99x (últimas 300): $rosas\n" +
-            (if (ativa) "🟢 Critério ativo" else "⏳ Aguardando condição") +
-            "\n\n⏱️ ESTRATÉGIA 04 — CICLO CRONOLÓGICO\n" +
-            analisarCicloCronologico()
+            "🧠 NOVO MOTOR — ANÁLISE ADAPTATIVA\\n" +
+            "Rodadas armazenadas: ${resultados.size}\\n" +
+            "Oito testes com sequências de 2 a 5 rodadas, comparadas com resultados históricos seguintes acima de 2x e 5x.\\n\\n" +
+            "As taxas são frequências observadas no histórico, não garantia nem vantagem comprovada."
     }
-private fun atualizarBibliotecaPadroes() {
+
+    private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroPadroes.addView(TextView(this).apply {
