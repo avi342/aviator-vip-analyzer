@@ -532,25 +532,27 @@ private fun atualizarPainelEstrategia() {
         val principais = listOf(2 to 2.0, 2 to 5.0, 3 to 2.0, 3 to 5.0)
         val especiais = listOf(2 to 10.0, 3 to 10.0)
         fun montar(destino: LinearLayout, itens: List<Pair<Int, Double>>, cor: Int) {
-            itens.forEachIndexed { indice, item ->
-                val tamanho = item.first
-                val alvo = item.second
-                val dados = medirPadrao(tamanho, alvo)
-                val ocorrencias = dados.first
-                val acertos = dados.second
-                val titulo = "PADRÃO DE " + tamanho + " RODADAS → PRÓXIMA > " + alvo.toInt() + "x"
-                val detalhe = if (resultados.size < tamanho) {
-                    "Aguardando " + tamanho + " rodadas para iniciar a leitura"
-                } else if (ocorrencias < 5) {
-                    "Amostra insuficiente: " + ocorrencias + " ocorrências"
-                } else {
-                    acertos.toString() + " de " + ocorrencias + " • frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
+            itens.chunked(2).forEach { par ->
+                val linha = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                par.forEach { item ->
+                    val tamanho = item.first
+                    val alvo = item.second
+                    val dados = medirPadrao(tamanho, alvo)
+                    val ocorrencias = dados.first
+                    val acertos = dados.second
+                    val titulo = tamanho.toString() + " RODADAS → > " + alvo.toInt() + "x"
+                    val detalhe = if (resultados.size < tamanho) "Aguardando dados" else if (ocorrencias < 5) "Amostra: " + ocorrencias else acertos.toString() + "/" + ocorrencias + " • " + String.format(Locale.US, "%.0f", acertos * 100.0 / ocorrencias) + "%"
+                    val card = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(5, 5, 5, 5)
+                        background = GradientDrawable().apply { setColor(Color.rgb(18, 25, 41)); setStroke(1, Color.rgb(48, 62, 88)); cornerRadius = 9f }
+                    }
+                    card.addView(TextView(this).apply { text = titulo; textSize = 9f; maxLines = 1; setSingleLine(true); ellipsize = android.text.TextUtils.TruncateAt.END; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
+                    card.addView(TextView(this).apply { text = detalhe; textSize = 8f; maxLines = 1; setSingleLine(true); setTextColor(Color.WHITE) })
+                    linha.addView(card, LinearLayout.LayoutParams(0, 38, 1f).apply { marginEnd = 3; bottomMargin = 3 })
                 }
-                val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(10, 12, 10, 12) }
-                linha.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
-                linha.addView(TextView(this).apply { text = detalhe; textSize = 14f; setTextColor(Color.WHITE); setPadding(0, 5, 0, 2) })
+                if (par.size == 1) linha.addView(View(this), LinearLayout.LayoutParams(0, 38, 1f))
                 destino.addView(linha)
-                if (indice < itens.lastIndex) destino.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 55, 75)) }, LinearLayout.LayoutParams(-1, 1))
             }
         }
         montar(quadroPadroes, principais, Color.rgb(70, 195, 255))
