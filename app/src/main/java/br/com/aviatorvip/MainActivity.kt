@@ -30,6 +30,8 @@ private lateinit var historico: LinearLayout
     private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
+    private lateinit var botaoHistorico: Button
+    private var historicoExpandido = false
     private lateinit var campoQuantidade: EditText
     private lateinit var campoMinimo: EditText
     private lateinit var campoMaximo: EditText
@@ -115,37 +117,36 @@ private var primeiraLeituraOCR = true
         topo.addView(subtitulo)
         tela.addView(topo, margem())
 
-        val abrirJogo = Button(this).apply {
-            text = "🌐  ABRIR APOSTABOOM"
-            setOnClickListener {
-                try {
-                    val url = android.net.Uri.parse("https://www.apostaboom.bet/casino/spribe/aviator-vip")
-                    val intent = Intent(Intent.ACTION_VIEW, url)
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(this@MainActivity, "Não foi possível abrir a ApostaBoom. Verifique se o Chrome está instalado.", Toast.LENGTH_LONG).show()
-                }
-            }
-            estilizarBotao(this, Color.rgb(45, 65, 105), Color.rgb(100, 175, 255))
+        val controlesCaptura = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
-        tela.addView(abrirJogo)
-
         val iniciar = Button(this).apply {
-            text = "▶  INICIAR CAPTURA OCR"
+            text = "▶ Iniciar"
             setOnClickListener { solicitarCaptura() }
             estilizarBotao(this, Color.rgb(15, 125, 115), Color.rgb(75, 235, 205))
+            textSize = 10f
+            minimumHeight = (34 * resources.displayMetrics.density).toInt()
+            minHeight = (34 * resources.displayMetrics.density).toInt()
+            minimumWidth = 0
+            setPadding(4, 0, 4, 0)
         }
-        tela.addView(iniciar)
-
         val parar = Button(this).apply {
-            text = "■  PARAR CAPTURA"
+            text = "■ Parar"
             setOnClickListener {
                 stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
                 status.text = "Captura parada."
             }
             estilizarBotao(this, Color.rgb(75, 35, 65), Color.rgb(230, 85, 155))
+            textSize = 10f
+            minimumHeight = (34 * resources.displayMetrics.density).toInt()
+            minHeight = (34 * resources.displayMetrics.density).toInt()
+            minimumWidth = 0
+            setPadding(4, 0, 4, 0)
         }
-        tela.addView(parar)
+        controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, (36 * resources.displayMetrics.density).toInt(), 1f).apply { marginEnd = 4 })
+        controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, (36 * resources.displayMetrics.density).toInt(), 1f).apply { marginStart = 4 })
+        tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, (40 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 4 })
 
         status = TextView(this).apply {
             text = "Aguardando captura..."
@@ -157,7 +158,7 @@ private var primeiraLeituraOCR = true
 
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 4
+            columnCount = 8
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(6, 8, 6, 8)
@@ -166,9 +167,24 @@ private var primeiraLeituraOCR = true
         tela.addView(
             gradeResultados,
             LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 12
+                bottomMargin = 4
             }
         )
+        botaoHistorico = Button(this).apply {
+            text = "⌄ VER HISTÓRICO COMPLETO"
+            textSize = 11f
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            setPadding(4, 0, 4, 0)
+            minimumHeight = (34 * resources.displayMetrics.density).toInt()
+            minHeight = (34 * resources.displayMetrics.density).toInt()
+            background = cartao(Color.rgb(25, 31, 49))
+            setOnClickListener {
+                historicoExpandido = !historicoExpandido
+                atualizarGrade()
+            }
+        }
+        tela.addView(botaoHistorico, LinearLayout.LayoutParams(-1, (36 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 12 })
 
         painelEstrategia = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -421,7 +437,8 @@ private fun atualizarPainelVisual() {
 
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
-        val filtrados = resultados.take(200).withIndex()
+        val quantidadeVisivel = if (historicoExpandido) resultados.size else 16
+        val filtrados = resultados.take(quantidadeVisivel).withIndex()
         gradeResultados.removeAllViews()
         filtrados.forEach { (indice, valor) ->
             val cor = when {
@@ -461,7 +478,7 @@ private fun atualizarPainelVisual() {
                 contentDescription = "Horário local da rodada"
             }
             val larguraTela = resources.displayMetrics.widthPixels
-            val larguraCelula = (larguraTela - (12 * resources.displayMetrics.density).toInt()) / 4
+            val larguraCelula = (larguraTela - (24 * resources.displayMetrics.density).toInt()) / 8
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
                 height = (48 * resources.displayMetrics.density).toInt()
@@ -470,6 +487,8 @@ private fun atualizarPainelVisual() {
             }
             gradeResultados.addView(item, lp)
         }
+        botaoHistorico.text = if (historicoExpandido) "⌃ RECOLHER HISTÓRICO" else "⌄ VER HISTÓRICO COMPLETO"
+        botaoHistorico.visibility = if (resultados.size > 16) View.VISIBLE else View.GONE
     }
 
     private fun horarioAtual(): String {
