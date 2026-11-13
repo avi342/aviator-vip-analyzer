@@ -362,10 +362,10 @@ private fun atualizarPainelVisual() {
             val h = lista.count { it >= 10.0 }
             return "1–1,99x: $b | 2–4,99x: $m | 5–9,99x: $a | 10x+: $h"
         }
-        painelEstatisticas.text = "DISTRIBUIÇÃO DO HISTÓRICO\\n" +
-            "Últimas 20: ${j20.size} rodadas\\n${resumo(j20)}\\n\\n" +
-            "Últimas 50: ${j50.size} rodadas\\n${resumo(j50)}\\n\\n" +
-            "Últimas 100: ${j100.size} rodadas\\n${resumo(j100)}\\n\\n" +
+        painelEstatisticas.text = "DISTRIBUIÇÃO DO HISTÓRICO\n" +
+            "Últimas 20: ${j20.size} rodadas\n${resumo(j20)}\n\n" +
+            "Últimas 50: ${j50.size} rodadas\n${resumo(j50)}\n\n" +
+            "Últimas 100: ${j100.size} rodadas\n${resumo(j100)}\n\n" +
             "Frequências descritivas; não são previsão da próxima rodada."
         quadroEstrategias.removeAllViews()
         val (ocorrencias, acertos) = testarPadraoRecente(2, 2.0)
@@ -373,14 +373,14 @@ private fun atualizarPainelVisual() {
         val categorias = resultados.take(2).asReversed().map { categoriaTexto(it) }
         val sequencia = if (categorias.size == 2) categorias.joinToString(" → ") else "aguardando 2 resultados"
         quadroEstrategias.addView(TextView(this).apply {
-            text = "SEQUÊNCIA ATUAL: $sequencia\\n" +
-                "O teste procura essa mesma sequência no histórico e verifica se a rodada seguinte passou de 2x.\\n\\n" +
+            text = "SEQUÊNCIA ATUAL: $sequencia\n" +
+                "O teste procura essa mesma sequência no histórico e verifica se a rodada seguinte passou de 2x.\n\n" +
                 if (ocorrencias < 20) {
                     "Amostra ainda pequena: $acertos acertos em $ocorrencias ocorrências. São necessários mais dados para avaliar estabilidade."
                 } else {
                     "$acertos de $ocorrencias ocorrências • frequência histórica: ${"%.1f".format(Locale.US, taxa)}%"
                 } +
-                "\\n\\nA frequência é retrospectiva e não representa a chance real da próxima rodada."
+                "\n\nA frequência é retrospectiva e não representa a chance real da próxima rodada."
             textSize = 14f
             setTextColor(Color.WHITE)
             setPadding(8, 12, 8, 12)
@@ -484,9 +484,9 @@ private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
         painelEstrategia.textSize = 15f
         painelEstrategia.text =
-            "ESTRATÉGIA ÚNICA — DUAS RODADAS\\n" +
-            "Objetivo estatístico: medir quantas vezes a mesma sequência de duas categorias foi seguida por um resultado acima de 2x.\\n\\n" +
-            "Rodadas armazenadas: ${resultados.size}\\n" +
+            "ESTRATÉGIA ÚNICA — DUAS RODADAS\n" +
+            "Objetivo estatístico: medir quantas vezes a mesma sequência de duas categorias foi seguida por um resultado acima de 2x.\n\n" +
+            "Rodadas armazenadas: ${resultados.size}\n" +
             "Somente este teste ficará ativo. Nenhuma entrada automática é feita."
     }
 
@@ -494,7 +494,7 @@ private fun atualizarPainelEstrategia() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroPadroes.addView(TextView(this).apply {
-            text = "ESTRATÉGIA ATIVA\\nSequência de 2 rodadas → mede a frequência histórica de resultado seguinte acima de 2x. Outros detectores foram retirados desta tela."
+            text = "ESTRATÉGIA ATIVA\nSequência de 2 rodadas → mede a frequência histórica de resultado seguinte acima de 2x. Outros detectores foram retirados desta tela."
             textSize = 13f
             setTextColor(Color.LTGRAY)
         })
