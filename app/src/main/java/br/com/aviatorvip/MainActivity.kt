@@ -514,6 +514,7 @@ private fun processarOCR(texto: String) {
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized) return
         quadroPadroes.removeAllViews()
+        adicionarReconhecedoresExpandidos()
         val dados = (0 until minOf(resultados.size, marcasTempo.size))
             .map { i -> Pair(resultados[i], marcasTempo[i]) }
             .filter { it.second > 0L }.asReversed()
@@ -584,7 +585,50 @@ private fun processarOCR(texto: String) {
             quadroPadroes.addView(linha)
             quadroPadroes.addView(View(this).apply {
                 setBackgroundColor(Color.rgb(45, 58, 78))
-            }, LinearLayout.LayoutParams(-1, 1))
+            }, LinearL
+    // Reconhecedores ampliados: observações e candidatos não são previsões.
+    private fun adicionarReconhecedoresExpandidos() {
+        val recentes = resultados.take(6)
+        val rosas = resultados.take(300).count { it >= 10.0 && it < 40.0 }
+        val rosaIndex = resultados.indexOfFirst { it >= 10.0 }
+        val depoisDaRosa = if (rosaIndex > 0) resultados.take(rosaIndex).reversed() else emptyList()
+        val casas = listOf(2, 3, 4, 5, 9, 13).mapNotNull { p -> depoisDaRosa.getOrNull(p - 1)?.let { p to it } }
+        val baixasEspelho = casas.count { it.second < 2.0 }
+        val mediasEspelho = casas.count { it.second >= 2.0 && it.second < 10.0 }
+        val baixas = recentes.count { it < 2.0 }
+        val medias = recentes.count { it >= 2.0 && it < 10.0 }
+        val cronologico = resultados.take(8).reversed()
+        val baixoAlto = cronologico.zipWithNext().any { (a, b) -> a < 2.0 && b in 3.0..5.99 }
+        val recuperacao = recentes.size >= 4 && baixas >= 2 && medias >= 1
+        val espelhoAtivo = baixasEspelho + mediasEspelho >= 2
+        val ativos = listOf(rosas >= 3, espelhoAtivo, baixoAlto, recuperacao).count { it }
+        data class Sinal(val nome: String, val nivel: String, val detalhe: String)
+        val sinais = listOf(
+            Sinal("01 · CICLO ROSA", when { rosas >= 8 -> "CRITÉRIO ATINGIDO"; rosas >= 5 -> "CANDIDATO"; rosas >= 3 -> "OBSERVAÇÃO"; else -> "SEM SINAL" }, "$rosas/8 rosas de 10x a 39,99x nas últimas 300 rodadas."),
+            Sinal("02 · ESPELHO DAS CASAS", when { casas.size >= 6 && baixasEspelho >= 2 -> "CRITÉRIO ATINGIDO"; espelhoAtivo -> "CANDIDATO"; rosaIndex >= 0 -> "OBSERVAÇÃO"; else -> "SEM SINAL" }, if (rosaIndex < 0) "Aguardando resultado de 10x+." else "Casas: ${casas.size}/6; baixas: $baixasEspelho; intermediárias: $mediasEspelho."),
+            Sinal("03 · BAIXO + ALTO", if (baixoAlto) "CANDIDATO" else if (baixas >= 2) "OBSERVAÇÃO" else "SEM SINAL", "Últimas 6: $baixas azuis e $medias roxos; busca baixa seguida de 3x–5,99x."),
+            Sinal("04 · CICLO DE RECUPERAÇÃO", if (recuperacao) "CANDIDATO" else if (baixas > 0 && medias > 0) "OBSERVAÇÃO" else "SEM SINAL", "Últimas 6 rodadas: $baixas azuis e $medias roxos."),
+            Sinal("05 · GATILHO COMBINADO", when { ativos >= 3 -> "CRITÉRIO ATINGIDO"; ativos >= 2 -> "CANDIDATO"; ativos == 1 -> "OBSERVAÇÃO"; else -> "SEM SINAL" }, "$ativos reconhecedores com sinal ativo; não é previsão da próxima rodada.")
+        )
+        sinais.forEach { s ->
+            val cor = when (s.nivel) {
+                "CRITÉRIO ATINGIDO" -> Color.rgb(75, 220, 150)
+                "CANDIDATO" -> Color.rgb(100, 190, 255)
+                "OBSERVAÇÃO" -> Color.rgb(255, 200, 90)
+                else -> Color.LTGRAY
+            }
+            val bloco = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(8, 9, 8, 9) }
+            bloco.addView(TextView(this).apply { text = "${s.nome}  •  ${s.nivel}"; textSize = 13f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
+            bloco.addView(TextView(this).apply { text = s.detalhe; textSize = 12f; setTextColor(Color.WHITE); setPadding(0, 4, 0, 0) })
+            quadroPadroes.addView(bloco)
+        }
+        quadroPadroes.addView(TextView(this).apply {
+            text = "Sinais estatísticos do histórico; não garantem a próxima rodada."
+            textSize = 11f; setTextColor(Color.LTGRAY); setPadding(8, 8, 8, 12)
+        })
+    }
+
+ayout.LayoutParams(-1, 1))
         }
     }
 
