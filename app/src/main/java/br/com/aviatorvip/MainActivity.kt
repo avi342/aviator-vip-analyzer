@@ -624,50 +624,60 @@ private fun atualizarPainelEstrategia() {
             "O histórico serve para medir ocorrências anteriores; não é garantia de resultado futuro."
     }
 
-    private fun formacaoCompleta(chronologico: List<Double>): Boolean {
-        if (chronologico.size < 14) return false
-        val rosas = chronologico.takeLast(30).count { it >= 10.0 && it < 40.0 }
-        if (rosas < 8) return false
-        // Usa o 10x+ mais recente que já tenha as 13 casas posteriores registradas.
-        val ultimoDez = (0 until (chronologico.size - 13).coerceAtLeast(0))
-            .lastOrNull { chronologico[it] >= 10.0 } ?: return false
-        val casas = listOf(2, 3, 4, 5, 9, 13)
-        val valoresCasas = casas.map { casa -> chronologico[ultimoDez + casa] }
-        val baixasEspelho = valoresCasas.count { it < 2.0 }
-        if (baixasEspelho < 2) return false
-        val janela = chronologico.takeLast(6)
-        val baixaSeguidaMedia = janela.windowed(2).any { par ->
-            par[0] < 2.0 && par[1] in 3.0..5.99
+    private data class ResultadoPadrao(val comparacoes: Int, val sucessos: Int, val tamanho: Int)
+
+    // Compara blocos por categoria de cor, aceitando pequenas diferenças entre multiplicadores.
+    private fun buscarPadraoAtual(serie: List<Double>, alvo: (Double) -> Boolean): ResultadoPadrao {
+        val tamanhos = listOf(6, 9, 12, 15)
+        var melhor = ResultadoPadrao(0, 0, 0)
+        for (tamanho in tamanhos) {
+            if (serie.size < tamanho + 5) continue
+            val consulta = serie.takeLast(tamanho).map { categoria(it) }
+            val limite = serie.size - tamanho - 5
+            var comparacoes = 0
+            var sucessos = 0
+            for (inicio in 0..limite) {
+                var iguais = 0
+                for (k in 0 until tamanho) {
+                    if (categoria(serie[inicio + k]) == consulta[k]) iguais++
+                }
+                if (iguais.toDouble() / tamanho >= 0.75) {
+                    comparacoes++
+                    if ((inicio + tamanho until inicio + tamanho + 5).any { alvo(serie[it]) }) sucessos++
+                }
+            }
+            if (comparacoes >= 3 && (melhor.comparacoes == 0 || sucessos.toDouble() / comparacoes > melhor.sucessos.toDouble() / melhor.comparacoes)) {
+                melhor = ResultadoPadrao(comparacoes, sucessos, tamanho)
+            }
         }
-        return baixaSeguidaMedia
+        return melhor
     }
 
     private fun atualizarMonitoramento10x(valor: Double, formacaoAntes: Boolean) {
         val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
-        val ativo = prefs.getBoolean("radar10x_ativo", false)
-        if (ativo) {
-            val restantes = prefs.getInt("radar10x_restantes", 5)
-            val acertos = prefs.getInt("radar10x_acertos", 0) + if (valor >= 10.0) 1 else 0
-            val novoRestante = (restantes - 1).coerceAtLeast(0)
-            prefs.edit()
-                .putInt("radar10x_acertos", acertos)
-                .putInt("radar10x_restantes", novoRestante)
-                .putBoolean("radar10x_ativo", novoRestante > 0)
-                .putInt("radar10x_ultimo_acerto", if (novoRestante == 0) acertos else prefs.getInt("radar10x_ultimo_acerto", 0))
-                .putInt("radar10x_ultimo_total", if (novoRestante == 0) 5 else prefs.getInt("radar10x_ultimo_total", 0))
-                .putInt("radar10x_concluidos", prefs.getInt("radar10x_concluidos", 0) + if (novoRestante == 0) 1 else 0)
-                .putString("radar10x_resultado", if (novoRestante == 0) { if (acertos > 0) "SIM" else "NÃO" } else "AVALIANDO")
-                .apply()
-        } else {
-            val formacaoAgora = formacaoCompleta(resultados.asReversed())
-            if (!formacaoAntes && formacaoAgora) {
-                prefs.edit()
-                    .putBoolean("radar10x_ativo", true)
-                    .putInt("radar10x_restantes", 5)
-                    .putInt("radar10x_acertos", 0)
-                    .putLong("radar10x_inicio", System.currentTimeMillis())
-                    .putString("radar10x_resultado", "AVALIANDO")
-                    .apply()
+        val cronologico = resultados.asReversed()
+        // O resultado recém-registrado fica fora do bloco de comparação; ele pertence à janela de avaliação.
+        val base = cronologico.dropLast(1)
+        val sinais = listOf(
+            Triple("10", buscarPadraoAtual(base) { it >= 10.0 }, valor >= 10.0),
+            Triple("25", buscarPadraoAtual(base) { it in 2.0..5.0 }, valor in 2.0..5.0)
+        )
+        sinais.forEach { (id, padrao, acertou) ->
+            val chaveAtivo = "radar${id}x_ativo"
+            val ativo = prefs.getBoolean(chaveAtivo, false)
+            if (ativo) {
+                val restantes = (prefs.getInt("radar${id}x_restantes", 5) - 1).coerceAtLeast(0)
+                val acertos = prefs.getInt("radar${id}x_acertos", 0) + if (acertou) 1 else 0
+                val editor = prefs.edit().putInt("radar${id}x_restantes", restantes).putInt("radar${id}x_acertos", acertos)
+                    .putBoolean(chaveAtivo, restantes > 0)
+                if (restantes == 0) editor.putString("radar${id}x_resultado", if (acertos > 0) "SIM" else "NÃO")
+                else editor.putString("radar${id}x_resultado", "AVALIANDO")
+                editor.apply()
+            } else if (padrao.comparacoes >= 3 && padrao.sucessos.toDouble() / padrao.comparacoes >= 0.40) {
+                prefs.edit().putBoolean(chaveAtivo, true).putInt("radar${id}x_restantes", 5)
+                    .putInt("radar${id}x_acertos", 0).putString("radar${id}x_resultado", "AVALIANDO")
+                    .putInt("radar${id}x_matches", padrao.comparacoes).putInt("radar${id}x_hits", padrao.sucessos)
+                    .putInt("radar${id}x_bloco", padrao.tamanho).apply()
             }
         }
     }
