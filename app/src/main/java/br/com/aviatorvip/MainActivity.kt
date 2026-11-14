@@ -29,6 +29,9 @@ private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
     private lateinit var painelEstatisticas: TextView
     private lateinit var quadroPadroes: LinearLayout
+    private lateinit var quadroDetalhes: LinearLayout
+    private lateinit var botaoDetalhes: Button
+    private var detalhesExpandidos = false
     private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
@@ -246,6 +249,29 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroPadroes, margem())
+
+        quadroDetalhes = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(2, 2, 2, 2)
+            setBackgroundColor(Color.BLACK)
+            visibility = View.GONE
+        }
+        tela.addView(quadroDetalhes, margem())
+
+        botaoDetalhes = Button(this).apply {
+            text = "＋ VER ANÁLISES DETALHADAS"
+            textSize = 10f
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            setPadding(8, 2, 8, 2)
+            background = cartao(Color.rgb(25, 31, 49))
+            setOnClickListener {
+                detalhesExpandidos = !detalhesExpandidos
+                quadroDetalhes.visibility = if (detalhesExpandidos) View.VISIBLE else View.GONE
+                text = if (detalhesExpandidos) "− OCULTAR ANÁLISES DETALHADAS" else "＋ VER ANÁLISES DETALHADAS"
+            }
+        }
+        tela.addView(botaoDetalhes, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 5 })
 
         // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
@@ -599,20 +625,16 @@ private fun atualizarPainelEstrategia() {
     }
 
     private fun formacaoCompleta(chronologico: List<Double>): Boolean {
-        if (chronologico.isEmpty()) return false
+        if (chronologico.size < 14) return false
         val rosas = chronologico.takeLast(30).count { it >= 10.0 && it < 40.0 }
         if (rosas < 8) return false
-
-        val ultimoDez = chronologico.indexOfLast { it >= 10.0 }
-        if (ultimoDez < 0) return false
+        // Usa o 10x+ mais recente que já tenha as 13 casas posteriores registradas.
+        val ultimoDez = (0 until (chronologico.size - 13).coerceAtLeast(0))
+            .lastOrNull { chronologico[it] >= 10.0 } ?: return false
         val casas = listOf(2, 3, 4, 5, 9, 13)
-        val valoresCasas = casas.map { casa ->
-            val indice = ultimoDez + casa
-            if (indice < chronologico.size) chronologico[indice] else return false
-        }
+        val valoresCasas = casas.map { casa -> chronologico[ultimoDez + casa] }
         val baixasEspelho = valoresCasas.count { it < 2.0 }
         if (baixasEspelho < 2) return false
-
         val janela = chronologico.takeLast(6)
         val baixaSeguidaMedia = janela.windowed(2).any { par ->
             par[0] < 2.0 && par[1] in 3.0..5.99
@@ -634,6 +656,7 @@ private fun atualizarPainelEstrategia() {
                 .putInt("radar10x_ultimo_acerto", if (novoRestante == 0) acertos else prefs.getInt("radar10x_ultimo_acerto", 0))
                 .putInt("radar10x_ultimo_total", if (novoRestante == 0) 5 else prefs.getInt("radar10x_ultimo_total", 0))
                 .putInt("radar10x_concluidos", prefs.getInt("radar10x_concluidos", 0) + if (novoRestante == 0) 1 else 0)
+                .putString("radar10x_resultado", if (novoRestante == 0) { if (acertos > 0) "SIM" else "NÃO" } else "AVALIANDO")
                 .apply()
         } else {
             val formacaoAgora = formacaoCompleta(resultados.asReversed())
@@ -643,6 +666,7 @@ private fun atualizarPainelEstrategia() {
                     .putInt("radar10x_restantes", 5)
                     .putInt("radar10x_acertos", 0)
                     .putLong("radar10x_inicio", System.currentTimeMillis())
+                    .putString("radar10x_resultado", "AVALIANDO")
                     .apply()
             }
         }
@@ -651,6 +675,7 @@ private fun atualizarPainelEstrategia() {
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
         quadroPadroes.removeAllViews()
+        quadroDetalhes.removeAllViews()
         quadroDezX.removeAllViews()
         quadroDezX.visibility = View.GONE
 
@@ -663,7 +688,7 @@ private fun atualizarPainelEstrategia() {
             else -> "AGUARDAR"
         }
 
-        val ultimoDez = cronologico.indexOfLast { it >= 10.0 }
+        val ultimoDez = (0 until (cronologico.size - 13).coerceAtLeast(0)).lastOrNull { cronologico[it] >= 10.0 } ?: -1
         val casas = listOf(2, 3, 4, 5, 9, 13)
         val valoresCasas = casas.mapNotNull { casa ->
             val indice = ultimoDez + casa
@@ -700,21 +725,21 @@ private fun atualizarPainelEstrategia() {
             else -> "AGUARDANDO FORMAÇÃO"
         }
 
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = "RADAR DE FORMAÇÃO"
             textSize = 17f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(Color.rgb(255, 105, 190))
             setPadding(8, 10, 8, 3)
         })
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = "$radarStatus\nCritérios completos: $completos/3  •  Módulos com sinais: $ativos/3"
             textSize = 13f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(if (completos == 3) Color.rgb(105, 220, 155) else Color.WHITE)
             setPadding(8, 3, 8, 8)
         })
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = "COMO LER: OBSERVAR = sinal inicial. EM FORMAÇÃO = parte do padrão apareceu. CRITÉRIO COMPLETO = todas as regras daquele módulo foram encontradas. A formação completa inicia a avaliação das próximas 5 rodadas."
             textSize = 11f
             setTextColor(Color.rgb(185, 198, 220))
@@ -751,7 +776,7 @@ private fun atualizarPainelEstrategia() {
                     setTextColor(corEstado)
                 })
             }
-            quadroPadroes.addView(cartaoModulo, margem())
+            quadroDetalhes.addView(cartaoModulo, margem())
         }
 
         adicionarModulo("01 • CICLO ROSA", "$rosas de 8 resultados entre 10x e 39,99x nas últimas 30 rodadas.", rosasStatus, "$rosas/8")
@@ -786,7 +811,7 @@ private fun atualizarPainelEstrategia() {
         val taxaSinal = if (sinais > 0) String.format(Locale.US, "%.1f%%", acertos * 100.0 / sinais) else "Amostra insuficiente"
         val taxaBase = if (janelasBase > 0) String.format(Locale.US, "%.1f%%", acertosBase * 100.0 / janelasBase) else "—"
 
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = "AVALIAÇÃO DO OBJETIVO • 10x OU MAIS"
             textSize = 14f
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -799,24 +824,91 @@ private fun atualizarPainelEstrategia() {
             completos == 3 -> "Formação completa já presente no histórico. Aguardando uma nova formação para iniciar uma janela ao vivo."
             else -> "Aguardando formação completa. Quando os três critérios forem atingidos, começa a contagem das próximas 5 rodadas."
         }
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = textoAoVivo
             textSize = 12f
             setTextColor(Color.WHITE)
             setPadding(8, 3, 8, 8)
         })
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = "HISTÓRICO: $acertos de $sinais formações tiveram pelo menos um 10x+ nas 5 rodadas seguintes ($taxaSinal). REFERÊNCIA: $acertosBase de $janelasBase janelas comuns tiveram 10x+ nas próximas 5 rodadas ($taxaBase)."
             textSize = 12f
             setTextColor(Color.rgb(205, 215, 232))
             setPadding(8, 3, 8, 10)
         })
-        quadroPadroes.addView(TextView(this).apply {
+        quadroDetalhes.addView(TextView(this).apply {
             text = "A taxa histórica é descritiva, não uma probabilidade garantida. Formações podem se sobrepor e amostras pequenas oscilam bastante."
             textSize = 10f
             setTextColor(Color.rgb(165, 180, 205))
             setPadding(8, 0, 8, 8)
         })
+        val estadoFinal = prefs.getString("radar10x_resultado", "") ?: ""
+        val estadoPrincipal = when {
+            monitorando -> "AVALIANDO"
+            estadoFinal == "SIM" -> "SIM"
+            estadoFinal == "NÃO" -> "NÃO"
+            else -> "AGUARDANDO"
+        }
+        val corPrincipal = when (estadoPrincipal) {
+            "SIM" -> Color.rgb(65, 225, 145)
+            "NÃO" -> Color.rgb(255, 105, 125)
+            "AVALIANDO" -> Color.rgb(100, 175, 255)
+            else -> Color.rgb(255, 205, 75)
+        }
+        val explicacaoPrincipal = when (estadoPrincipal) {
+            "SIM" -> "A janela concluída teve pelo menos um resultado de 10x ou mais."
+            "NÃO" -> "A última janela concluída terminou sem resultado de 10x ou mais."
+            "AVALIANDO" -> "Formação completa. Restam ${restantes} de 5 rodadas para concluir a avaliação."
+            else -> "Nenhuma formação completa está em avaliação neste momento."
+        }
+        val cartaoPrincipal = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(16, 18, 16, 18)
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(18, 25, 43))
+                setStroke((2 * resources.displayMetrics.density).toInt(), corPrincipal)
+                cornerRadius = 18f
+            }
+            addView(TextView(this@MainActivity).apply {
+                text = "DECISÃO DO RADAR"
+                textSize = 11f
+                letterSpacing = 0.12f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(185, 198, 220))
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = estadoPrincipal
+                textSize = 30f
+                gravity = Gravity.CENTER
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(corPrincipal)
+                setPadding(0, 5, 0, 5)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = explicacaoPrincipal
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = if (monitorando) "RODADAS: ${5 - restantes}/5  •  OBJETIVO: 10x+" else "OBJETIVO: 10x+ NAS 5 RODADAS APÓS A FORMAÇÃO"
+                textSize = 10f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(185, 198, 220))
+                setPadding(0, 10, 0, 0)
+            })
+        }
+        quadroPadroes.addView(cartaoPrincipal, margem())
+        quadroPadroes.addView(TextView(this).apply {
+            text = "Histórico: $acertos de $sinais formações atingiram 10x+ ($taxaSinal)."
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(190, 205, 225))
+            setPadding(4, 5, 4, 5)
+        })
+        botaoDetalhes.text = if (detalhesExpandidos) "− OCULTAR ANÁLISES DETALHADAS" else "＋ VER ANÁLISES DETALHADAS"
+        quadroDetalhes.visibility = if (detalhesExpandidos) View.VISIBLE else View.GONE
     }
 
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
