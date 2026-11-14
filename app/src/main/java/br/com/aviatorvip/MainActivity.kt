@@ -408,11 +408,10 @@ private fun processarOCR(texto: String) {
     status.text = "Confirmando resultado: $valor x"
 
     if (leiturasDoCandidato >= 2) {
-        val formacaoAntesDaRodada = formacaoCompleta(resultados.asReversed())
         resultados.add(0, valor)
         horarios.add(0, horarioAtual())
         marcasTempo.add(0, System.currentTimeMillis())
-        atualizarMonitoramento10x(valor, formacaoAntesDaRodada)
+        atualizarMonitoramento10x(valor)
         salvar()
         atualizarHistorico()
         atualizarContadorDezX()
@@ -653,7 +652,7 @@ private fun atualizarPainelEstrategia() {
         return melhor
     }
 
-    private fun atualizarMonitoramento10x(valor: Double, formacaoAntes: Boolean) {
+    private fun atualizarMonitoramento10x(valor: Double) {
         val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
         val cronologico = resultados.asReversed()
         // O resultado recém-registrado fica fora do bloco de comparação; ele pertence à janela de avaliação.
