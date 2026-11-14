@@ -607,8 +607,8 @@ private fun atualizarPainelEstrategia() {
         val rosasStatus = when {
             rosas >= 8 -> "CRITÉRIO COMPLETO"
             rosas >= 5 -> "EM FORMAÇÃO"
-            rosas >= 3 -> "SINAL INICIAL"
-            else -> "AGUARDANDO"
+            rosas >= 3 -> "OBSERVAR"
+            else -> "AGUARDAR"
         }
 
         val ultimoDez = resultados.indexOfFirst { it >= 10.0 }
@@ -628,74 +628,105 @@ private fun atualizarPainelEstrategia() {
         val espelhoStatus = when {
             casasVistas == 6 && baixas >= 2 -> "CRITÉRIO COMPLETO"
             baixas + intermediarias >= 2 -> "EM FORMAÇÃO"
-            casasVistas > 0 -> "SINAL INICIAL"
-            else -> "AGUARDANDO 10x+"
+            casasVistas > 0 -> "OBSERVAR"
+            else -> "AGUARDAR"
         }
 
+        // A lista está em ordem inversa: índice maior representa rodada anterior.
+        // A sequência cronológica procurada é baixa (<2x), seguida por 3x a 5,99x.
         val limite = minOf(6, resultados.size)
         val baixaSeguidaMedia = (0 until (limite - 1).coerceAtLeast(0)).any { i ->
             resultados[i] in 3.0..5.99 && resultados[i + 1] < 2.0
         }
         val baixasRecentes = resultados.take(6).count { it < 2.0 }
         val baixoAltoStatus = when {
-            baixaSeguidaMedia -> "SEQUÊNCIA OBSERVADA"
-            baixasRecentes >= 2 -> "BAIXAS RECENTES"
-            else -> "AGUARDANDO"
+            baixaSeguidaMedia -> "EM FORMAÇÃO"
+            baixasRecentes >= 2 -> "OBSERVAR"
+            else -> "AGUARDAR"
         }
 
-        val completos = listOf(rosasStatus, espelhoStatus, baixoAltoStatus)
-            .count { it == "CRITÉRIO COMPLETO" || it == "SEQUÊNCIA OBSERVADA" }
-        val ativos = listOf(rosasStatus, espelhoStatus, baixoAltoStatus)
-            .count { it != "AGUARDANDO" && it != "AGUARDANDO 10x+" }
+        val estados = listOf(rosasStatus, espelhoStatus, baixoAltoStatus)
+        val completos = estados.count { it == "CRITÉRIO COMPLETO" }
+        val ativos = estados.count { it != "AGUARDAR" }
         val radarStatus = when {
-            completos == 3 -> "FORMAÇÃO DOS 3 MÓDULOS"
-            ativos >= 2 -> "FORMAÇÃO PARCIAL"
-            ativos == 1 -> "MONITORANDO"
-            else -> "AGUARDANDO DADOS"
+            completos == 3 -> "TRÊS CRITÉRIOS COMPLETOS"
+            completos > 0 -> "CRITÉRIO ATINGIDO — CONTINUE OBSERVANDO"
+            ativos >= 2 -> "PADRÕES EM OBSERVAÇÃO"
+            ativos == 1 -> "UM PADRÃO EM OBSERVAÇÃO"
+            else -> "AGUARDANDO FORMAÇÃO"
         }
 
-        val tituloRadar = TextView(this).apply {
-            text = "RADAR DE FORMAÇÃO  •  $completos/3"
-            textSize = 16f
+        quadroPadroes.addView(TextView(this).apply {
+            text = "RADAR DE FORMAÇÃO"
+            textSize = 17f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(Color.rgb(255, 105, 190))
-            setPadding(8, 10, 8, 4)
-        }
-        quadroPadroes.addView(tituloRadar)
+            setPadding(8, 10, 8, 3)
+        })
         quadroPadroes.addView(TextView(this).apply {
-            text = "$radarStatus\\n$ativos de 3 módulos com atividade. O radar identifica condições do histórico; não prevê a próxima rodada."
-            textSize = 12f
-            setTextColor(Color.WHITE)
-            setPadding(8, 2, 8, 10)
+            text = "$radarStatus\nCritérios completos: $completos/3  •  Módulos com sinais: $ativos/3"
+            textSize = 13f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(if (completos > 0) Color.rgb(255, 190, 95) else Color.WHITE)
+            setPadding(8, 3, 8, 8)
+        })
+        quadroPadroes.addView(TextView(this).apply {
+            text = "COMO LER: OBSERVAR = há um sinal inicial. EM FORMAÇÃO = parte do padrão apareceu. CRITÉRIO COMPLETO = todas as regras daquele módulo foram encontradas. Isso descreve o histórico, não prevê a próxima rodada."
+            textSize = 11f
+            setTextColor(Color.rgb(185, 198, 220))
+            setPadding(8, 3, 8, 10)
         })
 
-        fun adicionarModulo(nome: String, detalhe: String, estado: String, cor: Int) {
-            val cartaoModulo = TextView(this).apply {
-                text = "$nome\\n$detalhe\\n$estado"
-                textSize = 12f
-                setTextColor(Color.WHITE)
+        fun adicionarModulo(nome: String, detalhe: String, estado: String, progresso: String) {
+            val corEstado = when (estado) {
+                "CRITÉRIO COMPLETO" -> Color.rgb(105, 220, 155)
+                "EM FORMAÇÃO" -> Color.rgb(255, 190, 95)
+                "OBSERVAR" -> Color.rgb(110, 185, 255)
+                else -> Color.rgb(175, 185, 205)
+            }
+            val cartaoModulo = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 setPadding(12, 10, 12, 10)
                 background = cartao(Color.rgb(22, 30, 48))
+                addView(TextView(this@MainActivity).apply {
+                    text = nome
+                    textSize = 13f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = detalhe
+                    textSize = 12f
+                    setTextColor(Color.rgb(205, 215, 232))
+                    setPadding(0, 4, 0, 5)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = "$estado  •  $progresso"
+                    textSize = 12f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(corEstado)
+                })
             }
             quadroPadroes.addView(cartaoModulo, margem())
         }
+
         adicionarModulo(
             "01 • CICLO ROSA",
-            "$rosas/8 resultados entre 10x e 39,99x nas últimas 30 rodadas",
+            "$rosas de 8 resultados entre 10x e 39,99x nas últimas 30 rodadas.",
             rosasStatus,
-            Color.rgb(255, 105, 190)
+            if (rosas >= 8) "8/8" else "$rosas/8"
         )
         adicionarModulo(
             "02 • ESPELHO DAS CASAS",
-            "$casasVistas/6 casas analisadas • $baixas baixas • $intermediarias intermediárias",
+            "$casasVistas de 6 posições analisadas (casas 2, 3, 4, 5, 9 e 13). Encontradas: $baixas baixas e $intermediarias intermediárias.",
             espelhoStatus,
-            Color.rgb(105, 180, 255)
+            "$casasVistas/6 posições"
         )
         adicionarModulo(
             "03 • QUEBRA DE BAIXAS",
-            "Últimas 6 rodadas: $baixasRecentes abaixo de 2x; procura baixa seguida de 3x a 5,99x",
+            "Nas últimas 6 rodadas: $baixasRecentes abaixo de 2x. Procura uma baixa seguida de resultado entre 3x e 5,99x.",
             baixoAltoStatus,
-            Color.rgb(190, 145, 255)
+            if (baixaSeguidaMedia) "sequência encontrada" else "$baixasRecentes baixas recentes"
         )
     }
 
