@@ -487,7 +487,7 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 10f
+                    textSize = 12f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(cor)
                     maxLines = 1
@@ -496,7 +496,7 @@ private fun atualizarPainelVisual() {
                 val hora = TextView(this@MainActivity).apply {
                     text = if (valor >= 10.0) horario else ""
                     gravity = Gravity.CENTER
-                    textSize = 6f
+                    textSize = 8f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
                     visibility = if (valor >= 10.0) android.view.View.VISIBLE else android.view.View.GONE
@@ -512,7 +512,7 @@ private fun atualizarPainelVisual() {
             val larguraCelula = ((larguraDisponivel - (12 * densidade).toInt()) / 9).coerceAtLeast(1)
             val lp = GridLayout.LayoutParams().apply {
                 width = larguraCelula
-                height = (23 * resources.displayMetrics.density).toInt()
+                height = (26 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
                 setMargins(0, 1, 0, 1)
             }
