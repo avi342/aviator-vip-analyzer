@@ -22,6 +22,7 @@ class MainActivity : Activity() {
 
     private lateinit var status: TextView
     private lateinit var contadorDezX: TextView
+    private lateinit var relogioDigital: TextClock
     private lateinit var entrada: EditText
     
 private lateinit var historico: LinearLayout
@@ -170,7 +171,19 @@ private var primeiraLeituraOCR = true
             setPadding(2, 2, 4, 2)
             maxLines = 1
         }
+        relogioDigital = TextClock(this).apply {
+            format12Hour = "HH:mm:ss"
+            format24Hour = "HH:mm:ss"
+            timeZone = java.util.TimeZone.getDefault().id
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(4, 2, 4, 2)
+            contentDescription = "Relógio digital com horas, minutos e segundos"
+        }
         linhaStatus.addView(status, LinearLayout.LayoutParams(0, (30 * resources.displayMetrics.density).toInt(), 1f))
+        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams(-2, (30 * resources.displayMetrics.density).toInt()))
         linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, (30 * resources.displayMetrics.density).toInt()))
         tela.addView(linhaStatus)
 
@@ -580,16 +593,40 @@ private fun atualizarPainelEstrategia() {
                 val ocorrencias = dados.first
                 val acertos = dados.second
                 val titulo = "PADRÃO DE " + tamanho + " RODADAS → PRÓXIMA > " + alvo.toInt() + "x"
-                val detalhe = if (resultados.size < tamanho) {
-                    "Aguardando " + tamanho + " rodadas para iniciar a leitura"
-                } else if (ocorrencias < 5) {
-                    "Amostra insuficiente: " + ocorrencias + " ocorrências"
-                } else {
-                    acertos.toString() + " de " + ocorrencias + "       •       frequência observada: " + String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
-                }
                 val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(6, 5, 6, 5) }
                 linha.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
-                linha.addView(TextView(this).apply { text = detalhe; textSize = 14f; setTextColor(Color.WHITE); setPadding(0, 5, 0, 2) })
+                val detalheLinha = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, 5, 0, 2)
+                }
+                if (resultados.size < tamanho) {
+                    detalheLinha.addView(TextView(this).apply {
+                        text = "Aguardando " + tamanho + " rodadas para iniciar a leitura"
+                        textSize = 14f
+                        setTextColor(Color.WHITE)
+                    }, LinearLayout.LayoutParams(-1, -2))
+                } else if (ocorrencias < 5) {
+                    detalheLinha.addView(TextView(this).apply {
+                        text = "Amostra insuficiente: " + ocorrencias + " ocorrências"
+                        textSize = 14f
+                        setTextColor(Color.WHITE)
+                    }, LinearLayout.LayoutParams(-1, -2))
+                } else {
+                    val percentual = String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
+                    detalheLinha.addView(TextView(this).apply {
+                        text = acertos.toString() + " de " + ocorrencias
+                        textSize = 14f
+                        setTextColor(Color.WHITE)
+                    }, LinearLayout.LayoutParams(0, -2, 1f))
+                    detalheLinha.addView(TextView(this).apply {
+                        text = "Frequência: " + percentual
+                        textSize = 14f
+                        gravity = Gravity.END
+                        setTextColor(Color.WHITE)
+                    }, LinearLayout.LayoutParams(0, -2, 1f))
+                }
+                linha.addView(detalheLinha)
                 destino.addView(linha)
                 if (indice < itens.lastIndex) destino.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 55, 75)) }, LinearLayout.LayoutParams(-1, 1))
             }
