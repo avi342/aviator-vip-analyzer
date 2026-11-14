@@ -382,9 +382,11 @@ private fun processarOCR(texto: String) {
     status.text = "Confirmando resultado: $valor x"
 
     if (leiturasDoCandidato >= 2) {
+        val formacaoAntesDaRodada = formacaoCompleta(resultados.asReversed())
         resultados.add(0, valor)
         horarios.add(0, horarioAtual())
         marcasTempo.add(0, System.currentTimeMillis())
+        atualizarMonitoramento10x(valor, formacaoAntesDaRodada)
         salvar()
         atualizarHistorico()
         atualizarContadorDezX()
@@ -596,14 +598,64 @@ private fun atualizarPainelEstrategia() {
             "O histórico serve para medir ocorrências anteriores; não é garantia de resultado futuro."
     }
 
+    private fun formacaoCompleta(chronologico: List<Double>): Boolean {
+        if (chronologico.isEmpty()) return false
+        val rosas = chronologico.takeLast(30).count { it >= 10.0 && it < 40.0 }
+        if (rosas < 8) return false
+
+        val ultimoDez = chronologico.indexOfLast { it >= 10.0 }
+        if (ultimoDez < 0) return false
+        val casas = listOf(2, 3, 4, 5, 9, 13)
+        val valoresCasas = casas.map { casa ->
+            val indice = ultimoDez + casa
+            if (indice < chronologico.size) chronologico[indice] else return false
+        }
+        val baixasEspelho = valoresCasas.count { it < 2.0 }
+        if (baixasEspelho < 2) return false
+
+        val janela = chronologico.takeLast(6)
+        val baixaSeguidaMedia = janela.windowed(2).any { par ->
+            par[0] < 2.0 && par[1] in 3.0..5.99
+        }
+        return baixaSeguidaMedia
+    }
+
+    private fun atualizarMonitoramento10x(valor: Double, formacaoAntes: Boolean) {
+        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
+        val ativo = prefs.getBoolean("radar10x_ativo", false)
+        if (ativo) {
+            val restantes = prefs.getInt("radar10x_restantes", 5)
+            val acertos = prefs.getInt("radar10x_acertos", 0) + if (valor >= 10.0) 1 else 0
+            val novoRestante = (restantes - 1).coerceAtLeast(0)
+            prefs.edit()
+                .putInt("radar10x_acertos", acertos)
+                .putInt("radar10x_restantes", novoRestante)
+                .putBoolean("radar10x_ativo", novoRestante > 0)
+                .putInt("radar10x_ultimo_acerto", if (novoRestante == 0) acertos else prefs.getInt("radar10x_ultimo_acerto", 0))
+                .putInt("radar10x_ultimo_total", if (novoRestante == 0) 5 else prefs.getInt("radar10x_ultimo_total", 0))
+                .putInt("radar10x_concluidos", prefs.getInt("radar10x_concluidos", 0) + if (novoRestante == 0) 1 else 0)
+                .apply()
+        } else {
+            val formacaoAgora = formacaoCompleta(resultados.asReversed())
+            if (!formacaoAntes && formacaoAgora) {
+                prefs.edit()
+                    .putBoolean("radar10x_ativo", true)
+                    .putInt("radar10x_restantes", 5)
+                    .putInt("radar10x_acertos", 0)
+                    .putLong("radar10x_inicio", System.currentTimeMillis())
+                    .apply()
+            }
+        }
+    }
+
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroDezX.removeAllViews()
         quadroDezX.visibility = View.GONE
 
-        // resultados[0] é sempre a rodada mais recente.
-        val rosas = resultados.take(30).count { it >= 10.0 && it < 40.0 }
+        val cronologico = resultados.asReversed()
+        val rosas = cronologico.takeLast(30).count { it >= 10.0 && it < 40.0 }
         val rosasStatus = when {
             rosas >= 8 -> "CRITÉRIO COMPLETO"
             rosas >= 5 -> "EM FORMAÇÃO"
@@ -611,20 +663,15 @@ private fun atualizarPainelEstrategia() {
             else -> "AGUARDAR"
         }
 
-        val ultimoDez = resultados.indexOfFirst { it >= 10.0 }
+        val ultimoDez = cronologico.indexOfLast { it >= 10.0 }
         val casas = listOf(2, 3, 4, 5, 9, 13)
-        var casasVistas = 0
-        var baixas = 0
-        var intermediarias = 0
-        casas.forEach { casa ->
-            val indice = ultimoDez - casa
-            if (ultimoDez >= 0 && indice >= 0) {
-                casasVistas++
-                val valor = resultados[indice]
-                if (valor < 2.0) baixas++
-                else if (valor < 10.0) intermediarias++
-            }
+        val valoresCasas = casas.mapNotNull { casa ->
+            val indice = ultimoDez + casa
+            if (ultimoDez >= 0 && indice < cronologico.size) cronologico[indice] else null
         }
+        val casasVistas = valoresCasas.size
+        val baixas = valoresCasas.count { it < 2.0 }
+        val intermediarias = valoresCasas.count { it >= 2.0 && it < 10.0 }
         val espelhoStatus = when {
             casasVistas == 6 && baixas >= 2 -> "CRITÉRIO COMPLETO"
             baixas + intermediarias >= 2 -> "EM FORMAÇÃO"
@@ -632,15 +679,13 @@ private fun atualizarPainelEstrategia() {
             else -> "AGUARDAR"
         }
 
-        // A lista está em ordem inversa: índice maior representa rodada anterior.
-        // A sequência cronológica procurada é baixa (<2x), seguida por 3x a 5,99x.
-        val limite = minOf(6, resultados.size)
-        val baixaSeguidaMedia = (0 until (limite - 1).coerceAtLeast(0)).any { i ->
-            resultados[i] in 3.0..5.99 && resultados[i + 1] < 2.0
+        val janela = cronologico.takeLast(6)
+        val baixaSeguidaMedia = janela.windowed(2).any { par ->
+            par[0] < 2.0 && par[1] in 3.0..5.99
         }
-        val baixasRecentes = resultados.take(6).count { it < 2.0 }
+        val baixasRecentes = janela.count { it < 2.0 }
         val baixoAltoStatus = when {
-            baixaSeguidaMedia -> "EM FORMAÇÃO"
+            baixaSeguidaMedia -> "CRITÉRIO COMPLETO"
             baixasRecentes >= 2 -> "OBSERVAR"
             else -> "AGUARDAR"
         }
@@ -649,8 +694,7 @@ private fun atualizarPainelEstrategia() {
         val completos = estados.count { it == "CRITÉRIO COMPLETO" }
         val ativos = estados.count { it != "AGUARDAR" }
         val radarStatus = when {
-            completos == 3 -> "TRÊS CRITÉRIOS COMPLETOS"
-            completos > 0 -> "CRITÉRIO ATINGIDO — CONTINUE OBSERVANDO"
+            completos == 3 -> "FORMAÇÃO COMPLETA"
             ativos >= 2 -> "PADRÕES EM OBSERVAÇÃO"
             ativos == 1 -> "UM PADRÃO EM OBSERVAÇÃO"
             else -> "AGUARDANDO FORMAÇÃO"
@@ -667,11 +711,11 @@ private fun atualizarPainelEstrategia() {
             text = "$radarStatus\nCritérios completos: $completos/3  •  Módulos com sinais: $ativos/3"
             textSize = 13f
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(if (completos > 0) Color.rgb(255, 190, 95) else Color.WHITE)
+            setTextColor(if (completos == 3) Color.rgb(105, 220, 155) else Color.WHITE)
             setPadding(8, 3, 8, 8)
         })
         quadroPadroes.addView(TextView(this).apply {
-            text = "COMO LER: OBSERVAR = há um sinal inicial. EM FORMAÇÃO = parte do padrão apareceu. CRITÉRIO COMPLETO = todas as regras daquele módulo foram encontradas. Isso descreve o histórico, não prevê a próxima rodada."
+            text = "COMO LER: OBSERVAR = sinal inicial. EM FORMAÇÃO = parte do padrão apareceu. CRITÉRIO COMPLETO = todas as regras daquele módulo foram encontradas. A formação completa inicia a avaliação das próximas 5 rodadas."
             textSize = 11f
             setTextColor(Color.rgb(185, 198, 220))
             setPadding(8, 3, 8, 10)
@@ -710,24 +754,69 @@ private fun atualizarPainelEstrategia() {
             quadroPadroes.addView(cartaoModulo, margem())
         }
 
-        adicionarModulo(
-            "01 • CICLO ROSA",
-            "$rosas de 8 resultados entre 10x e 39,99x nas últimas 30 rodadas.",
-            rosasStatus,
-            if (rosas >= 8) "8/8" else "$rosas/8"
-        )
-        adicionarModulo(
-            "02 • ESPELHO DAS CASAS",
-            "$casasVistas de 6 posições analisadas (casas 2, 3, 4, 5, 9 e 13). Encontradas: $baixas baixas e $intermediarias intermediárias.",
-            espelhoStatus,
-            "$casasVistas/6 posições"
-        )
-        adicionarModulo(
-            "03 • QUEBRA DE BAIXAS",
-            "Nas últimas 6 rodadas: $baixasRecentes abaixo de 2x. Procura uma baixa seguida de resultado entre 3x e 5,99x.",
-            baixoAltoStatus,
-            if (baixaSeguidaMedia) "sequência encontrada" else "$baixasRecentes baixas recentes"
-        )
+        adicionarModulo("01 • CICLO ROSA", "$rosas de 8 resultados entre 10x e 39,99x nas últimas 30 rodadas.", rosasStatus, "$rosas/8")
+        adicionarModulo("02 • ESPELHO DAS CASAS", "$casasVistas de 6 posições analisadas (casas 2, 3, 4, 5, 9 e 13). Encontradas: $baixas baixas e $intermediarias intermediárias.", espelhoStatus, "$casasVistas/6 posições")
+        adicionarModulo("03 • QUEBRA DE BAIXAS", "Nas últimas 6 rodadas: $baixasRecentes abaixo de 2x. Procura baixa seguida de resultado entre 3x e 5,99x.", baixoAltoStatus, if (baixaSeguidaMedia) "sequência encontrada" else "$baixasRecentes baixas recentes")
+
+        // Backtest cronológico: só considera formações completas e as cinco rodadas posteriores.
+        var sinais = 0
+        var acertos = 0
+        var janelasBase = 0
+        var acertosBase = 0
+        var estavaCompleta = false
+        for (i in cronologico.indices) {
+            val prefixo = cronologico.take(i + 1)
+            val completaAgora = formacaoCompleta(prefixo)
+            if (i + 5 < cronologico.size) {
+                janelasBase++
+                if (cronologico.subList(i + 1, i + 6).any { it >= 10.0 }) acertosBase++
+                if (completaAgora && !estavaCompleta) {
+                    sinais++
+                    if (cronologico.subList(i + 1, i + 6).any { it >= 10.0 }) acertos++
+                }
+            }
+            estavaCompleta = completaAgora
+        }
+        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
+        val monitorando = prefs.getBoolean("radar10x_ativo", false)
+        val restantes = prefs.getInt("radar10x_restantes", 5)
+        val acertosAoVivo = prefs.getInt("radar10x_acertos", 0)
+        val concluidos = prefs.getInt("radar10x_concluidos", 0)
+        val ultimoAcerto = prefs.getInt("radar10x_ultimo_acerto", 0)
+        val taxaSinal = if (sinais > 0) String.format(Locale.US, "%.1f%%", acertos * 100.0 / sinais) else "Amostra insuficiente"
+        val taxaBase = if (janelasBase > 0) String.format(Locale.US, "%.1f%%", acertosBase * 100.0 / janelasBase) else "—"
+
+        quadroPadroes.addView(TextView(this).apply {
+            text = "AVALIAÇÃO DO OBJETIVO • 10x OU MAIS"
+            textSize = 14f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(255, 105, 190))
+            setPadding(8, 14, 8, 5)
+        })
+        val textoAoVivo = when {
+            monitorando -> "ACOMPANHAMENTO ATIVO: $restantes de 5 rodadas restantes • $acertosAoVivo resultado(s) 10x+ até agora."
+            concluidos > 0 -> "Última janela concluída: $ultimoAcerto resultado(s) 10x+ em 5 rodadas. Janelas ao vivo concluídas: $concluidos."
+            completos == 3 -> "Formação completa já presente no histórico. Aguardando uma nova formação para iniciar uma janela ao vivo."
+            else -> "Aguardando formação completa. Quando os três critérios forem atingidos, começa a contagem das próximas 5 rodadas."
+        }
+        quadroPadroes.addView(TextView(this).apply {
+            text = textoAoVivo
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            setPadding(8, 3, 8, 8)
+        })
+        quadroPadroes.addView(TextView(this).apply {
+            text = "HISTÓRICO: $acertos de $sinais formações tiveram pelo menos um 10x+ nas 5 rodadas seguintes ($taxaSinal). REFERÊNCIA: $acertosBase de $janelasBase janelas comuns tiveram 10x+ nas próximas 5 rodadas ($taxaBase)."
+            textSize = 12f
+            setTextColor(Color.rgb(205, 215, 232))
+            setPadding(8, 3, 8, 10)
+        })
+        quadroPadroes.addView(TextView(this).apply {
+            text = "A taxa histórica é descritiva, não uma probabilidade garantida. Formações podem se sobrepor e amostras pequenas oscilam bastante."
+            textSize = 10f
+            setTextColor(Color.rgb(165, 180, 205))
+            setPadding(8, 0, 8, 8)
+        })
     }
 
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
