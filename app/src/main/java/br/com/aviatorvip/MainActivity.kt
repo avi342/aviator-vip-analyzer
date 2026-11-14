@@ -600,57 +600,103 @@ private fun atualizarPainelEstrategia() {
         if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroDezX.removeAllViews()
-        val principais = listOf(2 to 2.0, 2 to 5.0, 3 to 2.0, 3 to 5.0)
-        val especiais = listOf(2 to 10.0, 3 to 10.0)
-        fun montar(destino: LinearLayout, itens: List<Pair<Int, Double>>, cor: Int) {
-            itens.forEachIndexed { indice, item ->
-                val tamanho = item.first
-                val alvo = item.second
-                val dados = medirPadrao(tamanho, alvo)
-                val ocorrencias = dados.first
-                val acertos = dados.second
-                val titulo = "PADRÃO DE " + tamanho + " RODADAS → PRÓXIMA > " + alvo.toInt() + "x"
-                val linha = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(6, 5, 6, 5) }
-                linha.addView(TextView(this).apply { text = titulo; textSize = 16f; setTypeface(null, android.graphics.Typeface.BOLD); setTextColor(cor) })
-                val detalheLinha = LinearLayout(this).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, 5, 0, 2)
-                }
-                if (resultados.size < tamanho) {
-                    detalheLinha.addView(TextView(this).apply {
-                        text = "Aguardando " + tamanho + " rodadas para iniciar a leitura"
-                        textSize = 14f
-                        setTextColor(Color.WHITE)
-                    }, LinearLayout.LayoutParams(-1, -2))
-                } else if (ocorrencias < 5) {
-                    detalheLinha.addView(TextView(this).apply {
-                        text = "Amostra insuficiente: " + ocorrencias + " ocorrências"
-                        textSize = 14f
-                        setTextColor(Color.WHITE)
-                    }, LinearLayout.LayoutParams(-1, -2))
-                } else {
-                    val percentual = String.format(Locale.US, "%.1f", acertos * 100.0 / ocorrencias) + "%"
-                    detalheLinha.addView(TextView(this).apply {
-                        text = acertos.toString() + " de " + ocorrencias
-                        textSize = 14f
-                        setTextColor(Color.WHITE)
-                    }, LinearLayout.LayoutParams(0, -2, 1f))
-                    detalheLinha.addView(TextView(this).apply {
-                        text = "Frequência: " + percentual
-                        textSize = 14f
-                        gravity = Gravity.END
-                        setTextColor(Color.WHITE)
-                    }, LinearLayout.LayoutParams(0, -2, 1f))
-                }
-                linha.addView(detalheLinha)
-                destino.addView(linha)
-                if (indice < itens.lastIndex) destino.addView(View(this).apply { setBackgroundColor(Color.rgb(45, 55, 75)) }, LinearLayout.LayoutParams(-1, 1))
+        quadroDezX.visibility = View.GONE
+
+        // resultados[0] é sempre a rodada mais recente.
+        val rosas = resultados.take(30).count { it >= 10.0 && it < 40.0 }
+        val rosasStatus = when {
+            rosas >= 8 -> "CRITÉRIO COMPLETO"
+            rosas >= 5 -> "EM FORMAÇÃO"
+            rosas >= 3 -> "SINAL INICIAL"
+            else -> "AGUARDANDO"
+        }
+
+        val ultimoDez = resultados.indexOfFirst { it >= 10.0 }
+        val casas = listOf(2, 3, 4, 5, 9, 13)
+        var casasVistas = 0
+        var baixas = 0
+        var intermediarias = 0
+        casas.forEach { casa ->
+            val indice = ultimoDez - casa
+            if (ultimoDez >= 0 && indice >= 0) {
+                casasVistas++
+                val valor = resultados[indice]
+                if (valor < 2.0) baixas++
+                else if (valor < 10.0) intermediarias++
             }
         }
-        montar(quadroPadroes, principais, Color.rgb(70, 195, 255))
-        montar(quadroDezX, especiais, Color.rgb(255, 75, 180))
-        // Texto explicativo removido para economizar espaço.
+        val espelhoStatus = when {
+            casasVistas == 6 && baixas >= 2 -> "CRITÉRIO COMPLETO"
+            baixas + intermediarias >= 2 -> "EM FORMAÇÃO"
+            casasVistas > 0 -> "SINAL INICIAL"
+            else -> "AGUARDANDO 10x+"
+        }
+
+        val limite = minOf(6, resultados.size)
+        val baixaSeguidaMedia = (0 until (limite - 1).coerceAtLeast(0)).any { i ->
+            resultados[i] in 3.0..5.99 && resultados[i + 1] < 2.0
+        }
+        val baixasRecentes = resultados.take(6).count { it < 2.0 }
+        val baixoAltoStatus = when {
+            baixaSeguidaMedia -> "SEQUÊNCIA OBSERVADA"
+            baixasRecentes >= 2 -> "BAIXAS RECENTES"
+            else -> "AGUARDANDO"
+        }
+
+        val completos = listOf(rosasStatus, espelhoStatus, baixoAltoStatus)
+            .count { it == "CRITÉRIO COMPLETO" || it == "SEQUÊNCIA OBSERVADA" }
+        val ativos = listOf(rosasStatus, espelhoStatus, baixoAltoStatus)
+            .count { it != "AGUARDANDO" && it != "AGUARDANDO 10x+" }
+        val radarStatus = when {
+            completos == 3 -> "FORMAÇÃO DOS 3 MÓDULOS"
+            ativos >= 2 -> "FORMAÇÃO PARCIAL"
+            ativos == 1 -> "MONITORANDO"
+            else -> "AGUARDANDO DADOS"
+        }
+
+        val tituloRadar = TextView(this).apply {
+            text = "RADAR DE FORMAÇÃO  •  $completos/3"
+            textSize = 16f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(Color.rgb(255, 105, 190))
+            setPadding(8, 10, 8, 4)
+        }
+        quadroPadroes.addView(tituloRadar)
+        quadroPadroes.addView(TextView(this).apply {
+            text = "$radarStatus\\n$ativos de 3 módulos com atividade. O radar identifica condições do histórico; não prevê a próxima rodada."
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            setPadding(8, 2, 8, 10)
+        })
+
+        fun adicionarModulo(nome: String, detalhe: String, estado: String, cor: Int) {
+            val cartaoModulo = TextView(this).apply {
+                text = "$nome\\n$detalhe\\n$estado"
+                textSize = 12f
+                setTextColor(Color.WHITE)
+                setPadding(12, 10, 12, 10)
+                background = cartao(Color.rgb(22, 30, 48))
+            }
+            quadroPadroes.addView(cartaoModulo, margem())
+        }
+        adicionarModulo(
+            "01 • CICLO ROSA",
+            "$rosas/8 resultados entre 10x e 39,99x nas últimas 30 rodadas",
+            rosasStatus,
+            Color.rgb(255, 105, 190)
+        )
+        adicionarModulo(
+            "02 • ESPELHO DAS CASAS",
+            "$casasVistas/6 casas analisadas • $baixas baixas • $intermediarias intermediárias",
+            espelhoStatus,
+            Color.rgb(105, 180, 255)
+        )
+        adicionarModulo(
+            "03 • QUEBRA DE BAIXAS",
+            "Últimas 6 rodadas: $baixasRecentes abaixo de 2x; procura baixa seguida de 3x a 5,99x",
+            baixoAltoStatus,
+            Color.rgb(190, 145, 255)
+        )
     }
 
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
