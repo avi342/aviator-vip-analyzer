@@ -175,16 +175,21 @@ private var primeiraLeituraOCR = true
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 11f
+            textSize = 10f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(4, 2, 4, 2)
+            setPadding(2, 2, 2, 2)
             contentDescription = "Relógio digital com horas, minutos e segundos"
         }
-        linhaStatus.addView(status, LinearLayout.LayoutParams(0, (30 * resources.displayMetrics.density).toInt(), 1f))
-        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams(-2, (30 * resources.displayMetrics.density).toInt()))
-        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, (30 * resources.displayMetrics.density).toInt()))
+        val alturaLinhaStatus = (30 * resources.displayMetrics.density).toInt()
+        linhaStatus.addView(status, LinearLayout.LayoutParams(0, alturaLinhaStatus, 1f))
+        // Coluna central com largura reservada e respiro antes do contador rosa.
+        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((72 * resources.displayMetrics.density).toInt(), alturaLinhaStatus).apply {
+            marginStart = (5 * resources.displayMetrics.density).toInt()
+            marginEnd = (9 * resources.displayMetrics.density).toInt()
+        })
+        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaLinhaStatus))
         tela.addView(linhaStatus)
 
 
@@ -532,7 +537,19 @@ private fun atualizarPainelVisual() {
             val minutos = ((System.currentTimeMillis() - instante).coerceAtLeast(0L) / 60000L)
             String.format(Locale.getDefault(), "%02d min", minutos)
         } else ""
-        contadorDezX.text = "Último 10x: ($casasDesdeDezX) $tempo"
+        val textoContador = "Último 10x: ($casasDesdeDezX) $tempo"
+        val inicioContagem = textoContador.indexOf('(')
+        val fimContagem = textoContador.indexOf(')', inicioContagem)
+        val textoColorido = android.text.SpannableString(textoContador)
+        if (inicioContagem >= 0 && fimContagem > inicioContagem) {
+            textoColorido.setSpan(
+                android.text.style.ForegroundColorSpan(Color.WHITE),
+                inicioContagem,
+                fimContagem + 1,
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        contadorDezX.text = textoColorido
     }
 
     private fun horarioAtual(): String {
