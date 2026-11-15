@@ -803,11 +803,12 @@ private fun atualizarPainelEstrategia() {
             Color.rgb(100, 205, 255), true))
         val indices = (0..5).filter { atual[it] }
         val coincidencia = indices.size >= 2
-        if (indices.isNotEmpty()) {
-            bloco.addView(linha(
-                if (coincidencia) "COINCIDÊNCIA: ${indices.size} GATILHOS" else "1 PADRÃO IDENTIFICADO",
-                15f, if (coincidencia) Color.rgb(255, 125, 195) else Color.WHITE, true))
-        }
+        bloco.addView(linha(
+            when {
+                coincidencia -> "COINCIDÊNCIA: ${indices.size} GATILHOS"
+                indices.size == 1 -> "1 PADRÃO IDENTIFICADO"
+                else -> "AGUARDANDO PADRÕES"
+            }, 15f, if (coincidencia) Color.rgb(255, 125, 195) else Color.WHITE, true))
         for (i in 0..5) {
             val taxa = if (totais[i] == 0) "sem histórico" else
                 "${acertos[i]}/${totais[i]} na próxima rodada (" +
