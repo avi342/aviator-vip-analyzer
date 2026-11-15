@@ -734,6 +734,14 @@ private fun atualizarPainelEstrategia() {
         val ocorrencias25 = contarOcorrenciasDuasRodadas()
         val acertos25 = contarAcertosDuasRodadas()
         val percentual25 = if (ocorrencias25 == 0) 0.0 else acertos25 * 100.0 / ocorrencias25
+        val cinza = Color.rgb(180,192,210)
+        fun txt(s: String, n: Float, cor: Int, bold: Boolean = false) = TextView(this).apply {
+            text = s
+            textSize = n
+            setTextColor(cor)
+            if (bold) setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(10, 3, 10, 3)
+        }
         val estado25 = when {
             ativo25 -> "POSSÍVEL ENTRADA DETECTADA"
             res25 == "SIM" -> "SIM"
