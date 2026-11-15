@@ -691,18 +691,7 @@ private fun atualizarPainelEstrategia() {
             res25 == "NÃO" -> "NÃO"
             else -> "AGUARDAR"
         }
-        val card25 = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(12, 10, 12, 10)
-            background = cartao(Color.rgb(12, 17, 29))
-            addView(txt("OBJETIVO 2x–5x", 14f, Color.rgb(85,175,255), true))
-            addView(txt(estado25, 15f, Color.WHITE, true))
-            addView(txt(if (ativo25) "Janela em andamento" else "Sequência das duas últimas rodadas", 11f, Color.rgb(180,192,210)))
-            addView(txt(if (ativo25) "${5-restante25}/5 rodadas • $acerto25 acerto(s)" else
-                "${ocorrencias25} ocorrências • ${String.format(Locale.US, "%.1f", percentual25)}% entre 2x e 5x",
-                10f, Color.rgb(85,175,255), true))
-        }
-        quadroPadroes.addView(card25, margem())
+        // Exibe somente os seis gatilhos para economizar espaço na tela dividida.
         adicionarPainelVipSeisGatilhos(quadroPadroes)
 
     }
@@ -768,16 +757,6 @@ private fun atualizarPainelEstrategia() {
             setPadding(8, 8, 8, 8)
             background = cartao(Color.rgb(12, 17, 29))
         }
-        bloco.addView(linha("VIP • 6 GATILHOS | ANÁLISE EXPERIMENTAL", 13f,
-            Color.rgb(100, 205, 255), true))
-        val indices = (0..5).filter { atual[it] }
-        val coincidencia = indices.size >= 2
-        bloco.addView(linha(
-            when {
-                coincidencia -> "COINCIDÊNCIA: ${indices.size} GATILHOS"
-                indices.size == 1 -> "1 PADRÃO IDENTIFICADO"
-                else -> "AGUARDANDO PADRÕES"
-            }, 15f, if (coincidencia) Color.rgb(255, 125, 195) else Color.WHITE, true))
         for (i in 0..5) {
             val taxa = if (totais[i] == 0) "sem histórico" else
                 "${acertos[i]}/${totais[i]} na próxima rodada (" +
