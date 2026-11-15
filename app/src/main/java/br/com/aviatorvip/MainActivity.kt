@@ -691,18 +691,20 @@ private fun atualizarPainelEstrategia() {
             res25 == "NÃO" -> "NÃO"
             else -> "AGUARDAR"
         }
-        // Mantém o radar 2x–5x funcionando, ocultando apenas o título do objetivo.
+        // Radar 2x–5x permanece ativo, exibido em uma única linha compacta.
         val card25 = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(12, 8, 12, 8)
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(5, 1, 5, 1)
             background = cartao(Color.rgb(12, 17, 29))
-            addView(txt(estado25, 15f, Color.WHITE, true))
-            addView(txt(if (ativo25) "Janela em andamento" else "Sequência das duas últimas rodadas", 11f, Color.rgb(180,192,210)))
-            addView(txt(if (ativo25) "${5-restante25}/5 rodadas • $acerto25 acerto(s)" else
-                "${ocorrencias25} ocorrências • ${String.format(Locale.US, "%.1f", percentual25)}% entre 2x e 5x",
-                10f, Color.rgb(85,175,255), true))
+            val resumo = if (ativo25) "${5-restante25}/5 casas • $acerto25 acerto(s)" else
+                "${ocorrencias25} ocorr. • ${String.format(Locale.US, "%.1f", percentual25)}%"
+            addView(txt(estado25, 10f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1.15f))
+            addView(txt(resumo, 9f, Color.rgb(85,175,255), true), LinearLayout.LayoutParams(0, -2, 1f))
         }
-        quadroPadroes.addView(card25, margem())
+        quadroPadroes.addView(card25, LinearLayout.LayoutParams(-1, (25 * resources.displayMetrics.density).toInt()).apply {
+            bottomMargin = (2 * resources.displayMetrics.density).toInt()
+        })
         adicionarPainelVipSeisGatilhos(quadroPadroes)
 
     }
@@ -755,30 +757,57 @@ private fun atualizarPainelEstrategia() {
                 if (serie[fim + 1] in 2.0..5.0) acertos[i]++
             }
         }
-        fun linha(t: String, tamanho: Float, cor: Int, negrito: Boolean = false): TextView =
-            TextView(this).apply {
-                text = t
-                textSize = tamanho
-                setTextColor(cor)
-                if (negrito) setTypeface(null, android.graphics.Typeface.BOLD)
-                setPadding(9, 5, 9, 5)
-            }
         val bloco = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(8, 8, 8, 8)
-            background = cartao(Color.rgb(12, 17, 29))
+            setPadding(1, 0, 1, 0)
+            setBackgroundColor(Color.BLACK)
         }
         for (i in 0..5) {
-            val taxa = if (totais[i] == 0) "sem histórico" else
-                "${acertos[i]}/${totais[i]} na próxima rodada (" +
-                String.format(Locale.US, "%.1f", 100.0 * acertos[i] / totais[i]) + "%)"
-            val estado = if (atual[i]) "PADRÃO IDENTIFICADO" else "SEM PADRÃO"
-            bloco.addView(linha("${i + 1}. ${nomes[i]}", 11f, Color.LTGRAY, true))
-            bloco.addView(linha(estado, 15f,
-                if (atual[i]) Color.rgb(120, 210, 255) else Color.WHITE, true))
-            bloco.addView(linha(taxa, 10f, Color.LTGRAY))
+            val taxa = if (totais[i] == 0) "0/0" else
+                "${acertos[i]}/${totais[i]} • " +
+                String.format(Locale.US, "%.0f", 100.0 * acertos[i] / totais[i]) + "%"
+            val estado = if (atual[i]) "SIM" else "AGUARDAR"
+            val linha = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(5, 0, 5, 0)
+                background = cartao(Color.rgb(12, 17, 29))
+            }
+            val nome = TextView(this).apply {
+                text = "${i + 1}. ${nomes[i]}"
+                textSize = 10f
+                maxLines = 1
+                isSingleLine = true
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(Color.LTGRAY)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(2, 0, 2, 0)
+            }
+            val sinal = TextView(this).apply {
+                text = estado
+                textSize = 9f
+                maxLines = 1
+                isSingleLine = true
+                gravity = Gravity.CENTER
+                setTextColor(if (atual[i]) Color.rgb(120, 210, 255) else Color.WHITE)
+                setTypeface(null, android.graphics.Typeface.BOLD)
+            }
+            val historico = TextView(this).apply {
+                text = taxa
+                textSize = 9f
+                maxLines = 1
+                isSingleLine = true
+                gravity = Gravity.END
+                setTextColor(Color.LTGRAY)
+            }
+            linha.addView(nome, LinearLayout.LayoutParams(0, -1, 2.3f))
+            linha.addView(sinal, LinearLayout.LayoutParams(0, -1, 1f))
+            linha.addView(historico, LinearLayout.LayoutParams(0, -1, 0.8f))
+            bloco.addView(linha, LinearLayout.LayoutParams(-1, (24 * resources.displayMetrics.density).toInt()).apply {
+                bottomMargin = (1 * resources.displayMetrics.density).toInt()
+            })
         }
-        destino.addView(bloco, margem())
+        destino.addView(bloco, LinearLayout.LayoutParams(-1, -2))
     }
 
     private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
