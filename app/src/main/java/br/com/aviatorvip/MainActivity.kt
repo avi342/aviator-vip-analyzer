@@ -503,11 +503,11 @@ private fun atualizarPainelVisual() {
     }
 
     private fun contarAcertosDuasRodadas(): Int {
-        if (resultados.size < 4) return 0
+        if (resultados.size < 5) return 0
         val atualAntiga = categoria(resultados[1])
         val atualRecente = categoria(resultados[0])
         var acertos = 0
-        for (alvo in 1 until resultados.size - 2) {
+        for (alvo in 2 until resultados.size - 2) {
             if (categoria(resultados[alvo + 1]) == atualRecente &&
                 categoria(resultados[alvo + 2]) == atualAntiga &&
                 resultados[alvo] in 2.0..5.0) {
