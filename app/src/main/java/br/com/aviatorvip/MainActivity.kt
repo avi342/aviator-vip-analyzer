@@ -29,11 +29,6 @@ private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
     private lateinit var painelEstatisticas: TextView
     private lateinit var quadroPadroes: LinearLayout
-    private lateinit var quadroValidador: LinearLayout
-    private val padraoManual = mutableListOf<Int>()
-    private var quantidadeGales = 2
-    private lateinit var campoAlvoValidador: EditText
-    private lateinit var textoPadraoManual: TextView
     private lateinit var quadroDetalhes: LinearLayout
     private lateinit var botaoDetalhes: Button
     private var detalhesExpandidos = false
@@ -254,29 +249,6 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroPadroes, margem())
-        quadroValidador = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(10,10,10,10); background = cartao(Color.rgb(20,29,47)) }
-        quadroValidador.addView(TextView(this).apply { text="AUTO VALIDADOR"; textSize=15f; setTextColor(Color.WHITE); setTypeface(null,android.graphics.Typeface.BOLD) })
-        quadroValidador.addView(TextView(this).apply { text="Monte padrões e confira vitórias e derrotas no histórico"; textSize=10f; setTextColor(Color.LTGRAY) })
-        textoPadraoManual = TextView(this).apply { text="Seu padrão: ainda vazio"; textSize=13f; setTextColor(Color.WHITE); setPadding(0,8,0,8) }
-        quadroValidador.addView(textoPadraoManual)
-        val linhaCores = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
-        fun botaoCor(nome:String,id:Int,cor:Int) { val b=Button(this).apply { text=nome;textSize=10f;isAllCaps=false;setTextColor(Color.WHITE);background=cartao(cor);setOnClickListener { if(padraoManual.size<8)padraoManual.add(id);atualizarValidador() } };linhaCores.addView(b,LinearLayout.LayoutParams(0,(38*resources.displayMetrics.density).toInt(),1f).apply{marginEnd=4}) }
-        botaoCor("AZUL",0,Color.rgb(30,145,220));botaoCor("ROXO",1,Color.rgb(112,65,190));botaoCor("ROSA",2,Color.rgb(215,55,145))
-        quadroValidador.addView(linhaCores)
-        val linhaConfig=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-        campoAlvoValidador=EditText(this).apply{setText("2");hint="Alvo x";inputType=android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;textSize=12f;setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY);setSingleLine(true);addTextChangedListener(object:android.text.TextWatcher{override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){};override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){if(::quadroValidador.isInitialized)atualizarValidador()};override fun afterTextChanged(s:android.text.Editable?){} })}
-        linhaConfig.addView(campoAlvoValidador,LinearLayout.LayoutParams(0,(44*resources.displayMetrics.density).toInt(),1f))
-        val labelGales=TextView(this).apply{text="Gales: 2";textSize=12f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setPadding(8,0,8,0)}
-        linhaConfig.addView(Button(this).apply{text="−";setOnClickListener{quantidadeGales=(quantidadeGales-1).coerceAtLeast(0);labelGales.text="Gales: $quantidadeGales";atualizarValidador()}})
-        linhaConfig.addView(labelGales)
-        linhaConfig.addView(Button(this).apply{text="+";setOnClickListener{quantidadeGales=(quantidadeGales+1).coerceAtMost(5);labelGales.text="Gales: $quantidadeGales";atualizarValidador()}})
-        quadroValidador.addView(linhaConfig)
-        val acoes=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-        acoes.addView(Button(this).apply{text="DESFAZER";isAllCaps=false;setOnClickListener{if(padraoManual.isNotEmpty())padraoManual.removeAt(padraoManual.lastIndex);atualizarValidador()}},LinearLayout.LayoutParams(0,-2,1f))
-        acoes.addView(Button(this).apply{text="LIMPAR";isAllCaps=false;setOnClickListener{padraoManual.clear();atualizarValidador()}},LinearLayout.LayoutParams(0,-2,1f))
-        quadroValidador.addView(acoes)
-        tela.addView(quadroValidador,margem())
-
         quadroDetalhes = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(2, 2, 2, 2)
@@ -342,7 +314,6 @@ private var primeiraLeituraOCR = true
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
-        atualizarValidador()
     }
 
     private fun solicitarCaptura() {
@@ -912,27 +883,6 @@ private fun atualizarPainelEstrategia() {
         }
         return candidatos.sortedWith(compareByDescending<Pair<List<Int>,EstatisticaPadrao>>{it.second.percentual}.thenByDescending{it.second.ocorrencias}).take(5)
     }
-    private fun atualizarValidador() {
-        if(!::quadroValidador.isInitialized)return
-        val alvo=campoAlvoValidador.text.toString().replace(",",".").toDoubleOrNull()?.coerceAtLeast(1.01)?:2.0
-        val serie=resultados.asReversed().takeLast(2000)
-        textoPadraoManual.text=if(padraoManual.isEmpty())"Seu padrão: toque nas cores para montar" else "Seu padrão: "+padraoManual.joinToString(" → "){nomeCor(it)}
-        while(quadroValidador.childCount>6)quadroValidador.removeViewAt(6)
-        if(padraoManual.isNotEmpty()){
-            val s=estatisticaPadrao(serie,padraoManual,alvo,quantidadeGales)
-            val derrota=if(s.ocorrencias==0)0.0 else s.derrotas*100.0/s.ocorrencias
-            quadroValidador.addView(TextView(this).apply{text="Ocorrências: ${s.ocorrencias} • Vitórias: ${s.vitorias} (${String.format(Locale.US,"%.1f",s.percentual)}%) • Derrotas: ${s.derrotas} (${String.format(Locale.US,"%.1f",derrota)}%)";textSize=11f;setTextColor(Color.WHITE);setPadding(0,6,0,4)})
-            quadroValidador.addView(TextView(this).apply{text="Sem gale: ${s.semGale} • "+s.porGale.mapIndexed{i,v->"Gale $i: $v"}.joinToString(" • ")+"\\nMaior sequência de vitórias: ${s.maiorSequencia}";textSize=10f;setTextColor(Color.rgb(180,205,230));setPadding(0,2,0,6)})
-        }else quadroValidador.addView(TextView(this).apply{text="Monte uma sequência para validar.";textSize=11f;setTextColor(Color.LTGRAY);setPadding(0,6,0,4)})
-        quadroValidador.addView(TextView(this).apply{text="PADRÕES DESCOBERTOS AUTOMATICAMENTE";textSize=11f;setTextColor(Color.rgb(100,205,255));setTypeface(null,android.graphics.Typeface.BOLD);setPadding(0,8,0,4)})
-        val achados=descobrirPadroes(serie,alvo,quantidadeGales)
-        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<50)"Aguardando 50 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=10f;setTextColor(Color.LTGRAY)})
-        else achados.forEachIndexed{idx,item->
-            val(padrao,s)=item
-            quadroValidador.addView(TextView(this).apply{text="${idx+1}. "+padrao.joinToString(" → "){nomeCor(it)}+"\\n${s.percentual.toInt()}% • ${s.vitorias}/${s.ocorrencias} vitórias • ${s.derrotas} derrotas";textSize=11f;setTextColor(Color.WHITE);setPadding(8,6,8,6);background=cartao(Color.rgb(29,38,57));setOnClickListener{padraoManual.clear();padraoManual.addAll(padrao);atualizarValidador()}},margem())
-        }
-    }
-
     private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
         if (resultados.size <= tamanho) return 0 to 0
         val padraoAtual = (tamanho - 1 downTo 0).map { categoria(resultados[it]) }
