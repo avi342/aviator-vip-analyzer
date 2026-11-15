@@ -264,7 +264,7 @@ private var primeiraLeituraOCR = true
         botaoCor("AZUL",0,Color.rgb(30,145,220));botaoCor("ROXO",1,Color.rgb(112,65,190));botaoCor("ROSA",2,Color.rgb(215,55,145))
         quadroValidador.addView(linhaCores)
         val linhaConfig=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-        campoAlvoValidador=EditText(this).apply{setText("2");hint="Alvo x";inputType=android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;textSize=12f;setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY);setSingleLine(true)}
+        campoAlvoValidador=EditText(this).apply{setText("2");hint="Alvo x";inputType=android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;textSize=12f;setTextColor(Color.WHITE);setHintTextColor(Color.LTGRAY);setSingleLine(true);addTextChangedListener(object:android.text.TextWatcher{override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){};override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){if(::quadroValidador.isInitialized)atualizarValidador()};override fun afterTextChanged(s:android.text.Editable?){} })}
         linhaConfig.addView(campoAlvoValidador,LinearLayout.LayoutParams(0,(44*resources.displayMetrics.density).toInt(),1f))
         val labelGales=TextView(this).apply{text="Gales: 2";textSize=12f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setPadding(8,0,8,0)}
         linhaConfig.addView(Button(this).apply{text="−";setOnClickListener{quantidadeGales=(quantidadeGales-1).coerceAtLeast(0);labelGales.text="Gales: $quantidadeGales";atualizarValidador()}})
@@ -759,7 +759,7 @@ private fun atualizarPainelEstrategia() {
         var total=0;var vitorias=0;var semGale=0;val porGale=MutableList(gales+1){0};val sinais=mutableListOf<Boolean>()
         for(inicio in 0..(serie.size-padrao.size-1)){
             var igual=true
-            for(k in padrao.indices)if(categoria(serie[inicio+k])!=padrao[k]){igual=false;break}
+            for(k in padrao.indices)if(categoriaValidador(serie[inicio+k])!=padrao[k]){igual=false;break}
             if(!igual)continue
             total++;var nivel=-1
             for(g in 0..gales){val idx=inicio+padrao.size+g;if(idx<serie.size&&serie[idx]>=alvo){nivel=g;break}}
@@ -770,6 +770,7 @@ private fun atualizarPainelEstrategia() {
         sinais.forEach{if(it){atual++;maior=maxOf(maior,atual)}else atual=0}
         return EstatisticaPadrao(total,vitorias,total-vitorias,semGale,porGale,maior)
     }
+    private fun categoriaValidador(v:Double):Int=when{v<2.0->0;v<10.0->1;else->2}
     private fun nomeCor(id:Int)=when(id){0->"AZUL";1->"ROXO";else->"ROSA"}
     private fun descobrirPadroes(serie:List<Double>,alvo:Double,gales:Int):List<Pair<List<Int>,EstatisticaPadrao>> {
         if(serie.size<80)return emptyList()
@@ -792,7 +793,7 @@ private fun atualizarPainelEstrategia() {
         val alvo=campoAlvoValidador.text.toString().replace(",",".").toDoubleOrNull()?.coerceAtLeast(1.01)?:2.0
         val serie=resultados.asReversed().takeLast(2000)
         textoPadraoManual.text=if(padraoManual.isEmpty())"Seu padrão: toque nas cores para montar" else "Seu padrão: "+padraoManual.joinToString(" → "){nomeCor(it)}
-        while(quadroValidador.childCount>5)quadroValidador.removeViewAt(5)
+        while(quadroValidador.childCount>6)quadroValidador.removeViewAt(6)
         if(padraoManual.isNotEmpty()){
             val s=estatisticaPadrao(serie,padraoManual,alvo,quantidadeGales)
             val derrota=if(s.ocorrencias==0)0.0 else s.derrotas*100.0/s.ocorrencias
