@@ -687,30 +687,30 @@ private fun atualizarPainelEstrategia() {
         val base = cronologico.dropLast(1)
         val objetivos = listOf(Triple("10",10.0,null as Double?),Triple("25",2.0,5.0 as Double?))
         objetivos.forEach { (id,minimo,maximo) ->
-            val chaveAtivo = "radar\${id}x_ativo"
+            val chaveAtivo = "radar" + id + "x_ativo"
             val ativo = prefs.getBoolean(chaveAtivo,false)
             if (ativo) {
-                val restantes=(prefs.getInt("radar\${id}x_restantes",5)-1).coerceAtLeast(0)
+                val restantes=(prefs.getInt("radar" + id + "x_restantes",5)-1).coerceAtLeast(0)
                 val acertou=valor>=minimo&&(maximo==null||valor<=maximo)
-                val acertos=prefs.getInt("radar\${id}x_acertos",0)+if(acertou)1 else 0
-                val editor=prefs.edit().putInt("radar\${id}x_restantes",restantes).putInt("radar\${id}x_acertos",acertos).putBoolean(chaveAtivo,restantes>0)
-                if(restantes==0){editor.putString("radar\${id}x_resultado",if(acertos>0)"SIM" else "NÃO");editor.putInt("radar\${id}x_ultimo_fim",resultados.size)}
-                else editor.putString("radar\${id}x_resultado","AVALIANDO")
+                val acertos=prefs.getInt("radar" + id + "x_acertos",0)+if(acertou)1 else 0
+                val editor=prefs.edit().putInt("radar" + id + "x_restantes",restantes).putInt("radar" + id + "x_acertos",acertos).putBoolean(chaveAtivo,restantes>0)
+                if(restantes==0){editor.putString("radar" + id + "x_resultado",if(acertos>0)"SIM" else "NÃO");editor.putInt("radar" + id + "x_ultimo_fim",resultados.size)}
+                else editor.putString("radar" + id + "x_resultado","AVALIANDO")
                 editor.apply()
                 return@forEach
             }
             val candidatos=descobrirPadroes(base,minimo,2,maximo)
-            val atual=base.takeLast(5).map{categoriaValidador(it)}
+            val atual=cronologico.takeLast(5).map{categoriaValidador(it)}
             val candidato=candidatos.firstOrNull{(padrao,stats)->padrao.size<=atual.size&&atual.takeLast(padrao.size)==padrao&&stats.ocorrencias>=4&&stats.percentual>=55.0}
-            val ultimoGatilho=prefs.getInt("radar\${id}x_ultimo_gatilho",-1)
+            val ultimoGatilho=prefs.getInt("radar" + id + "x_ultimo_gatilho",-1)
             if(candidato!=null&&ultimoGatilho!=resultados.size){
                 val(padrao,stats)=candidato
-                prefs.edit().putBoolean(chaveAtivo,true).putInt("radar\${id}x_restantes",5).putInt("radar\${id}x_acertos",0)
-                    .putString("radar\${id}x_resultado","AVALIANDO").putInt("radar\${id}x_matches",stats.ocorrencias)
-                    .putInt("radar\${id}x_hits",stats.vitorias).putInt("radar\${id}x_bloco",padrao.size)
-                    .putInt("radar\${id}x_ultimo_gatilho",resultados.size).apply()
+                prefs.edit().putBoolean(chaveAtivo,true).putInt("radar" + id + "x_restantes",5).putInt("radar" + id + "x_acertos",0)
+                    .putString("radar" + id + "x_resultado","AVALIANDO").putInt("radar" + id + "x_matches",stats.ocorrencias)
+                    .putInt("radar" + id + "x_hits",stats.vitorias).putInt("radar" + id + "x_bloco",padrao.size)
+                    .putInt("radar" + id + "x_ultimo_gatilho",resultados.size).apply()
             }else if(ultimoGatilho!=resultados.size){
-                prefs.edit().putString("radar\${id}x_resultado","AGUARDANDO").apply()
+                prefs.edit().putString("radar" + id + "x_resultado","AGUARDANDO").apply()
             }
         }
     }
@@ -741,11 +741,11 @@ private fun atualizarPainelEstrategia() {
             val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,14f,cor,true)); addView(txt(estado,21f,Color.WHITE,true)); addView(txt(detalhe,11f,cinza)); addView(txt(linha,10f,cor,true)) }
             quadroPadroes.addView(box,margem())
         }
-        val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; completos==3->"FORMAÇÃO"; sinais>0->"OBSERVAR"; else->"AGUARDAR" }
+        val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 10x+",rosa,estado10,if(ativo10)"Janela em andamento" else "$completos/3 critérios completos",if(ativo10)"${5-restante10}/5 rodadas • $acerto10 acerto(s)" else "Ciclo rosa $rosas/8 • casas ${valoresCasas.size}/6")
         val qtd25=ultimas30.count { it in 2.0..5.0 }
-        val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; qtd25>=5->"OBSERVAR"; else->"AGUARDAR" }
-        radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "$qtd25 resultados nas últimas 30")
+        val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
+        radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",11f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",10f,cinza))
         quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
