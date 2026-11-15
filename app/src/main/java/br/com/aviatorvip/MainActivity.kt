@@ -788,9 +788,6 @@ private fun atualizarPainelEstrategia() {
                 if (atual[i]) Color.rgb(120, 210, 255) else Color.WHITE, true))
             bloco.addView(linha(taxa, 10f, Color.LTGRAY))
         }
-        bloco.addView(linha("Coincidência é destaque visual, não aumenta necessariamente a chance de acerto. " +
-            "As taxas são retrospectivas, sem validação prospectiva. Alvo observado: 2x a 5x na rodada seguinte; nenhum sinal garante entrada.",
-            9f, Color.LTGRAY))
         destino.addView(bloco, margem())
     }
 
