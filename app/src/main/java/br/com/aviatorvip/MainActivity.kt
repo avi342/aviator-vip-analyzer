@@ -18,6 +18,7 @@ import java.util.Locale
 import java.text.SimpleDateFormat
 import java.util.Date
 
+// UI cleanup: the Auto Validator panel and its controls are intentionally removed.
 class MainActivity : Activity() {
 
     private lateinit var status: TextView
