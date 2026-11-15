@@ -489,11 +489,11 @@ private fun atualizarPainelVisual() {
     // compara as categorias das duas últimas rodadas com ocorrências históricas
     // e considera acerto somente quando a rodada seguinte ficou entre 2x e 5x.
     private fun contarOcorrenciasDuasRodadas(): Int {
-        if (resultados.size < 4) return 0
+        if (resultados.size < 5) return 0
         val atualAntiga = categoria(resultados[1])
         val atualRecente = categoria(resultados[0])
         var total = 0
-        for (alvo in 1 until resultados.size - 2) {
+        for (alvo in 2 until resultados.size - 2) {
             if (categoria(resultados[alvo + 1]) == atualRecente &&
                 categoria(resultados[alvo + 2]) == atualAntiga) {
                 total++
