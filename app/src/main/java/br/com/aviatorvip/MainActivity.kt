@@ -30,9 +30,6 @@ private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
     private lateinit var painelEstatisticas: TextView
     private lateinit var quadroPadroes: LinearLayout
-    private lateinit var quadroDetalhes: LinearLayout
-    private lateinit var botaoDetalhes: Button
-    private var detalhesExpandidos = false
     private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
@@ -250,29 +247,6 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroPadroes, margem())
-        quadroDetalhes = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(2, 2, 2, 2)
-            setBackgroundColor(Color.BLACK)
-            visibility = View.GONE
-        }
-        tela.addView(quadroDetalhes, margem())
-
-        botaoDetalhes = Button(this).apply {
-            text = "＋ VER ANÁLISES DETALHADAS"
-            textSize = 10f
-            isAllCaps = false
-            setTextColor(Color.WHITE)
-            setPadding(8, 2, 8, 2)
-            background = cartao(Color.rgb(25, 31, 49))
-            setOnClickListener {
-                detalhesExpandidos = !detalhesExpandidos
-                quadroDetalhes.visibility = if (detalhesExpandidos) View.VISIBLE else View.GONE
-                text = if (detalhesExpandidos) "− OCULTAR ANÁLISES DETALHADAS" else "＋ VER ANÁLISES DETALHADAS"
-            }
-        }
-        tela.addView(botaoDetalhes, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 5 })
-
         // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -712,8 +686,8 @@ private fun atualizarPainelEstrategia() {
     }
 
     private fun atualizarBibliotecaPadroes() {
-        if (!::quadroPadroes.isInitialized || !::quadroDetalhes.isInitialized || !::quadroDezX.isInitialized) return
-        quadroPadroes.removeAllViews(); quadroDetalhes.removeAllViews(); quadroDezX.removeAllViews(); quadroDezX.visibility = View.GONE
+        if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
+        quadroPadroes.removeAllViews(); quadroDezX.removeAllViews(); quadroDezX.visibility = View.GONE
         val cronologico = resultados.asReversed()
         val ultimas30 = cronologico.takeLast(30)
         val rosas = ultimas30.count { it >= 10.0 && it < 40.0 }
@@ -751,7 +725,7 @@ private fun atualizarPainelEstrategia() {
         val card25 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(12, 10, 12, 10)
-            background = cartao(Color.rgb(20, 27, 43))
+            background = cartao(Color.rgb(12, 17, 29))
             addView(txt("OBJETIVO 2x–5x", 14f, Color.rgb(85,175,255), true))
             addView(txt(estado25, 15f, Color.WHITE, true))
             addView(txt(if (ativo25) "Janela em andamento" else "Sequência das duas últimas rodadas", 11f, Color.rgb(180,192,210)))
@@ -761,12 +735,7 @@ private fun atualizarPainelEstrategia() {
         }
         quadroPadroes.addView(card25, margem())
         adicionarPainelVipSeisGatilhos(quadroPadroes)
-        quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
-        quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",11f,cinza))
-        quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",11f,cinza))
-        quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",11f,cinza))
-        botaoDetalhes.text=if(detalhesExpandidos)"− DETALHES" else "＋ DETALHES"
-        quadroDetalhes.visibility=if(detalhesExpandidos)View.VISIBLE else View.GONE
+
     }
 
 
@@ -828,18 +797,17 @@ private fun atualizarPainelEstrategia() {
         val bloco = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(8, 8, 8, 8)
-            background = cartao(Color.rgb(18, 24, 40))
+            background = cartao(Color.rgb(12, 17, 29))
         }
         bloco.addView(linha("VIP • 6 GATILHOS | ANÁLISE EXPERIMENTAL", 13f,
             Color.rgb(100, 205, 255), true))
         val indices = (0..5).filter { atual[it] }
         val coincidencia = indices.size >= 2
-        bloco.addView(linha(
-            when {
-                coincidencia -> "COINCIDÊNCIA: ${indices.size} GATILHOS"
-                indices.size == 1 -> "1 PADRÃO IDENTIFICADO"
-                else -> "AGUARDANDO PADRÕES"
-            }, 15f, if (coincidencia) Color.rgb(255, 125, 195) else Color.WHITE, true))
+        if (indices.isNotEmpty()) {
+            bloco.addView(linha(
+                if (coincidencia) "COINCIDÊNCIA: ${indices.size} GATILHOS" else "1 PADRÃO IDENTIFICADO",
+                15f, if (coincidencia) Color.rgb(255, 125, 195) else Color.WHITE, true))
+        }
         for (i in 0..5) {
             val taxa = if (totais[i] == 0) "sem histórico" else
                 "${acertos[i]}/${totais[i]} na próxima rodada (" +
