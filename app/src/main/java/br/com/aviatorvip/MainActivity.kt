@@ -89,37 +89,6 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.BLACK)
         }
 
-        val topo = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(2, 2, 2, 2)
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(28, 35, 65), Color.rgb(65, 24, 75), Color.rgb(24, 35, 65))
-            ).apply {
-                cornerRadius = 12f
-                setStroke(1, Color.rgb(190, 55, 150))
-            }
-        }
-        val titulo = TextView(this).apply {
-            text = "AVIATOR VIP"
-            textSize = 10f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.08f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(255, 90, 185))
-        }
-        val subtitulo = TextView(this).apply {
-            text = "ANALYZER  •  PAINEL INTELIGENTE"
-            textSize = 6f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.02f
-            setTextColor(Color.rgb(190, 205, 230))
-        }
-        topo.addView(titulo)
-        topo.addView(subtitulo)
-        tela.addView(topo, margem())
-
         val controlesCaptura = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
