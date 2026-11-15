@@ -684,28 +684,33 @@ private fun atualizarPainelEstrategia() {
     private fun atualizarMonitoramento10x(valor: Double) {
         val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
         val cronologico = resultados.asReversed()
-        // O resultado recém-registrado fica fora do bloco de comparação; ele pertence à janela de avaliação.
         val base = cronologico.dropLast(1)
-        val sinais = listOf(
-            Triple("10", buscarPadraoAtual(base) { it >= 10.0 }, valor >= 10.0),
-            Triple("25", buscarPadraoAtual(base) { it in 2.0..5.0 }, valor in 2.0..5.0)
-        )
-        sinais.forEach { (id, padrao, acertou) ->
-            val chaveAtivo = "radar${id}x_ativo"
-            val ativo = prefs.getBoolean(chaveAtivo, false)
+        val objetivos = listOf(Triple("10",10.0,null as Double?),Triple("25",2.0,5.0 as Double?))
+        objetivos.forEach { (id,minimo,maximo) ->
+            val chaveAtivo = "radar\${id}x_ativo"
+            val ativo = prefs.getBoolean(chaveAtivo,false)
             if (ativo) {
-                val restantes = (prefs.getInt("radar${id}x_restantes", 5) - 1).coerceAtLeast(0)
-                val acertos = prefs.getInt("radar${id}x_acertos", 0) + if (acertou) 1 else 0
-                val editor = prefs.edit().putInt("radar${id}x_restantes", restantes).putInt("radar${id}x_acertos", acertos)
-                    .putBoolean(chaveAtivo, restantes > 0)
-                if (restantes == 0) editor.putString("radar${id}x_resultado", if (acertos > 0) "SIM" else "NÃO")
-                else editor.putString("radar${id}x_resultado", "AVALIANDO")
+                val restantes=(prefs.getInt("radar\${id}x_restantes",5)-1).coerceAtLeast(0)
+                val acertou=valor>=minimo&&(maximo==null||valor<=maximo)
+                val acertos=prefs.getInt("radar\${id}x_acertos",0)+if(acertou)1 else 0
+                val editor=prefs.edit().putInt("radar\${id}x_restantes",restantes).putInt("radar\${id}x_acertos",acertos).putBoolean(chaveAtivo,restantes>0)
+                if(restantes==0){editor.putString("radar\${id}x_resultado",if(acertos>0)"SIM" else "NÃO");editor.putInt("radar\${id}x_ultimo_fim",resultados.size)}
+                else editor.putString("radar\${id}x_resultado","AVALIANDO")
                 editor.apply()
-            } else if (padrao.comparacoes >= 3 && padrao.sucessos.toDouble() / padrao.comparacoes >= 0.40) {
-                prefs.edit().putBoolean(chaveAtivo, true).putInt("radar${id}x_restantes", 5)
-                    .putInt("radar${id}x_acertos", 0).putString("radar${id}x_resultado", "AVALIANDO")
-                    .putInt("radar${id}x_matches", padrao.comparacoes).putInt("radar${id}x_hits", padrao.sucessos)
-                    .putInt("radar${id}x_bloco", padrao.tamanho).apply()
+                return@forEach
+            }
+            val candidatos=descobrirPadroes(base,minimo,2,maximo)
+            val atual=base.takeLast(5).map{categoriaValidador(it)}
+            val candidato=candidatos.firstOrNull{(padrao,stats)->padrao.size<=atual.size&&atual.takeLast(padrao.size)==padrao&&stats.ocorrencias>=4&&stats.percentual>=55.0}
+            val ultimoGatilho=prefs.getInt("radar\${id}x_ultimo_gatilho",-1)
+            if(candidato!=null&&ultimoGatilho!=resultados.size){
+                val(padrao,stats)=candidato
+                prefs.edit().putBoolean(chaveAtivo,true).putInt("radar\${id}x_restantes",5).putInt("radar\${id}x_acertos",0)
+                    .putString("radar\${id}x_resultado","AVALIANDO").putInt("radar\${id}x_matches",stats.ocorrencias)
+                    .putInt("radar\${id}x_hits",stats.vitorias).putInt("radar\${id}x_bloco",padrao.size)
+                    .putInt("radar\${id}x_ultimo_gatilho",resultados.size).apply()
+            }else if(ultimoGatilho!=resultados.size){
+                prefs.edit().putString("radar\${id}x_resultado","AGUARDANDO").apply()
             }
         }
     }
@@ -754,7 +759,7 @@ private fun atualizarPainelEstrategia() {
     private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
         val percentual:Double get()=if(ocorrencias==0)0.0 else vitorias*100.0/ocorrencias
     }
-    private fun estatisticaPadrao(serie:List<Double>,padrao:List<Int>,alvo:Double,gales:Int):EstatisticaPadrao {
+    private fun estatisticaPadrao(serie:List<Double>,padrao:List<Int>,alvo:Double,gales:Int,alvoMax:Double?=null):EstatisticaPadrao {
         if(padrao.isEmpty()||serie.size<padrao.size+1)return EstatisticaPadrao(0,0,0,0,List(gales+1){0},0)
         var total=0;var vitorias=0;var semGale=0;val porGale=MutableList(gales+1){0};val sinais=mutableListOf<Boolean>()
         for(inicio in 0..(serie.size-padrao.size-1)){
@@ -762,7 +767,7 @@ private fun atualizarPainelEstrategia() {
             for(k in padrao.indices)if(categoriaValidador(serie[inicio+k])!=padrao[k]){igual=false;break}
             if(!igual)continue
             total++;var nivel=-1
-            for(g in 0..gales){val idx=inicio+padrao.size+g;if(idx<serie.size&&serie[idx]>=alvo){nivel=g;break}}
+            for(g in 0..gales){val idx=inicio+padrao.size+g;if(idx<serie.size&&serie[idx]>=alvo&&(alvoMax==null||serie[idx]<=alvoMax)){nivel=g;break}}
             val venceu=nivel>=0;sinais.add(venceu)
             if(venceu){vitorias++;porGale[nivel]++;if(nivel==0)semGale++}
         }
@@ -772,18 +777,18 @@ private fun atualizarPainelEstrategia() {
     }
     private fun categoriaValidador(v:Double):Int=when{v<2.0->0;v<10.0->1;else->2}
     private fun nomeCor(id:Int)=when(id){0->"AZUL";1->"ROXO";else->"ROSA"}
-    private fun descobrirPadroes(serie:List<Double>,alvo:Double,gales:Int):List<Pair<List<Int>,EstatisticaPadrao>> {
-        if(serie.size<80)return emptyList()
-        val corte=(serie.size*0.70).toInt();val treino=serie.take(corte);val teste=serie.drop(corte)
+    private fun descobrirPadroes(serie:List<Double>,alvo:Double,gales:Int,alvoMax:Double?=null):List<Pair<List<Int>,EstatisticaPadrao>> {
+        if(serie.size<50)return emptyList()
+        val corte=(serie.size*0.65).toInt();val treino=serie.take(corte);val teste=serie.drop(corte)
         val candidatos=mutableListOf<Pair<List<Int>,EstatisticaPadrao>>()
         for(tamanho in 2..5){
             val total=Math.pow(3.0,tamanho.toDouble()).toInt()
             for(codigo in 0 until total){
                 var n=codigo;val padrao=MutableList(tamanho){0}
                 for(i in tamanho-1 downTo 0){padrao[i]=n%3;n/=3}
-                val hist=estatisticaPadrao(treino,padrao,alvo,gales)
-                val valid=estatisticaPadrao(teste,padrao,alvo,gales)
-                if(hist.ocorrencias>=8&&valid.ocorrencias>=4&&valid.percentual>=50.0)candidatos.add(padrao to valid)
+                val hist=estatisticaPadrao(treino,padrao,alvo,gales,alvoMax)
+                val valid=estatisticaPadrao(teste,padrao,alvo,gales,alvoMax)
+                if(hist.ocorrencias>=6&&valid.ocorrencias>=4&&valid.percentual>=55.0)candidatos.add(padrao to valid)
             }
         }
         return candidatos.sortedWith(compareByDescending<Pair<List<Int>,EstatisticaPadrao>>{it.second.percentual}.thenByDescending{it.second.ocorrencias}).take(5)
@@ -802,7 +807,7 @@ private fun atualizarPainelEstrategia() {
         }else quadroValidador.addView(TextView(this).apply{text="Monte uma sequência para validar.";textSize=11f;setTextColor(Color.LTGRAY);setPadding(0,6,0,4)})
         quadroValidador.addView(TextView(this).apply{text="PADRÕES DESCOBERTOS AUTOMATICAMENTE";textSize=11f;setTextColor(Color.rgb(100,205,255));setTypeface(null,android.graphics.Typeface.BOLD);setPadding(0,8,0,4)})
         val achados=descobrirPadroes(serie,alvo,quantidadeGales)
-        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<80)"Aguardando 80 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=10f;setTextColor(Color.LTGRAY)})
+        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<50)"Aguardando 50 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=10f;setTextColor(Color.LTGRAY)})
         else achados.forEachIndexed{idx,item->
             val(padrao,s)=item
             quadroValidador.addView(TextView(this).apply{text="${idx+1}. "+padrao.joinToString(" → "){nomeCor(it)}+"\\n${s.percentual.toInt()}% • ${s.vitorias}/${s.ocorrencias} vitórias • ${s.derrotas} derrotas";textSize=11f;setTextColor(Color.WHITE);setPadding(8,6,8,6);background=cartao(Color.rgb(29,38,57));setOnClickListener{padraoManual.clear();padraoManual.addAll(padrao);atualizarValidador()}},margem())
