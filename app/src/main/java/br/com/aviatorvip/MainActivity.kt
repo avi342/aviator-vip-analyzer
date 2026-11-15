@@ -145,7 +145,7 @@ private var primeiraLeituraOCR = true
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 12f
+            textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -155,7 +155,7 @@ private var primeiraLeituraOCR = true
         val alturaLinhaStatus = (30 * resources.displayMetrics.density).toInt()
         linhaStatus.addView(status, LinearLayout.LayoutParams(0, alturaLinhaStatus, 1f))
         // Coluna central com largura reservada e respiro antes do contador rosa.
-        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((72 * resources.displayMetrics.density).toInt(), alturaLinhaStatus).apply {
+        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((86 * resources.displayMetrics.density).toInt(), alturaLinhaStatus).apply {
             marginStart = (5 * resources.displayMetrics.density).toInt()
             marginEnd = (9 * resources.displayMetrics.density).toInt()
         })
@@ -691,7 +691,18 @@ private fun atualizarPainelEstrategia() {
             res25 == "NÃO" -> "NÃO"
             else -> "AGUARDAR"
         }
-        // Exibe somente os seis gatilhos para economizar espaço na tela dividida.
+        // Mantém o radar 2x–5x funcionando, ocultando apenas o título do objetivo.
+        val card25 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 8, 12, 8)
+            background = cartao(Color.rgb(12, 17, 29))
+            addView(txt(estado25, 15f, Color.WHITE, true))
+            addView(txt(if (ativo25) "Janela em andamento" else "Sequência das duas últimas rodadas", 11f, Color.rgb(180,192,210)))
+            addView(txt(if (ativo25) "${5-restante25}/5 rodadas • $acerto25 acerto(s)" else
+                "${ocorrencias25} ocorrências • ${String.format(Locale.US, "%.1f", percentual25)}% entre 2x e 5x",
+                10f, Color.rgb(85,175,255), true))
+        }
+        quadroPadroes.addView(card25, margem())
         adicionarPainelVipSeisGatilhos(quadroPadroes)
 
     }
