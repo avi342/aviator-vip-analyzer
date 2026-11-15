@@ -766,12 +766,12 @@ private fun atualizarPainelEstrategia() {
             val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,14f,cor,true)); addView(txt(estado,21f,Color.WHITE,true)); addView(txt(detalhe,11f,cinza)); addView(txt(linha,10f,cor,true)) }
             quadroPadroes.addView(box,margem())
         }
-        val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
+        val estado10=when { ativo10->"POSSÍVEL ENTRADA DETECTADA"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 10x+",rosa,estado10,if(ativo10)"Janela em andamento" else "$completos/3 critérios completos",if(ativo10)"${5-restante10}/5 rodadas • $acerto10 acerto(s)" else "Ciclo rosa $rosas/8 • casas ${valoresCasas.size}/6")
         val ocorrencias25=contarOcorrenciasDuasRodadas()
         val acertosHistoricos25=contarAcertosDuasRodadas()
         val percentual25=if(ocorrencias25==0)0.0 else acertosHistoricos25*100.0/ocorrencias25
-        val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
+        val estado25=when { ativo25->"POSSÍVEL ENTRADA DETECTADA"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 2x–5x",azul,estado25,
             if(ativo25)"Janela em andamento" else "Sequência das duas últimas rodadas",
             if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "${ocorrencias25} ocorrências • ${String.format(Locale.US,"%.1f",percentual25)}% entre 2x e 5x")
