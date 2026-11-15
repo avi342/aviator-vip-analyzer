@@ -485,12 +485,15 @@ private fun atualizarPainelVisual() {
 
     // resultados[0] é o mais recente. Para cada ocorrência histórica,
     // comparamos duas rodadas anteriores e avaliamos a rodada seguinte.
+    // Estratégia 2x–5x do APK de referência:
+    // compara as categorias das duas últimas rodadas com ocorrências históricas
+    // e considera acerto somente quando a rodada seguinte ficou entre 2x e 5x.
     private fun contarOcorrenciasDuasRodadas(): Int {
-        if (resultados.size < 3) return 0
+        if (resultados.size < 4) return 0
         val atualAntiga = categoria(resultados[1])
         val atualRecente = categoria(resultados[0])
         var total = 0
-        for (alvo in 1 until resultados.size - 1) {
+        for (alvo in 1 until resultados.size - 2) {
             if (categoria(resultados[alvo + 1]) == atualRecente &&
                 categoria(resultados[alvo + 2]) == atualAntiga) {
                 total++
@@ -500,14 +503,14 @@ private fun atualizarPainelVisual() {
     }
 
     private fun contarAcertosDuasRodadas(): Int {
-        if (resultados.size < 3) return 0
+        if (resultados.size < 4) return 0
         val atualAntiga = categoria(resultados[1])
         val atualRecente = categoria(resultados[0])
         var acertos = 0
-        for (alvo in 1 until resultados.size - 1) {
+        for (alvo in 1 until resultados.size - 2) {
             if (categoria(resultados[alvo + 1]) == atualRecente &&
                 categoria(resultados[alvo + 2]) == atualAntiga &&
-                resultados[alvo] >= 2.0) {
+                resultados[alvo] in 2.0..5.0) {
                 acertos++
             }
         }
@@ -646,7 +649,7 @@ private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
         painelEstrategia.textSize = 15f
         painelEstrategia.text =
-            "ESTRATÉGIA PRINCIPAL — DUAS RODADAS → PRÓXIMA ≥ 2x\\n" +
+            "ESTRATÉGIA 2x–5x — DUAS RODADAS → PRÓXIMA ENTRE 2x E 5x\\n" +
             "Rodadas armazenadas: ${resultados.size}\\n" +
             "O aplicativo acompanha somente esta combinação e atualiza a frequência quando chega uma nova rodada.\\n\\n" +
             "O histórico serve para medir ocorrências anteriores; não é garantia de resultado futuro."
@@ -699,10 +702,32 @@ private fun atualizarPainelEstrategia() {
                 editor.apply()
                 return@forEach
             }
+            val ultimoGatilho=prefs.getInt("radar" + id + "x_ultimo_gatilho",-1)
+            if (id == "25") {
+                // Substitui somente o radar 2x–5x: sequência exata de duas categorias,
+                // seguindo a lógica de duas rodadas do APK enviado.
+                val ocorrencias = contarOcorrenciasDuasRodadas()
+                val acertos = contarAcertosDuasRodadas()
+                val percentual = if (ocorrencias == 0) 0.0 else acertos * 100.0 / ocorrencias
+                val padraoAtual = if (resultados.size >= 2)
+                    listOf(categoria(resultados[1]), categoria(resultados[0]))
+                else emptyList()
+                val candidatoValido = padraoAtual.size == 2 && ocorrencias >= 4 && percentual >= 55.0
+                if (candidatoValido && ultimoGatilho != resultados.size) {
+                    prefs.edit().putBoolean(chaveAtivo,true).putInt("radar" + id + "x_restantes",5).putInt("radar" + id + "x_acertos",0)
+                        .putString("radar" + id + "x_resultado","AVALIANDO").putInt("radar" + id + "x_matches",ocorrencias)
+                        .putInt("radar" + id + "x_hits",acertos).putInt("radar" + id + "x_bloco",2)
+                        .putInt("radar" + id + "x_ultimo_gatilho",resultados.size).apply()
+                } else if (ultimoGatilho != resultados.size) {
+                    prefs.edit().putString("radar" + id + "x_resultado","AGUARDANDO").apply()
+                }
+                return@forEach
+            }
+
+            // A lógica do radar acima de 10x permanece a mesma.
             val candidatos=descobrirPadroes(base,minimo,2,maximo)
             val atual=cronologico.takeLast(5).map{categoriaValidador(it)}
             val candidato=candidatos.firstOrNull{(padrao,stats)->padrao.size<=atual.size&&atual.takeLast(padrao.size)==padrao&&stats.ocorrencias>=4&&stats.percentual>=55.0}
-            val ultimoGatilho=prefs.getInt("radar" + id + "x_ultimo_gatilho",-1)
             if(candidato!=null&&ultimoGatilho!=resultados.size){
                 val(padrao,stats)=candidato
                 prefs.edit().putBoolean(chaveAtivo,true).putInt("radar" + id + "x_restantes",5).putInt("radar" + id + "x_acertos",0)
@@ -743,9 +768,13 @@ private fun atualizarPainelEstrategia() {
         }
         val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 10x+",rosa,estado10,if(ativo10)"Janela em andamento" else "$completos/3 critérios completos",if(ativo10)"${5-restante10}/5 rodadas • $acerto10 acerto(s)" else "Ciclo rosa $rosas/8 • casas ${valoresCasas.size}/6")
-        val qtd25=ultimas30.count { it in 2.0..5.0 }
+        val ocorrencias25=contarOcorrenciasDuasRodadas()
+        val acertosHistoricos25=contarAcertosDuasRodadas()
+        val percentual25=if(ocorrencias25==0)0.0 else acertosHistoricos25*100.0/ocorrencias25
         val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
-        radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
+        radar("OBJETIVO 2x–5x",azul,estado25,
+            if(ativo25)"Janela em andamento" else "Sequência das duas últimas rodadas",
+            if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "${ocorrencias25} ocorrências • ${String.format(Locale.US,"%.1f",percentual25)}% entre 2x e 5x")
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",11f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",10f,cinza))
         quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
