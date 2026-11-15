@@ -417,7 +417,6 @@ private fun processarOCR(texto: String) {
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
-        atualizarValidador()
         rodadaRegistrada = true
         status.text = "Resultado registrado: $valor x"
     }
