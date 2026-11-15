@@ -725,30 +725,7 @@ private fun atualizarPainelEstrategia() {
         val quebra = janela6.windowed(2).any { it[0] < 2.0 && it[1] in 3.0..5.99 }
         val completos = listOf(rosas >= 8, valoresCasas.size == 6 && baixasEspelho >= 2, quebra).count { it }
         val sinais = listOf(rosas >= 3, valoresCasas.isNotEmpty(), janela6.count { it < 2.0 } >= 2).count { it }
-        val p = getSharedPreferences("aviator", MODE_PRIVATE)
-        val ativo10 = p.getBoolean("radar10x_ativo", false); val restante10 = p.getInt("radar10x_restantes", 5); val acerto10 = p.getInt("radar10x_acertos", 0)
-        val res10 = p.getString("radar10x_resultado", "AGUARDANDO") ?: "AGUARDANDO"
-        val ativo25 = p.getBoolean("radar25_ativo", false); val restante25 = p.getInt("radar25_restantes", 5); val acerto25 = p.getInt("radar25_acertos", 0)
-        val res25 = p.getString("radar25_resultado", "AGUARDANDO") ?: "AGUARDANDO"
-        val azul = Color.rgb(85,175,255); val rosa = Color.rgb(235,105,185); val cinza = Color.rgb(180,192,210)
-        fun txt(s:String, n:Float, cor:Int, bold:Boolean=false) = TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,3,10,3) }
-        quadroPadroes.addView(txt("RADARES",16f,Color.WHITE,true))
-        fun radar(nome:String, cor:Int, estado:String, detalhe:String, linha:String) {
-            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,14f,cor,true)); addView(txt(estado,21f,Color.WHITE,true)); addView(txt(detalhe,11f,cinza)); addView(txt(linha,10f,cor,true)) }
-            quadroPadroes.addView(box,margem())
-        }
-        val estado10=when { ativo10->"POSSÍVEL ENTRADA DETECTADA"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
-        radar("OBJETIVO 10x+",rosa,estado10,if(ativo10)"Janela em andamento" else "$completos/3 critérios completos",if(ativo10)"${5-restante10}/5 rodadas • $acerto10 acerto(s)" else "Ciclo rosa $rosas/8 • casas ${valoresCasas.size}/6")
-        val ocorrencias25=contarOcorrenciasDuasRodadas()
-        val acertosHistoricos25=contarAcertosDuasRodadas()
-        val percentual25=if(ocorrencias25==0)0.0 else acertosHistoricos25*100.0/ocorrencias25
-        val estado25=when { ativo25->"POSSÍVEL ENTRADA DETECTADA"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
-        radar("OBJETIVO 2x–5x",azul,estado25,
-            if(ativo25)"Janela em andamento" else "Sequência das duas últimas rodadas",
-            if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "${ocorrencias25} ocorrências • ${String.format(Locale.US,"%.1f",percentual25)}% entre 2x e 5x")
         adicionarPainelVipSeisGatilhos(quadroPadroes)
-        quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",11f,cinza,true))
-        quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",10f,cinza))
         quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
         quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",11f,cinza))
         quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",11f,cinza))
@@ -816,7 +793,7 @@ private fun atualizarPainelEstrategia() {
         val bloco = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(8, 8, 8, 8)
-            background = cartao(Color.rgb(22, 30, 49))
+            background = cartao(Color.rgb(15, 21, 36))
         }
         bloco.addView(linha("VIP • 6 GATILHOS | ANÁLISE EXPERIMENTAL", 13f,
             Color.rgb(100, 205, 255), true))
@@ -832,13 +809,11 @@ private fun atualizarPainelEstrategia() {
             val taxa = if (totais[i] == 0) "sem histórico" else
                 "${acertos[i]}/${totais[i]} na próxima rodada (" +
                 String.format(Locale.US, "%.1f", 100.0 * acertos[i] / totais[i]) + "%)"
-            val estado = when {
-                !atual[i] -> "AGUARDANDO"
-                totais[i] < 8 -> "AVALIANDO"
-                else -> "POSSÍVEL ENTRADA DETECTADA"
-            }
-            bloco.addView(linha("${i + 1}. ${nomes[i]} • $estado\n$taxa",
-                10f, if (atual[i]) Color.rgb(120, 210, 255) else Color.LTGRAY))
+            val estado = if (atual[i]) "PADRÃO IDENTIFICADO" else "SEM PADRÃO"
+            bloco.addView(linha("${i + 1}. ${nomes[i]}", 11f, Color.LTGRAY, true))
+            bloco.addView(linha(estado, 15f,
+                if (atual[i]) Color.rgb(120, 210, 255) else Color.WHITE, true))
+            bloco.addView(linha(taxa, 10f, Color.LTGRAY))
         }
         bloco.addView(linha("Coincidência é destaque visual, não aumenta necessariamente a chance de acerto. " +
             "As taxas são retrospectivas, sem validação prospectiva. Alvo observado: 2x a 5x na rodada seguinte; nenhum sinal garante entrada.",
