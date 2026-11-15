@@ -775,6 +775,7 @@ private fun atualizarPainelEstrategia() {
         radar("OBJETIVO 2x–5x",azul,estado25,
             if(ativo25)"Janela em andamento" else "Sequência das duas últimas rodadas",
             if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "${ocorrencias25} ocorrências • ${String.format(Locale.US,"%.1f",percentual25)}% entre 2x e 5x")
+        adicionarPainelVipSeisGatilhos(quadroPadroes)
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",11f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",10f,cinza))
         quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
@@ -783,6 +784,95 @@ private fun atualizarPainelEstrategia() {
         quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",11f,cinza))
         botaoDetalhes.text=if(detalhesExpandidos)"− DETALHES" else "＋ DETALHES"
         quadroDetalhes.visibility=if(detalhesExpandidos)View.VISIBLE else View.GONE
+    }
+
+
+    // Módulo experimental e independente: não altera os radares 10x+ e 2x–5x.
+    // Cada sinal é avaliado exclusivamente com resultados já encerrados.
+    private fun sinaisVip6(serie: List<Double>, fim: Int): List<Boolean> {
+        if (fim < 5) return List(6) { false }
+        val a = serie.subList(0, fim + 1)
+        fun azul(v: Double) = v < 2.0
+        fun rosa(v: Double) = v >= 10.0
+        fun faixa(v: Double) = when { v < 2.0 -> 0; v < 10.0 -> 1; else -> 2 }
+        val ultimos = a.takeLast(6)
+        val rebote = a.takeLast(3).all(::azul)
+        val espelho = a.size >= 6 &&
+            faixa(a[a.lastIndex]) == faixa(a[a.lastIndex - 5]) &&
+            faixa(a[a.lastIndex - 1]) == faixa(a[a.lastIndex - 4]) &&
+            faixa(a[a.lastIndex - 2]) == faixa(a[a.lastIndex - 3])
+        val alternancia = a.takeLast(4).let { v ->
+            faixa(v[0]) == faixa(v[2]) && faixa(v[1]) == faixa(v[3]) &&
+                faixa(v[0]) != faixa(v[1])
+        }
+        val quebra = a.takeLast(4).let { v ->
+            faixa(v[0]) == faixa(v[1]) && faixa(v[1]) == faixa(v[2]) &&
+                faixa(v[2]) != faixa(v[3])
+        }
+        val rosaQuebra = ultimos.dropLast(1).any(::rosa) &&
+            ultimos.last() < 2.0 && ultimos.dropLast(1).takeLast(2).any { it >= 2.0 }
+        val ultimaRosa = a.indexOfLast(::rosa)
+        val casas = if (ultimaRosa < 0) -1 else a.lastIndex - ultimaRosa
+        val posRosa = casas in listOf(2, 3, 4, 5, 9, 13) &&
+            a.takeLast(3).count(::azul) >= 2
+        return listOf(rebote, espelho, alternancia, quebra, rosaQuebra, posRosa)
+    }
+
+    private fun adicionarPainelVipSeisGatilhos(destino: LinearLayout) {
+        val nomes = listOf("REBOTE", "ESPELHO", "ALTERNÂNCIA", "QUEBRA DE SEQUÊNCIA",
+            "ROSA QUEBRANDO SEQUÊNCIA", "REPETIÇÃO DE CASAS PÓS-ROSA")
+        val serie = resultados.asReversed().takeLast(2000)
+        val atual = if (serie.size >= 6) sinaisVip6(serie, serie.lastIndex)
+            else List(6) { false }
+        val totais = IntArray(6)
+        val acertos = IntArray(6)
+        // Só contam ocorrências que já possuem uma rodada posterior observada.
+        for (fim in 5 until serie.lastIndex) {
+            val sinais = sinaisVip6(serie, fim)
+            for (i in 0..5) if (sinais[i]) {
+                totais[i]++
+                if (serie[fim + 1] in 2.0..5.0) acertos[i]++
+            }
+        }
+        fun linha(t: String, tamanho: Float, cor: Int, negrito: Boolean = false): TextView =
+            TextView(this).apply {
+                text = t
+                textSize = tamanho
+                setTextColor(cor)
+                if (negrito) setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(9, 5, 9, 5)
+            }
+        val bloco = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(8, 8, 8, 8)
+            background = cartao(Color.rgb(22, 30, 49))
+        }
+        bloco.addView(linha("VIP • 6 GATILHOS | ANÁLISE EXPERIMENTAL", 13f,
+            Color.rgb(100, 205, 255), true))
+        val indices = (0..5).filter { atual[it] }
+        val coincidencia = indices.size >= 2
+        bloco.addView(linha(
+            when {
+                coincidencia -> "COINCIDÊNCIA: ${indices.size} GATILHOS"
+                indices.size == 1 -> "1 PADRÃO IDENTIFICADO"
+                else -> "AGUARDANDO PADRÕES"
+            }, 15f, if (coincidencia) Color.rgb(255, 125, 195) else Color.WHITE, true))
+        for (i in 0..5) {
+            val taxa = if (totais[i] == 0) "sem histórico" else
+                "${acertos[i]}/${totais[i]} na próxima rodada (" +
+                String.format(Locale.US, "%.1f", 100.0 * acertos[i] / totais[i]) + "%)"
+            val estado = when {
+                !atual[i] -> "AGUARDANDO"
+                totais[i] < 8 -> "AVALIANDO"
+                else -> "POSSÍVEL ENTRADA DETECTADA"
+            }
+            bloco.addView(linha("${i + 1}. ${nomes[i]} • $estado\n$taxa",
+                10f, if (atual[i]) Color.rgb(120, 210, 255) else Color.LTGRAY))
+        }
+        bloco.addView(linha("Coincidência é destaque visual, não aumenta necessariamente a chance de acerto. " +
+            "As taxas são retrospectivas, sem validação prospectiva. Alvo observado: 2x a 5x na rodada seguinte; nenhum sinal garante entrada.",
+            9f, Color.LTGRAY))
+        destino.addView(bloco, margem())
     }
 
     private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
