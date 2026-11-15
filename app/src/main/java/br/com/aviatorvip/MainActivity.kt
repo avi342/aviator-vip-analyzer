@@ -725,6 +725,33 @@ private fun atualizarPainelEstrategia() {
         val quebra = janela6.windowed(2).any { it[0] < 2.0 && it[1] in 3.0..5.99 }
         val completos = listOf(rosas >= 8, valoresCasas.size == 6 && baixasEspelho >= 2, quebra).count { it }
         val sinais = listOf(rosas >= 3, valoresCasas.isNotEmpty(), janela6.count { it < 2.0 } >= 2).count { it }
+        // Mantém somente o radar 2x–5x na tela; o bloco 10x+ fica oculto.
+        val prefs25 = getSharedPreferences("aviator", MODE_PRIVATE)
+        val ativo25 = prefs25.getBoolean("radar25_ativo", false)
+        val restante25 = prefs25.getInt("radar25_restantes", 5)
+        val acerto25 = prefs25.getInt("radar25_acertos", 0)
+        val res25 = prefs25.getString("radar25_resultado", "AGUARDANDO") ?: "AGUARDANDO"
+        val ocorrencias25 = contarOcorrenciasDuasRodadas()
+        val acertos25 = contarAcertosDuasRodadas()
+        val percentual25 = if (ocorrencias25 == 0) 0.0 else acertos25 * 100.0 / ocorrencias25
+        val estado25 = when {
+            ativo25 -> "POSSÍVEL ENTRADA DETECTADA"
+            res25 == "SIM" -> "SIM"
+            res25 == "NÃO" -> "NÃO"
+            else -> "AGUARDAR"
+        }
+        val card25 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 10, 12, 10)
+            background = cartao(Color.rgb(20, 27, 43))
+            addView(txt("OBJETIVO 2x–5x", 14f, Color.rgb(85,175,255), true))
+            addView(txt(estado25, 15f, Color.WHITE, true))
+            addView(txt(if (ativo25) "Janela em andamento" else "Sequência das duas últimas rodadas", 11f, Color.rgb(180,192,210)))
+            addView(txt(if (ativo25) "${5-restante25}/5 rodadas • $acerto25 acerto(s)" else
+                "${ocorrencias25} ocorrências • ${String.format(Locale.US, "%.1f", percentual25)}% entre 2x e 5x",
+                10f, Color.rgb(85,175,255), true))
+        }
+        quadroPadroes.addView(card25, margem())
         adicionarPainelVipSeisGatilhos(quadroPadroes)
         quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
         quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",11f,cinza))
@@ -793,7 +820,7 @@ private fun atualizarPainelEstrategia() {
         val bloco = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(8, 8, 8, 8)
-            background = cartao(Color.rgb(15, 21, 36))
+            background = cartao(Color.rgb(18, 24, 40))
         }
         bloco.addView(linha("VIP • 6 GATILHOS | ANÁLISE EXPERIMENTAL", 13f,
             Color.rgb(100, 205, 255), true))
