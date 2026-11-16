@@ -134,7 +134,7 @@ private var primeiraLeituraOCR = true
             setPadding(2, 0, 2, 0)
             isAllCaps = false
         }
-        val alturaControle = (23 * resources.displayMetrics.density).toInt()
+        val alturaControle = (30 * resources.displayMetrics.density).toInt()
         controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginEnd = 2 })
         controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
         tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
@@ -161,14 +161,14 @@ private var primeiraLeituraOCR = true
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 16f
+            textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(245, 248, 255))
             setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(2, 2, 2, 2)
             contentDescription = "Relógio digital com horas, minutos e segundos"
         }
-        val alturaLinhaStatus = (30 * resources.displayMetrics.density).toInt()
+        val alturaLinhaStatus = (32 * resources.displayMetrics.density).toInt()
         linhaStatus.addView(status, LinearLayout.LayoutParams(0, alturaLinhaStatus, 1f))
         // Coluna central com largura reservada e respiro antes do contador rosa.
         linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((86 * resources.displayMetrics.density).toInt(), alturaLinhaStatus).apply {
@@ -410,22 +410,32 @@ private fun processarOCR(texto: String) {
     private fun atualizarPainelMonitoramentoRosas() {
         if (!::painelIntervalosRosa.isInitialized || !::painelFrequenciaRosa.isInitialized) return
         painelIntervalosRosa.text = buildString {
-            append("CASAS ENTRE ROSAS   ")
-            if (intervalosEntreRosas.isEmpty()) append("Aguardando duas rosas") else intervalosEntreRosas.take(6).asReversed().forEachIndexed { i, n ->
-                append("${i + 1}ª  $n   ")
+            append("CASAS ENTRE ROSAS")
+            if (intervalosEntreRosas.isEmpty()) append("   •   aguardando próxima rosa") else {
+                append("\\n")
+                intervalosEntreRosas.take(6).asReversed().forEachIndexed { i, n ->
+                    append("${i + 1}ª  $n casas     ")
+                }
             }
-            if (jaHouveRosaNaContagem) append(" | EM CURSO: $casasDesdeUltimaRosa")
+            if (jaHouveRosaNaContagem) append("\\nEM CURSO: $casasDesdeUltimaRosa casas")
         }
         painelIntervalosRosa.textSize = 11f
+        painelIntervalosRosa.gravity = Gravity.CENTER_VERTICAL
+        painelIntervalosRosa.maxLines = 3
         painelIntervalosRosa.setTextColor(Color.rgb(238, 242, 250))
         painelIntervalosRosa.setTypeface(null, android.graphics.Typeface.BOLD)
         painelIntervalosRosa.background = cartaoModerno(Color.rgb(16, 23, 42), Color.rgb(55, 125, 220), 12f)
         painelFrequenciaRosa.text = buildString {
-            append("ROSAS POR FINAL DE MINUTO   ")
-            for (i in 0..9) append("$i  ${frequenciaRosas[i]}     ")
+            append("ROSAS POR FINAL DE MINUTO\\n")
+            append("MINUTO  ")
+            for (i in 0..9) append("$i    ")
+            append("\\nROSAS    ")
+            for (i in 0..9) append("${frequenciaRosas[i]}    ")
         }
         painelFrequenciaRosa.textSize = 11f
-        painelFrequenciaRosa.setTextColor(Color.rgb(255, 145, 205))
+        painelFrequenciaRosa.gravity = Gravity.CENTER_VERTICAL
+        painelFrequenciaRosa.maxLines = 3
+        painelFrequenciaRosa.setTextColor(Color.rgb(255, 165, 215))
         painelFrequenciaRosa.setTypeface(null, android.graphics.Typeface.BOLD)
         painelFrequenciaRosa.background = cartaoModerno(Color.rgb(35, 12, 36), Color.rgb(230, 45, 145), 12f)
     }
@@ -783,8 +793,8 @@ private fun atualizarPainelEstrategia() {
             bottomMargin = (2 * resources.displayMetrics.density).toInt()
         })
         adicionarPainelVipSeisGatilhos(quadroPadroes)
-        quadroPadroes.addView(painelIntervalosRosa, LinearLayout.LayoutParams(-1, (22 * resources.displayMetrics.density).toInt()))
-        quadroPadroes.addView(painelFrequenciaRosa, LinearLayout.LayoutParams(-1, (22 * resources.displayMetrics.density).toInt()))
+        quadroPadroes.addView(painelIntervalosRosa, LinearLayout.LayoutParams(-1, ((if (jaHouveRosaNaContagem) 52 else 38) * resources.displayMetrics.density).toInt()))
+        quadroPadroes.addView(painelFrequenciaRosa, LinearLayout.LayoutParams(-1, (48 * resources.displayMetrics.density).toInt()))
         atualizarPainelMonitoramentoRosas()
 
     }
@@ -883,8 +893,8 @@ private fun atualizarPainelEstrategia() {
             linha.addView(nome, LinearLayout.LayoutParams(0, -1, 2.3f))
             linha.addView(sinal, LinearLayout.LayoutParams(0, -1, 1f))
             linha.addView(historico, LinearLayout.LayoutParams(0, -1, 0.8f))
-            bloco.addView(linha, LinearLayout.LayoutParams(-1, (30 * resources.displayMetrics.density).toInt()).apply {
-                bottomMargin = (2 * resources.displayMetrics.density).toInt()
+            bloco.addView(linha, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()).apply {
+                bottomMargin = (3 * resources.displayMetrics.density).toInt()
             })
         }
         destino.addView(bloco, LinearLayout.LayoutParams(-1, -2))
