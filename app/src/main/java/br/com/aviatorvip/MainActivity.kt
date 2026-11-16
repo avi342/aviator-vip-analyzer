@@ -172,7 +172,7 @@ private var primeiraLeituraOCR = true
         }
         contadorDezX = TextView(this).apply {
             text = "10x: --"
-            textSize = 14f
+            textSize = 20f
             gravity = Gravity.CENTER_VERTICAL or Gravity.END
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -190,15 +190,14 @@ private var primeiraLeituraOCR = true
             setPadding(2, 2, 2, 2)
             contentDescription = "Relógio digital com horas, minutos e segundos"
         }
-        val alturaLinhaStatus = (30 * resources.displayMetrics.density).toInt()
+        val alturaLinhaStatus = (38 * resources.displayMetrics.density).toInt()
         linhaStatus.addView(status, LinearLayout.LayoutParams(0, alturaLinhaStatus, 1f))
         // Coluna central com largura reservada e respiro antes do contador rosa.
         linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((72 * resources.displayMetrics.density).toInt(), alturaLinhaStatus).apply {
             marginStart = (5 * resources.displayMetrics.density).toInt()
             marginEnd = (9 * resources.displayMetrics.density).toInt()
         })
-        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaLinhaStatus))
-        tela.addView(linhaStatus)
+        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaLinhaStatus))        tela.addView(linhaStatus)
 
 
         gradeResultados = GridLayout(this).apply {
@@ -397,8 +396,7 @@ private var primeiraLeituraOCR = true
         try {
             unregisterReceiver(receptor)
         } catch (_: Exception) {
-        }
-        super.onDestroy()
+        }        super.onDestroy()
     }
     
   
@@ -597,8 +595,7 @@ private fun atualizarPainelVisual() {
         val inicioContagem = textoContador.indexOf('(')
         val fimContagem = textoContador.indexOf(')', inicioContagem)
         val textoColorido = android.text.SpannableString(textoContador)
-        if (inicioContagem >= 0 && fimContagem > inicioContagem) {
-            textoColorido.setSpan(
+        if (inicioContagem >= 0 && fimContagem > inicioContagem) {            textoColorido.setSpan(
                 android.text.style.ForegroundColorSpan(Color.WHITE),
                 inicioContagem,
                 fimContagem + 1,
@@ -752,7 +749,7 @@ private fun atualizarPainelEstrategia() {
         quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",16f,cinza))
         quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",16f,cinza))
         quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",16f,cinza))
-        quadroDetalhes.addView(txt("CASAS OBSERVADAS",17f,Color.WHITE,true))
+        quadroDetalhes.addView(txt("CASAS OBSERVADAS",20f,Color.WHITE,true))
         val linhaCasas = android.text.SpannableStringBuilder()
         casas.forEachIndexed { indice, casa ->
             if (indice > 0) linhaCasas.append(if (indice % 2 == 0) "\n" else "      ")
@@ -764,10 +761,10 @@ private fun atualizarPainelEstrategia() {
         }
         quadroDetalhes.addView(TextView(this).apply {
             text = linhaCasas
-            textSize = 17f
+            textSize = 21f
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(10, 6, 10, 10)
+            setPadding(10, 8, 10, 12)
         })
         botaoDetalhes.text=if(detalhesExpandidos)"− DETALHES" else "＋ DETALHES"
         quadroDetalhes.visibility=if(detalhesExpandidos)View.VISIBLE else View.GONE
@@ -797,8 +794,7 @@ private fun atualizarPainelEstrategia() {
     private fun descobrirPadroes(serie:List<Double>,alvo:Double,gales:Int,alvoMax:Double?=null):List<Pair<List<Int>,EstatisticaPadrao>> {
         if(serie.size<50)return emptyList()
         val corte=(serie.size*0.65).toInt();val treino=serie.take(corte);val teste=serie.drop(corte)
-        val candidatos=mutableListOf<Pair<List<Int>,EstatisticaPadrao>>()
-        for(tamanho in 2..5){
+        val candidatos=mutableListOf<Pair<List<Int>,EstatisticaPadrao>>()        for(tamanho in 2..5){
             val total=Math.pow(3.0,tamanho.toDouble()).toInt()
             for(codigo in 0 until total){
                 var n=codigo;val padrao=MutableList(tamanho){0}
