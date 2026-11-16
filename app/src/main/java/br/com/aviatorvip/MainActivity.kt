@@ -380,7 +380,7 @@ private fun processarOCR(texto: String) {
         resultados.add(0, valor)
         horarios.add(0, horarioAtual())
         marcasTempo.add(0, System.currentTimeMillis())
-        atualizarMonitoramento10x(valor)
+        atualizarMonitoramentoVip(valor)
         salvar()
         atualizarHistorico()
         atualizarContadorDezX()
@@ -656,6 +656,45 @@ private fun atualizarPainelEstrategia() {
         }
     }
 
+    // Seis detectores independentes; cada sinal observa as próximas três rodadas.
+    private fun atualizarMonitoramentoVip(valor: Double) {
+        val prefs=getSharedPreferences("aviator", MODE_PRIVATE)
+        val serie=resultados.asReversed()
+        val indiceAtual=serie.size-1
+        val categorias=serie.map { categoriaValidador(it) }
+        val editor=prefs.edit()
+        for(i in 0 until 6) {
+            if(prefs.getBoolean("vip_${i}_ativo",false)) {
+                val restante=(prefs.getInt("vip_${i}_restantes",3)-1).coerceAtLeast(0)
+                if(valor>=3.0) editor.putBoolean("vip_${i}_ativo",false).putInt("vip_${i}_restantes",0).putString("vip_${i}_resultado","SIM")
+                else if(restante==0) editor.putBoolean("vip_${i}_ativo",false).putInt("vip_${i}_restantes",0).putString("vip_${i}_resultado","NÃO")
+                else editor.putInt("vip_${i}_restantes",restante)
+            }
+        }
+        editor.apply()
+        if(serie.size<2) return
+        val rosaIndices=serie.indices.filter { serie[it]>=10.0 }
+        val ultimaRosa=rosaIndices.lastOrNull()
+        val casaPos=if(ultimaRosa!=null) indiceAtual-ultimaRosa else -1
+        val alternancia=categorias.size>=4 && categorias.takeLast(4).let { it[0]==it[2] && it[1]==it[3] && it[0]!=it[1] }
+        val quebra=categorias.size>=4 && categorias.takeLast(4).let { it[0]==it[1] && it[1]==it[2] && it[2]!=it[3] }
+        val rosaQuebra=serie.size>=4 && serie.last()>=10.0 && categorias.takeLast(4).let { it[0]==it[1] && it[1]==it[2] && it[2]!=it[3] }
+        val rebote=serie.size>=3 && serie.takeLast(3).all { it<2.0 }
+        val espelho=casaPos in listOf(2,3,4,5,9,13) && serie.last()<2.0
+        val repeticao=casaPos in listOf(2,3,4,5,9,13) && rosaIndices.dropLast(1).any { antigo ->
+            val distancia=indiceAtual-antigo
+            distancia in listOf(2,3,4,5,9,13)
+        }
+        val gatilhos=listOf(rebote,espelho,alternancia,quebra,rosaQuebra,repeticao)
+        gatilhos.forEachIndexed { i, disparou ->
+            val chave="vip_${i}_"
+            if(disparou && !prefs.getBoolean(chave+"ativo",false) && prefs.getInt(chave+"ultimo_gatilho",-1)!=indiceAtual) {
+                prefs.edit().putBoolean(chave+"ativo",true).putInt(chave+"restantes",3)
+                    .putString(chave+"resultado","AVALIANDO").putInt(chave+"ultimo_gatilho",indiceAtual).apply()
+            }
+        }
+    }
+
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized || !::quadroDetalhes.isInitialized || !::quadroDezX.isInitialized) return
         quadroPadroes.removeAllViews(); quadroDetalhes.removeAllViews(); quadroDezX.removeAllViews(); quadroDezX.visibility = View.GONE
@@ -671,18 +710,22 @@ private fun atualizarPainelEstrategia() {
         val completos = listOf(rosas >= 8, valoresCasas.size == 6 && baixasEspelho >= 2, quebra).count { it }
         val sinais = listOf(rosas >= 3, valoresCasas.isNotEmpty(), janela6.count { it < 2.0 } >= 2).count { it }
         val p = getSharedPreferences("aviator", MODE_PRIVATE)
-        val ativo25 = p.getBoolean("radar25_ativo", false); val restante25 = p.getInt("radar25_restantes", 5); val acerto25 = p.getInt("radar25_acertos", 0)
-        val res25 = p.getString("radar25_resultado", "AGUARDANDO") ?: "AGUARDANDO"
-        val azul = Color.rgb(85,175,255); val rosa = Color.rgb(235,105,185); val cinza = Color.rgb(180,192,210)
-        fun txt(s:String, n:Float, cor:Int, bold:Boolean=false) = TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,5,10,5) }
-        quadroPadroes.addView(txt("RADARES",20f,Color.WHITE,true))
-        fun radar(nome:String, cor:Int, estado:String, detalhe:String, linha:String) {
-            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,18f,cor,true)); addView(txt(estado,29f,Color.WHITE,true)); addView(txt(detalhe,17f,cinza)); addView(txt(linha,16f,cor,true)) }
+        val azul=Color.rgb(85,175,255); val rosa=Color.rgb(235,105,185); val roxo=Color.rgb(175,125,255); val cinza=Color.rgb(180,192,210)
+        fun txt(s:String,n:Float,cor:Int,bold:Boolean=false)=TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,5,10,5) }
+        quadroPadroes.addView(txt("ESTRATÉGIAS VIP • ALVO 3x",20f,Color.WHITE,true))
+        fun radar(nome:String,cor:Int,estado:String,detalhe:String,linha:String) {
+            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,18f,cor,true)); addView(txt(estado,25f,Color.WHITE,true)); addView(txt(detalhe,15f,cinza)); addView(txt(linha,14f,cor,true)) }
             quadroPadroes.addView(box,margem())
         }
-        val qtd25=ultimas30.count { it in 2.0..5.0 }
-        val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"POSSÍVEL ENTRADA"; res25=="NÃO"->"INSUFICIENTE"; else->"AGUARDAR" }
-        radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
+        val vipNomes=listOf("REBOTE","ESPELHO","ALTERNÂNCIA","QUEBRA DE SEQUÊNCIA","ROSA QUEBRANDO SEQUÊNCIA","REPETIÇÃO DE CASAS PÓS-ROSA")
+        val vipCores=listOf(azul,roxo,rosa,azul,rosa,roxo)
+        vipNomes.forEachIndexed { i,nome ->
+            val ativo=p.getBoolean("vip_${i}_ativo",false)
+            val restante=p.getInt("vip_${i}_restantes",3)
+            val resultado=p.getString("vip_${i}_resultado","AGUARDANDO") ?: "AGUARDANDO"
+            val estado=when { ativo->"AVALIANDO"; resultado=="SIM"->"POSSÍVEL ENTRADA"; resultado=="NÃO"->"INSUFICIENTE"; else->"AGUARDANDO" }
+            radar(nome,vipCores[i],estado,if(ativo)"Sinal em observação • alvo 3x" else "Monitoramento independente",if(ativo)"Rodadas restantes: $restante" else "Sem janela de horário")
+        }
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",17f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",15f,cinza))
         quadroDetalhes.addView(txt("DETALHES",19f,Color.WHITE,true))
