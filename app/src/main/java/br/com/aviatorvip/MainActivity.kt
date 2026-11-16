@@ -748,10 +748,27 @@ private fun atualizarPainelEstrategia() {
         radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",17f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",15f,cinza))
-        quadroDetalhes.addView(txt("DETALHES",17f,Color.WHITE,true))
-        quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",14f,cinza))
-        quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",14f,cinza))
-        quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",14f,cinza))
+        quadroDetalhes.addView(txt("DETALHES",19f,Color.WHITE,true))
+        quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",16f,cinza))
+        quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",16f,cinza))
+        quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",16f,cinza))
+        quadroDetalhes.addView(txt("CASAS OBSERVADAS",17f,Color.WHITE,true))
+        val linhaCasas = android.text.SpannableStringBuilder()
+        casas.forEachIndexed { indice, casa ->
+            if (indice > 0) linhaCasas.append(if (indice % 2 == 0) "\\n" else "      ")
+            val inicioCasa = linhaCasas.length
+            linhaCasas.append("${casa}ª casa")
+            linhaCasas.setSpan(android.text.style.ForegroundColorSpan(Color.rgb(100, 205, 255)), inicioCasa, linhaCasas.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            linhaCasas.append(": ")
+            linhaCasas.append(valoresCasas.getOrNull(indice)?.let { "%.2fx".format(Locale.US, it) } ?: "--")
+        }
+        quadroDetalhes.addView(TextView(this).apply {
+            text = linhaCasas
+            textSize = 17f
+            setTextColor(Color.WHITE)
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(10, 6, 10, 10)
+        })
         botaoDetalhes.text=if(detalhesExpandidos)"− DETALHES" else "＋ DETALHES"
         quadroDetalhes.visibility=if(detalhesExpandidos)View.VISIBLE else View.GONE
     }
