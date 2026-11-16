@@ -164,6 +164,7 @@ private var primeiraLeituraOCR = true
 
         gradeResultados = GridLayout(this).apply {
             columnCount = 9
+            rowCount = 2
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
@@ -440,53 +441,60 @@ private fun atualizarPainelVisual() {
 
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
-        val filtrados = resultados.take(if (historicoExpandido) resultados.size else 18).withIndex()
         gradeResultados.removeAllViews()
-        filtrados.forEach { (indice, valor) ->
-            val cor = when {
-                valor < 2.0 -> Color.rgb(30, 145, 220)
-                valor < 10.0 -> Color.rgb(112, 65, 190)
-                valor < 40.0 -> Color.rgb(215, 55, 145)
-                else -> Color.rgb(185, 45, 100)
-            }
-            val horario = horarios.getOrNull(indice) ?: "--:--:--"
-            val multiplicadorTexto = "%.2fx".format(Locale.US, valor)
-            val item = LinearLayout(this).apply {
+
+        // Grade fixa de 18 células: duas linhas com nove posições explícitas.
+        val densidade = resources.displayMetrics.density
+        val valoresVisiveis = resultados.take(18)
+        for (posicao in 0 until 18) {
+            val valor = valoresVisiveis.getOrNull(posicao)
+            val celula = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(0, 0, 0, 0)
-                val multiplicador = TextView(this@MainActivity).apply {
-                    text = multiplicadorTexto
-                    gravity = Gravity.CENTER
-                    textSize = 20f
-                    setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(cor)
-                    maxLines = 1
-                    setSingleLine(true)
+                if (valor != null) {
+                    val cor = when {
+                        valor < 2.0 -> Color.rgb(30, 145, 220)
+                        valor < 10.0 -> Color.rgb(112, 65, 190)
+                        valor < 40.0 -> Color.rgb(215, 55, 145)
+                        else -> Color.rgb(185, 45, 100)
+                    }
+                    addView(TextView(this@MainActivity).apply {
+                        text = "%.2fx".format(Locale.US, valor)
+                        gravity = Gravity.CENTER
+                        textSize = 18f
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setTextColor(cor)
+                        maxLines = 1
+                        setSingleLine(true)
+                    })
+                    if (valor >= 10.0) {
+                        val horario = horarios.getOrNull(posicao) ?: "--:--:--"
+                        addView(TextView(this@MainActivity).apply {
+                            text = horario
+                            gravity = Gravity.CENTER
+                            textSize = 10f
+                            setTypeface(null, android.graphics.Typeface.BOLD)
+                            setTextColor(Color.WHITE)
+                            maxLines = 1
+                            setSingleLine(true)
+                        })
+                    }
                 }
-                val hora = TextView(this@MainActivity).apply {
-                    text = if (valor >= 10.0) horario else ""
-                    gravity = Gravity.CENTER
-                    textSize = 12f
-                    setTypeface(null, android.graphics.Typeface.BOLD)
-                    setTextColor(Color.WHITE)
-                    visibility = if (valor >= 10.0) android.view.View.VISIBLE else android.view.View.GONE
-                    maxLines = 1
-                    setSingleLine(true)
-                }
-                addView(multiplicador)
-                addView(hora)
-                contentDescription = "Multiplicador $multiplicadorTexto, horário $horario"
             }
-            val lp = GridLayout.LayoutParams().apply {
+            val linha = posicao / 9
+            val coluna = posicao % 9
+            val lp = GridLayout.LayoutParams(
+                GridLayout.spec(linha, 1),
+                GridLayout.spec(coluna, 1f)
+            ).apply {
                 width = 0
-                height = (54 * resources.displayMetrics.density).toInt()
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                height = (54 * densidade).toInt()
                 setMargins(1, 2, 1, 2)
             }
-            gradeResultados.addView(item, lp)
+            gradeResultados.addView(celula, lp)
         }
-        botaoHistorico.text = if (historicoExpandido) "⌃ RECOLHER HISTÓRICO" else "⌄ VER HISTÓRICO COMPLETO"
+        botaoHistorico.text = "⌄ VER HISTÓRICO COMPLETO"
         botaoHistorico.visibility = View.VISIBLE
     }
 
