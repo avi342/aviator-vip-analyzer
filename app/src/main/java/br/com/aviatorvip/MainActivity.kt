@@ -33,6 +33,12 @@ private lateinit var historico: LinearLayout
     private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
+    private lateinit var painelIntervalosRosa: TextView
+    private lateinit var painelFrequenciaRosa: TextView
+    private val frequenciaRosas = IntArray(10)
+    private val intervalosEntreRosas = mutableListOf<Int>()
+    private var casasDesdeUltimaRosa = 0
+    private var jaHouveRosaNaContagem = false
     private lateinit var botaoHistorico: Button
     private var historicoExpandido = false
     private lateinit var campoQuantidade: EditText
@@ -83,6 +89,13 @@ private var primeiraLeituraOCR = true
         }
         while (marcasTempo.size < resultados.size) marcasTempo.add(0L)
 
+        val prefsMonitor = getSharedPreferences("aviator", MODE_PRIVATE)
+        intervalosEntreRosas.clear()
+        prefsMonitor.getString("intervalos_entre_rosas", "").orEmpty().split(",").filter { it.isNotBlank() }.forEach { it.toIntOrNull()?.let(intervalosEntreRosas::add) }
+        casasDesdeUltimaRosa = prefsMonitor.getInt("casas_desde_ultima_rosa", 0)
+        jaHouveRosaNaContagem = prefsMonitor.getBoolean("ja_houve_rosa_contagem", false)
+        frequenciaRosas.fill(0)
+
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(3, 3, 3, 3)
@@ -109,6 +122,8 @@ private var primeiraLeituraOCR = true
             setOnClickListener {
                 stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
                 status.text = "Captura parada."
+                frequenciaRosas.fill(0)
+                atualizarPainelMonitoramentoRosas()
             }
             estilizarBotao(this, Color.rgb(75, 35, 65), Color.rgb(230, 85, 155))
             textSize = 8f
@@ -215,6 +230,8 @@ private var primeiraLeituraOCR = true
             setPadding(2, 2, 2, 2)
             setBackgroundColor(Color.BLACK)
         }
+        painelIntervalosRosa = TextView(this).apply { textSize = 9f; setTextColor(Color.WHITE); setPadding(3, 2, 3, 2) }
+        painelFrequenciaRosa = TextView(this).apply { textSize = 9f; setTextColor(Color.WHITE); setPadding(3, 2, 3, 2) }
         tela.addView(quadroPadroes, margem())
         // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
@@ -258,6 +275,7 @@ private var primeiraLeituraOCR = true
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
+        atualizarPainelMonitoramentoRosas()
     }
 
     private fun solicitarCaptura() {
@@ -309,6 +327,7 @@ private var primeiraLeituraOCR = true
         }
     }
     override fun onDestroy() {
+        frequenciaRosas.fill(0)
         try {
             unregisterReceiver(receptor)
         } catch (_: Exception) {
@@ -351,8 +370,10 @@ private fun processarOCR(texto: String) {
     status.text = "Confirmando resultado: $valor x"
 
     if (leiturasDoCandidato >= 2) {
+        val horarioRodada = horarioAtual()
+        registrarMonitoramentoRosa(valor, horarioRodada)
         resultados.add(0, valor)
-        horarios.add(0, horarioAtual())
+        horarios.add(0, horarioRodada)
         marcasTempo.add(0, System.currentTimeMillis())
         atualizarMonitoramento10x(valor)
         salvar()
@@ -365,6 +386,40 @@ private fun processarOCR(texto: String) {
         status.text = "Resultado registrado: $valor x"
     }
 }
+
+    private fun registrarMonitoramentoRosa(valor: Double, horario: String) {
+        if (valor >= 10.0) {
+            val digitoMinuto = horario.getOrNull(4)?.digitToIntOrNull()
+            if (digitoMinuto != null) frequenciaRosas[digitoMinuto]++
+            if (jaHouveRosaNaContagem) intervalosEntreRosas.add(0, casasDesdeUltimaRosa)
+            casasDesdeUltimaRosa = 0
+            jaHouveRosaNaContagem = true
+            getSharedPreferences("aviator", MODE_PRIVATE).edit()
+                .putString("intervalos_entre_rosas", intervalosEntreRosas.joinToString(","))
+                .putInt("casas_desde_ultima_rosa", casasDesdeUltimaRosa)
+                .putBoolean("ja_houve_rosa_contagem", jaHouveRosaNaContagem).apply()
+        } else if (jaHouveRosaNaContagem) {
+            casasDesdeUltimaRosa++
+            getSharedPreferences("aviator", MODE_PRIVATE).edit()
+                .putInt("casas_desde_ultima_rosa", casasDesdeUltimaRosa).apply()
+        }
+        atualizarPainelMonitoramentoRosas()
+    }
+
+    private fun atualizarPainelMonitoramentoRosas() {
+        if (!::painelIntervalosRosa.isInitialized || !::painelFrequenciaRosa.isInitialized) return
+        painelIntervalosRosa.text = buildString {
+            append("CASAS ENTRE ROSAS  ")
+            if (intervalosEntreRosas.isEmpty()) append("—") else intervalosEntreRosas.take(6).asReversed().forEachIndexed { i, n ->
+                append("${i + 1}ª:$n  ")
+            }
+            if (jaHouveRosaNaContagem) append(" • atual:$casasDesdeUltimaRosa")
+        }
+        painelFrequenciaRosa.text = buildString {
+            append("ROSAS / FINAL DO MINUTO  ")
+            for (i in 0..9) append("$i:${frequenciaRosas[i]}  ")
+        }
+    }
 
     private fun salvar() {
         getSharedPreferences("aviator", MODE_PRIVATE)
@@ -706,6 +761,9 @@ private fun atualizarPainelEstrategia() {
             bottomMargin = (2 * resources.displayMetrics.density).toInt()
         })
         adicionarPainelVipSeisGatilhos(quadroPadroes)
+        quadroPadroes.addView(painelIntervalosRosa, LinearLayout.LayoutParams(-1, (22 * resources.displayMetrics.density).toInt()))
+        quadroPadroes.addView(painelFrequenciaRosa, LinearLayout.LayoutParams(-1, (22 * resources.displayMetrics.density).toInt()))
+        atualizarPainelMonitoramentoRosas()
 
     }
 
