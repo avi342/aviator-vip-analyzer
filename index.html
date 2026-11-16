@@ -24,6 +24,21 @@ details>summary:after{content:"＋";float:right;color:#ff79b2}
 details[open]>summary:after{content:"−"}
 .detail-section{border-top:1px solid #293754;margin-top:16px;padding-top:16px}
 @media(max-width:380px){.decision-stat b{font-size:16px}}
+
+/* Legibilidade ampliada das análises */
+.sig h3{font-size:19px;line-height:1.3}
+.sig p{font-size:16px;line-height:1.55;color:#e4eaf8}
+.pill{font-size:14px;padding:7px 11px}
+.radarScore{font-size:38px}
+.radarItem b{font-size:15px}
+.radarItem span{font-size:13px;line-height:1.4}
+.stat b{font-size:27px}
+.house-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.house-chip{display:inline-flex;align-items:center;gap:7px;background:#0d1527;border:1px solid #405174;border-radius:9px;padding:8px 10px}
+.house-num{font-size:15px;font-weight:900;color:#60c7ff}
+.house-value{font-size:16px;font-weight:900;color:#fff}
+@media(max-width:620px){.sig h3{font-size:18px}.sig p{font-size:15px}.pill{font-size:13px}}
+
 </style></head><body>
 <header><h1>✈ Aviator VIP Analyzer</h1><p>Painel de acompanhamento, reconhecimento de padrões e teste histórico</p></header>
 <main class="wrap">
@@ -68,7 +83,7 @@ function signalsAt(a){
  var out=[];
  out.push({name:'01 · Ciclo Rosa',level:pinkUnder40>=8?'confirmed':pinkUnder40>=5?'candidate':pinkUnder40>=3?'observation':'none',detail:pinkUnder40+'/8 rosas de 10x a 39,99x nas últimas 30 rodadas; '+pinkOver40+' resultados de 40x ou mais.'});
  var mirrorScore=mirror.low+mirror.mid;
- out.push({name:'02 · Espelho das Casas',level:mirror.seen>=6&&mirror.low>=2?'confirmed':mirrorScore>=2?'candidate':mirror.seen>0?'observation':'none',detail:mirror.start>=0?'Casas observadas: '+mirror.seen+'/6; baixas: '+mirror.low+'; intermediárias: '+mirror.mid+'.':'Aguardando um resultado de 10x ou mais para iniciar a contagem.'});
+ out.push({name:'02 · Espelho das Casas',level:mirror.seen>=6&&mirror.low>=2?'confirmed':mirrorScore>=2?'candidate':mirror.seen>0?'observation':'none',detail:mirror.start>=0?('Casas observadas: <strong style="color:#fff">'+mirror.seen+'/6</strong>; baixas: <strong style="color:#fff">'+mirror.low+'</strong>; intermediárias: <strong style="color:#fff">'+mirror.mid+'</strong>.'+(mirror.positions.length?'<div class="house-list">'+mirror.positions.map(function(x){return '<span class="house-chip"><span class="house-num">'+x.p+'ª casa</span><span class="house-value">'+x.v.toFixed(2)+'x</span></span>';}).join('')+'</div>':'')):'Aguardando um resultado de 10x ou mais para iniciar a contagem.'});
  out.push({name:'03 · Baixo + Alto',level:lowThenMid?'confirmed':lowTail>=2?'observation':'none',detail:lowThenMid?'Foi encontrada baixa seguida de 3x a 5,99x nas últimas rodadas.':'Baixas recentes: '+lowTail+'/6; procurando a sequência configurada.'});
  out.push({name:'04 · Ciclo de Recuperação',level:recovery?'candidate':lowTail>=1&&midTail>=1?'observation':'none',detail:'Nas últimas 6: '+lowTail+' azuis e '+midTail+' roxos.'});
  var active=out.slice(0,3).filter(function(s){return s.level!=='none';}).length;
