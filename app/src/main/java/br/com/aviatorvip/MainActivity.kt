@@ -409,16 +409,24 @@ private fun processarOCR(texto: String) {
     private fun atualizarPainelMonitoramentoRosas() {
         if (!::painelIntervalosRosa.isInitialized || !::painelFrequenciaRosa.isInitialized) return
         painelIntervalosRosa.text = buildString {
-            append("CASAS ENTRE ROSAS  ")
-            if (intervalosEntreRosas.isEmpty()) append("—") else intervalosEntreRosas.take(6).asReversed().forEachIndexed { i, n ->
-                append("${i + 1}ª:$n  ")
+            append("CASAS ENTRE ROSAS   ")
+            if (intervalosEntreRosas.isEmpty()) append("Aguardando duas rosas") else intervalosEntreRosas.take(6).asReversed().forEachIndexed { i, n ->
+                append("${i + 1}ª  $n   ")
             }
-            if (jaHouveRosaNaContagem) append(" • atual:$casasDesdeUltimaRosa")
+            if (jaHouveRosaNaContagem) append(" | EM CURSO: $casasDesdeUltimaRosa")
         }
+        painelIntervalosRosa.textSize = 11f
+        painelIntervalosRosa.setTextColor(Color.rgb(238, 242, 250))
+        painelIntervalosRosa.setTypeface(null, android.graphics.Typeface.BOLD)
+        painelIntervalosRosa.background = cartao(Color.rgb(20, 29, 48))
         painelFrequenciaRosa.text = buildString {
-            append("ROSAS / FINAL DO MINUTO  ")
-            for (i in 0..9) append("$i:${frequenciaRosas[i]}  ")
+            append("ROSAS POR FINAL DE MINUTO   ")
+            for (i in 0..9) append("$i  ${frequenciaRosas[i]}     ")
         }
+        painelFrequenciaRosa.textSize = 11f
+        painelFrequenciaRosa.setTextColor(Color.rgb(255, 145, 205))
+        painelFrequenciaRosa.setTypeface(null, android.graphics.Typeface.BOLD)
+        painelFrequenciaRosa.background = cartao(Color.rgb(38, 20, 37))
     }
 
     private fun salvar() {
@@ -741,10 +749,10 @@ private fun atualizarPainelEstrategia() {
             setPadding(10, 3, 10, 3)
         }
         val estado25 = when {
-            ativo25 -> "POSSÍVEL ENTRADA DETECTADA"
-            res25 == "SIM" -> "SIM"
-            res25 == "NÃO" -> "NÃO"
-            else -> "AGUARDAR"
+            ativo25 -> "RADAR 2x–5x • AVALIANDO"
+            res25 == "SIM" -> "RADAR 2x–5x • SIM"
+            res25 == "NÃO" -> "RADAR 2x–5x • NÃO"
+            else -> "RADAR 2x–5x"
         }
         // Radar 2x–5x permanece ativo, exibido em uma única linha compacta.
         val card25 = LinearLayout(this).apply {
@@ -833,7 +841,7 @@ private fun atualizarPainelEstrategia() {
             }
             val nome = TextView(this).apply {
                 text = "${i + 1}. ${nomes[i]}"
-                textSize = 10f
+                textSize = 11f
                 maxLines = 1
                 isSingleLine = true
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -843,7 +851,7 @@ private fun atualizarPainelEstrategia() {
             }
             val sinal = TextView(this).apply {
                 text = estado
-                textSize = 9f
+                textSize = 10f
                 maxLines = 1
                 isSingleLine = true
                 gravity = Gravity.CENTER
@@ -852,7 +860,7 @@ private fun atualizarPainelEstrategia() {
             }
             val historico = TextView(this).apply {
                 text = taxa
-                textSize = 9f
+                textSize = 10f
                 maxLines = 1
                 isSingleLine = true
                 gravity = Gravity.END
@@ -861,8 +869,8 @@ private fun atualizarPainelEstrategia() {
             linha.addView(nome, LinearLayout.LayoutParams(0, -1, 2.3f))
             linha.addView(sinal, LinearLayout.LayoutParams(0, -1, 1f))
             linha.addView(historico, LinearLayout.LayoutParams(0, -1, 0.8f))
-            bloco.addView(linha, LinearLayout.LayoutParams(-1, (24 * resources.displayMetrics.density).toInt()).apply {
-                bottomMargin = (1 * resources.displayMetrics.density).toInt()
+            bloco.addView(linha, LinearLayout.LayoutParams(-1, (30 * resources.displayMetrics.density).toInt()).apply {
+                bottomMargin = (2 * resources.displayMetrics.density).toInt()
             })
         }
         destino.addView(bloco, LinearLayout.LayoutParams(-1, -2))
