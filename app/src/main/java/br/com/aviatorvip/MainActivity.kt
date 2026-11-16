@@ -29,9 +29,6 @@ private lateinit var historico: LinearLayout
     private lateinit var painelEstrategia: TextView
     private lateinit var painelEstatisticas: TextView
     private lateinit var quadroPadroes: LinearLayout
-    private lateinit var quadroDetalhes: LinearLayout
-    private lateinit var botaoDetalhes: Button
-    private var detalhesExpandidos = false
     private lateinit var quadroDezX: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
@@ -166,7 +163,7 @@ private var primeiraLeituraOCR = true
 
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 8
+            columnCount = 4
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
@@ -218,29 +215,6 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroPadroes, margem())
-        quadroDetalhes = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(2, 2, 2, 2)
-            setBackgroundColor(Color.BLACK)
-            visibility = View.GONE
-        }
-        tela.addView(quadroDetalhes, margem())
-
-        botaoDetalhes = Button(this).apply {
-            text = "＋ VER ANÁLISES DETALHADAS"
-            textSize = 10f
-            isAllCaps = false
-            setTextColor(Color.WHITE)
-            setPadding(8, 2, 8, 2)
-            background = cartao(Color.rgb(25, 31, 49))
-            setOnClickListener {
-                detalhesExpandidos = !detalhesExpandidos
-                quadroDetalhes.visibility = if (detalhesExpandidos) View.VISIBLE else View.GONE
-                text = if (detalhesExpandidos) "− OCULTAR ANÁLISES DETALHADAS" else "＋ VER ANÁLISES DETALHADAS"
-            }
-        }
-        tela.addView(botaoDetalhes, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 5 })
-
         // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -693,8 +667,8 @@ private fun atualizarPainelEstrategia() {
     }
 
     private fun atualizarBibliotecaPadroes() {
-        if (!::quadroPadroes.isInitialized || !::quadroDetalhes.isInitialized || !::quadroDezX.isInitialized) return
-        quadroPadroes.removeAllViews(); quadroDetalhes.removeAllViews(); quadroDezX.removeAllViews(); quadroDezX.visibility = View.GONE
+        if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
+        quadroPadroes.removeAllViews(); quadroDezX.removeAllViews(); quadroDezX.visibility = View.GONE
         val cronologico = resultados.asReversed()
         val ultimas30 = cronologico.takeLast(30)
         val rosas = ultimas30.count { it >= 10.0 && it < 40.0 }
@@ -728,29 +702,6 @@ private fun atualizarPainelEstrategia() {
             linha.addView(txt(estadoTexto,12f,if(estado=="POSSÍVEL ENTRADA")Color.rgb(90,220,145) else if(estado=="INSUFICIENTE")cinza else Color.WHITE,true))
             quadroPadroes.addView(linha,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=3 })
         }
-        quadroDetalhes.addView(txt("DETALHES",19f,Color.WHITE,true))
-        quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",16f,cinza))
-        quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",16f,cinza))
-        quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",16f,cinza))
-        quadroDetalhes.addView(txt("CASAS OBSERVADAS",20f,Color.WHITE,true))
-        val linhaCasas = android.text.SpannableStringBuilder()
-        casas.forEachIndexed { indice, casa ->
-            if (indice > 0) linhaCasas.append(if (indice % 2 == 0) "\n" else "      ")
-            val inicioCasa = linhaCasas.length
-            linhaCasas.append("${casa}ª casa")
-            linhaCasas.setSpan(android.text.style.ForegroundColorSpan(Color.rgb(100, 205, 255)), inicioCasa, linhaCasas.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            linhaCasas.append(": ")
-            linhaCasas.append(valoresCasas.getOrNull(indice)?.let { "%.2fx".format(Locale.US, it) } ?: "--")
-        }
-        quadroDetalhes.addView(TextView(this).apply {
-            text = linhaCasas
-            textSize = 21f
-            setTextColor(Color.WHITE)
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(10, 8, 10, 12)
-        })
-        botaoDetalhes.text=if(detalhesExpandidos)"− DETALHES" else "＋ DETALHES"
-        quadroDetalhes.visibility=if(detalhesExpandidos)View.VISIBLE else View.GONE
     }
 
     private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
