@@ -110,7 +110,7 @@ private var primeiraLeituraOCR = true
         }
         val titulo = TextView(this).apply {
             text = "AVIATOR VIP"
-            textSize = 10f
+            textSize = 13f
             gravity = Gravity.CENTER
             letterSpacing = 0.08f
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -118,7 +118,7 @@ private var primeiraLeituraOCR = true
         }
         val subtitulo = TextView(this).apply {
             text = "ANALYZER  •  PAINEL INTELIGENTE"
-            textSize = 6f
+            textSize = 8f
             gravity = Gravity.CENTER
             letterSpacing = 0.02f
             setTextColor(Color.rgb(190, 205, 230))
@@ -164,7 +164,7 @@ private var primeiraLeituraOCR = true
         val linhaStatus = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         status = TextView(this).apply {
             text = "Aguardando captura..."
-            textSize = 11f
+            textSize = 14f
             gravity = Gravity.CENTER_VERTICAL
             includeFontPadding = true
             setTextColor(Color.WHITE)
@@ -172,7 +172,7 @@ private var primeiraLeituraOCR = true
         }
         contadorDezX = TextView(this).apply {
             text = "10x: --"
-            textSize = 11f
+            textSize = 14f
             gravity = Gravity.CENTER_VERTICAL or Gravity.END
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -183,7 +183,7 @@ private var primeiraLeituraOCR = true
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 12f
+            textSize = 15f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -543,7 +543,7 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 12f
+                    textSize = 15f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(cor)
                     maxLines = 1
@@ -552,7 +552,7 @@ private fun atualizarPainelVisual() {
                 val hora = TextView(this@MainActivity).apply {
                     text = if (valor >= 10.0) horario else ""
                     gravity = Gravity.CENTER
-                    textSize = 8f
+                    textSize = 10f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
                     visibility = if (valor >= 10.0) android.view.View.VISIBLE else android.view.View.GONE
@@ -644,7 +644,7 @@ private fun atualizarPainelVisual() {
     }
 private fun atualizarPainelEstrategia() {
         if (!::painelEstrategia.isInitialized) return
-        painelEstrategia.textSize = 15f
+        painelEstrategia.textSize = 17f
         painelEstrategia.text =
             "ESTRATÉGIA PRINCIPAL — DUAS RODADAS → PRÓXIMA ≥ 2x\\n" +
             "Rodadas armazenadas: ${resultados.size}\\n" +
@@ -735,10 +735,10 @@ private fun atualizarPainelEstrategia() {
         val ativo25 = p.getBoolean("radar25_ativo", false); val restante25 = p.getInt("radar25_restantes", 5); val acerto25 = p.getInt("radar25_acertos", 0)
         val res25 = p.getString("radar25_resultado", "AGUARDANDO") ?: "AGUARDANDO"
         val azul = Color.rgb(85,175,255); val rosa = Color.rgb(235,105,185); val cinza = Color.rgb(180,192,210)
-        fun txt(s:String, n:Float, cor:Int, bold:Boolean=false) = TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,3,10,3) }
-        quadroPadroes.addView(txt("RADARES",18f,Color.WHITE,true))
+        fun txt(s:String, n:Float, cor:Int, bold:Boolean=false) = TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,5,10,5) }
+        quadroPadroes.addView(txt("RADARES",20f,Color.WHITE,true))
         fun radar(nome:String, cor:Int, estado:String, detalhe:String, linha:String) {
-            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,16f,cor,true)); addView(txt(estado,25f,Color.WHITE,true)); addView(txt(detalhe,14f,cinza)); addView(txt(linha,13f,cor,true)) }
+            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,18f,cor,true)); addView(txt(estado,29f,Color.WHITE,true)); addView(txt(detalhe,17f,cinza)); addView(txt(linha,16f,cor,true)) }
             quadroPadroes.addView(box,margem())
         }
         val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
@@ -746,8 +746,8 @@ private fun atualizarPainelEstrategia() {
         val qtd25=ultimas30.count { it in 2.0..5.0 }
         val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
-        quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",14f,cinza,true))
-        quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",13f,cinza))
+        quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",17f,cinza,true))
+        quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",15f,cinza))
         quadroDetalhes.addView(txt("DETALHES",17f,Color.WHITE,true))
         quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",14f,cinza))
         quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",14f,cinza))
@@ -802,15 +802,15 @@ private fun atualizarPainelEstrategia() {
         if(padraoManual.isNotEmpty()){
             val s=estatisticaPadrao(serie,padraoManual,alvo,quantidadeGales)
             val derrota=if(s.ocorrencias==0)0.0 else s.derrotas*100.0/s.ocorrencias
-            quadroValidador.addView(TextView(this).apply{text="Ocorrências: ${s.ocorrencias} • Vitórias: ${s.vitorias} (${String.format(Locale.US,"%.1f",s.percentual)}%) • Derrotas: ${s.derrotas} (${String.format(Locale.US,"%.1f",derrota)}%)";textSize=14f;setTypeface(null,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);setPadding(0,8,0,6)})
-            quadroValidador.addView(TextView(this).apply{text="Sem gale: ${s.semGale} • "+s.porGale.mapIndexed{i,v->"Gale $i: $v"}.joinToString(" • ")+"\\nMaior sequência de vitórias: ${s.maiorSequencia}";textSize=13f;setTextColor(Color.rgb(180,205,230));setPadding(0,4,0,8)})
+            quadroValidador.addView(TextView(this).apply{text="Ocorrências: ${s.ocorrencias} • Vitórias: ${s.vitorias} (${String.format(Locale.US,"%.1f",s.percentual)}%) • Derrotas: ${s.derrotas} (${String.format(Locale.US,"%.1f",derrota)}%)";textSize=17f;setTypeface(null,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);setPadding(0,8,0,6)})
+            quadroValidador.addView(TextView(this).apply{text="Sem gale: ${s.semGale} • "+s.porGale.mapIndexed{i,v->"Gale $i: $v"}.joinToString(" • ")+"\\nMaior sequência de vitórias: ${s.maiorSequencia}";textSize=16f;setTextColor(Color.rgb(180,205,230));setPadding(0,4,0,8)})
         }else quadroValidador.addView(TextView(this).apply{text="Monte uma sequência para validar.";textSize=11f;setTextColor(Color.LTGRAY);setPadding(0,6,0,4)})
-        quadroValidador.addView(TextView(this).apply{text="PADRÕES DESCOBERTOS AUTOMATICAMENTE";textSize=14f;setTextColor(Color.rgb(100,205,255));setTypeface(null,android.graphics.Typeface.BOLD);setPadding(0,8,0,4)})
+        quadroValidador.addView(TextView(this).apply{text="PADRÕES DESCOBERTOS AUTOMATICAMENTE";textSize=17f;setTextColor(Color.rgb(100,205,255));setTypeface(null,android.graphics.Typeface.BOLD);setPadding(0,8,0,4)})
         val achados=descobrirPadroes(serie,alvo,quantidadeGales)
-        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<50)"Aguardando 50 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=13f;setTextColor(Color.LTGRAY)})
+        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<50)"Aguardando 50 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=15f;setTextColor(Color.LTGRAY)})
         else achados.forEachIndexed{idx,item->
             val(padrao,s)=item
-            quadroValidador.addView(TextView(this).apply{text="${idx+1}. "+padrao.joinToString(" → "){nomeCor(it)}+"\\n${s.percentual.toInt()}% • ${s.vitorias}/${s.ocorrencias} vitórias • ${s.derrotas} derrotas";textSize=14f;setTypeface(null,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);setPadding(10,9,10,9);background=cartao(Color.rgb(29,38,57));setOnClickListener{padraoManual.clear();padraoManual.addAll(padrao);atualizarValidador()}},margem())
+            quadroValidador.addView(TextView(this).apply{text="${idx+1}. "+padrao.joinToString(" → "){nomeCor(it)}+"\\n${s.percentual.toInt()}% • ${s.vitorias}/${s.ocorrencias} vitórias • ${s.derrotas} derrotas";textSize=17f;setTypeface(null,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);setPadding(10,9,10,9);background=cartao(Color.rgb(29,38,57));setOnClickListener{padraoManual.clear();padraoManual.addAll(padrao);atualizarValidador()}},margem())
         }
     }
 
