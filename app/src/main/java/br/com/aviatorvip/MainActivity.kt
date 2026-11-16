@@ -197,7 +197,7 @@ private var primeiraLeituraOCR = true
             textSize = 9f
             isAllCaps = false
             setTextColor(Color.WHITE)
-            minimumHeight = (25 * resources.displayMetrics.density).toInt()
+            minimumHeight = (42 * resources.displayMetrics.density).toInt()
             minHeight = minimumHeight
             minimumWidth = 0
             setPadding(2, 0, 2, 0)
@@ -786,8 +786,8 @@ private fun atualizarPainelEstrategia() {
             background = cartaoModerno(Color.rgb(15, 24, 43), Color.rgb(35, 155, 220), 12f)
             val resumo = if (ativo25) "${5-restante25}/5 casas • $acerto25 acerto(s)" else
                 "${ocorrencias25} ocorr. • ${String.format(Locale.US, "%.1f", percentual25)}%"
-            addView(txt(estado25, 10f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1.15f))
-            addView(txt(resumo, 9f, Color.rgb(85,175,255), true), LinearLayout.LayoutParams(0, -2, 1f))
+            addView(txt(estado25, 13f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1.15f))
+            addView(txt(resumo, 14f, Color.rgb(85,175,255), true), LinearLayout.LayoutParams(0, -2, 1f))
         }
         quadroPadroes.addView(card25, LinearLayout.LayoutParams(-1, (25 * resources.displayMetrics.density).toInt()).apply {
             bottomMargin = (2 * resources.displayMetrics.density).toInt()
@@ -865,7 +865,7 @@ private fun atualizarPainelEstrategia() {
             }
             val nome = TextView(this).apply {
                 text = "${i + 1}. ${nomes[i]}"
-                textSize = 11f
+                textSize = 13f
                 maxLines = 1
                 isSingleLine = true
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -875,7 +875,7 @@ private fun atualizarPainelEstrategia() {
             }
             val sinal = TextView(this).apply {
                 text = estado
-                textSize = 10f
+                textSize = 13f
                 maxLines = 1
                 isSingleLine = true
                 gravity = Gravity.CENTER
@@ -884,7 +884,7 @@ private fun atualizarPainelEstrategia() {
             }
             val historico = TextView(this).apply {
                 text = taxa
-                textSize = 10f
+                textSize = 14f
                 maxLines = 1
                 isSingleLine = true
                 gravity = Gravity.END
@@ -893,7 +893,7 @@ private fun atualizarPainelEstrategia() {
             linha.addView(nome, LinearLayout.LayoutParams(0, -1, 2.3f))
             linha.addView(sinal, LinearLayout.LayoutParams(0, -1, 1f))
             linha.addView(historico, LinearLayout.LayoutParams(0, -1, 0.8f))
-            bloco.addView(linha, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()).apply {
+            bloco.addView(linha, LinearLayout.LayoutParams(-1, (44 * resources.displayMetrics.density).toInt()).apply {
                 bottomMargin = (3 * resources.displayMetrics.density).toInt()
             })
         }
