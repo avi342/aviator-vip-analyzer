@@ -91,37 +91,6 @@ private var primeiraLeituraOCR = true
             setBackgroundColor(Color.BLACK)
         }
 
-        val topo = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(2, 2, 2, 2)
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(28, 35, 65), Color.rgb(65, 24, 75), Color.rgb(24, 35, 65))
-            ).apply {
-                cornerRadius = 12f
-                setStroke(1, Color.rgb(190, 55, 150))
-            }
-        }
-        val titulo = TextView(this).apply {
-            text = "AVIATOR VIP"
-            textSize = 13f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.08f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(255, 90, 185))
-        }
-        val subtitulo = TextView(this).apply {
-            text = "ANALYZER  •  PAINEL INTELIGENTE"
-            textSize = 8f
-            gravity = Gravity.CENTER
-            letterSpacing = 0.02f
-            setTextColor(Color.rgb(190, 205, 230))
-        }
-        topo.addView(titulo)
-        topo.addView(subtitulo)
-        tela.addView(topo, margem())
-
         val controlesCaptura = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -702,8 +671,6 @@ private fun atualizarPainelEstrategia() {
         val completos = listOf(rosas >= 8, valoresCasas.size == 6 && baixasEspelho >= 2, quebra).count { it }
         val sinais = listOf(rosas >= 3, valoresCasas.isNotEmpty(), janela6.count { it < 2.0 } >= 2).count { it }
         val p = getSharedPreferences("aviator", MODE_PRIVATE)
-        val ativo10 = p.getBoolean("radar10x_ativo", false); val restante10 = p.getInt("radar10x_restantes", 5); val acerto10 = p.getInt("radar10x_acertos", 0)
-        val res10 = p.getString("radar10x_resultado", "AGUARDANDO") ?: "AGUARDANDO"
         val ativo25 = p.getBoolean("radar25_ativo", false); val restante25 = p.getInt("radar25_restantes", 5); val acerto25 = p.getInt("radar25_acertos", 0)
         val res25 = p.getString("radar25_resultado", "AGUARDANDO") ?: "AGUARDANDO"
         val azul = Color.rgb(85,175,255); val rosa = Color.rgb(235,105,185); val cinza = Color.rgb(180,192,210)
@@ -713,8 +680,6 @@ private fun atualizarPainelEstrategia() {
             val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,18f,cor,true)); addView(txt(estado,29f,Color.WHITE,true)); addView(txt(detalhe,17f,cinza)); addView(txt(linha,16f,cor,true)) }
             quadroPadroes.addView(box,margem())
         }
-        val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
-        radar("OBJETIVO 10x+",rosa,estado10,if(ativo10)"Janela em andamento" else "$completos/3 critérios completos",if(ativo10)"${5-restante10}/5 rodadas • $acerto10 acerto(s)" else "Ciclo rosa $rosas/8 • casas ${valoresCasas.size}/6")
         val qtd25=ultimas30.count { it in 2.0..5.0 }
         val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
