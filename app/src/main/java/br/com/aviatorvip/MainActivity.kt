@@ -681,7 +681,7 @@ private fun atualizarPainelEstrategia() {
             quadroPadroes.addView(box,margem())
         }
         val qtd25=ultimas30.count { it in 2.0..5.0 }
-        val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
+        val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"POSSÍVEL ENTRADA"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",17f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",15f,cinza))
