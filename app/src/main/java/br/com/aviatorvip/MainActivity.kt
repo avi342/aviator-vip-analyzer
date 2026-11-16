@@ -755,7 +755,7 @@ private fun atualizarPainelEstrategia() {
         quadroDetalhes.addView(txt("CASAS OBSERVADAS",17f,Color.WHITE,true))
         val linhaCasas = android.text.SpannableStringBuilder()
         casas.forEachIndexed { indice, casa ->
-            if (indice > 0) linhaCasas.append(if (indice % 2 == 0) "\\n" else "      ")
+            if (indice > 0) linhaCasas.append(if (indice % 2 == 0) "\n" else "      ")
             val inicioCasa = linhaCasas.length
             linhaCasas.append("${casa}ª casa")
             linhaCasas.setSpan(android.text.style.ForegroundColorSpan(Color.rgb(100, 205, 255)), inicioCasa, linhaCasas.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
