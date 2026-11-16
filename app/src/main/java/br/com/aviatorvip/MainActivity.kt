@@ -736,9 +736,9 @@ private fun atualizarPainelEstrategia() {
         val res25 = p.getString("radar25_resultado", "AGUARDANDO") ?: "AGUARDANDO"
         val azul = Color.rgb(85,175,255); val rosa = Color.rgb(235,105,185); val cinza = Color.rgb(180,192,210)
         fun txt(s:String, n:Float, cor:Int, bold:Boolean=false) = TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,3,10,3) }
-        quadroPadroes.addView(txt("RADARES",16f,Color.WHITE,true))
+        quadroPadroes.addView(txt("RADARES",18f,Color.WHITE,true))
         fun radar(nome:String, cor:Int, estado:String, detalhe:String, linha:String) {
-            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,14f,cor,true)); addView(txt(estado,21f,Color.WHITE,true)); addView(txt(detalhe,11f,cinza)); addView(txt(linha,10f,cor,true)) }
+            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,16f,cor,true)); addView(txt(estado,25f,Color.WHITE,true)); addView(txt(detalhe,14f,cinza)); addView(txt(linha,13f,cor,true)) }
             quadroPadroes.addView(box,margem())
         }
         val estado10=when { ativo10->"AVALIANDO"; res10=="SIM"->"SIM"; res10=="NÃO"->"NÃO"; else->"AGUARDAR" }
@@ -746,12 +746,12 @@ private fun atualizarPainelEstrategia() {
         val qtd25=ultimas30.count { it in 2.0..5.0 }
         val estado25=when { ativo25->"AVALIANDO"; res25=="SIM"->"SIM"; res25=="NÃO"->"NÃO"; else->"AGUARDAR" }
         radar("OBJETIVO 2x–5x",azul,estado25,if(ativo25)"Janela em andamento" else "Leitura independente",if(ativo25)"${5-restante25}/5 rodadas • $acerto25 acerto(s)" else "Padrões históricos validados")
-        quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",11f,cinza,true))
-        quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",10f,cinza))
-        quadroDetalhes.addView(txt("DETALHES",14f,Color.WHITE,true))
-        quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",11f,cinza))
-        quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",11f,cinza))
-        quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",11f,cinza))
+        quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",14f,cinza,true))
+        quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",13f,cinza))
+        quadroDetalhes.addView(txt("DETALHES",17f,Color.WHITE,true))
+        quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",14f,cinza))
+        quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",14f,cinza))
+        quadroDetalhes.addView(txt("Quebra: ${janela6.count { it<2.0 }} baixas nas últimas 6.",14f,cinza))
         botaoDetalhes.text=if(detalhesExpandidos)"− DETALHES" else "＋ DETALHES"
         quadroDetalhes.visibility=if(detalhesExpandidos)View.VISIBLE else View.GONE
     }
@@ -802,15 +802,15 @@ private fun atualizarPainelEstrategia() {
         if(padraoManual.isNotEmpty()){
             val s=estatisticaPadrao(serie,padraoManual,alvo,quantidadeGales)
             val derrota=if(s.ocorrencias==0)0.0 else s.derrotas*100.0/s.ocorrencias
-            quadroValidador.addView(TextView(this).apply{text="Ocorrências: ${s.ocorrencias} • Vitórias: ${s.vitorias} (${String.format(Locale.US,"%.1f",s.percentual)}%) • Derrotas: ${s.derrotas} (${String.format(Locale.US,"%.1f",derrota)}%)";textSize=11f;setTextColor(Color.WHITE);setPadding(0,6,0,4)})
-            quadroValidador.addView(TextView(this).apply{text="Sem gale: ${s.semGale} • "+s.porGale.mapIndexed{i,v->"Gale $i: $v"}.joinToString(" • ")+"\\nMaior sequência de vitórias: ${s.maiorSequencia}";textSize=10f;setTextColor(Color.rgb(180,205,230));setPadding(0,2,0,6)})
+            quadroValidador.addView(TextView(this).apply{text="Ocorrências: ${s.ocorrencias} • Vitórias: ${s.vitorias} (${String.format(Locale.US,"%.1f",s.percentual)}%) • Derrotas: ${s.derrotas} (${String.format(Locale.US,"%.1f",derrota)}%)";textSize=14f;setTypeface(null,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);setPadding(0,8,0,6)})
+            quadroValidador.addView(TextView(this).apply{text="Sem gale: ${s.semGale} • "+s.porGale.mapIndexed{i,v->"Gale $i: $v"}.joinToString(" • ")+"\\nMaior sequência de vitórias: ${s.maiorSequencia}";textSize=13f;setTextColor(Color.rgb(180,205,230));setPadding(0,4,0,8)})
         }else quadroValidador.addView(TextView(this).apply{text="Monte uma sequência para validar.";textSize=11f;setTextColor(Color.LTGRAY);setPadding(0,6,0,4)})
-        quadroValidador.addView(TextView(this).apply{text="PADRÕES DESCOBERTOS AUTOMATICAMENTE";textSize=11f;setTextColor(Color.rgb(100,205,255));setTypeface(null,android.graphics.Typeface.BOLD);setPadding(0,8,0,4)})
+        quadroValidador.addView(TextView(this).apply{text="PADRÕES DESCOBERTOS AUTOMATICAMENTE";textSize=14f;setTextColor(Color.rgb(100,205,255));setTypeface(null,android.graphics.Typeface.BOLD);setPadding(0,8,0,4)})
         val achados=descobrirPadroes(serie,alvo,quantidadeGales)
-        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<50)"Aguardando 50 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=10f;setTextColor(Color.LTGRAY)})
+        if(achados.isEmpty())quadroValidador.addView(TextView(this).apply{text=if(serie.size<50)"Aguardando 50 rodadas para iniciar a busca." else "Nenhum padrão passou os filtros de validação.";textSize=13f;setTextColor(Color.LTGRAY)})
         else achados.forEachIndexed{idx,item->
             val(padrao,s)=item
-            quadroValidador.addView(TextView(this).apply{text="${idx+1}. "+padrao.joinToString(" → "){nomeCor(it)}+"\\n${s.percentual.toInt()}% • ${s.vitorias}/${s.ocorrencias} vitórias • ${s.derrotas} derrotas";textSize=11f;setTextColor(Color.WHITE);setPadding(8,6,8,6);background=cartao(Color.rgb(29,38,57));setOnClickListener{padraoManual.clear();padraoManual.addAll(padrao);atualizarValidador()}},margem())
+            quadroValidador.addView(TextView(this).apply{text="${idx+1}. "+padrao.joinToString(" → "){nomeCor(it)}+"\\n${s.percentual.toInt()}% • ${s.vitorias}/${s.ocorrencias} vitórias • ${s.derrotas} derrotas";textSize=14f;setTypeface(null,android.graphics.Typeface.BOLD);setTextColor(Color.WHITE);setPadding(10,9,10,9);background=cartao(Color.rgb(29,38,57));setOnClickListener{padraoManual.clear();padraoManual.addAll(padrao);atualizarValidador()}},margem())
         }
     }
 
