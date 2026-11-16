@@ -166,7 +166,7 @@ private var primeiraLeituraOCR = true
 
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 9
+            columnCount = 8
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
@@ -484,7 +484,7 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 15f
+                    textSize = 12f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(cor)
                     maxLines = 1
@@ -504,14 +504,11 @@ private fun atualizarPainelVisual() {
                 addView(hora)
                 contentDescription = "Multiplicador $multiplicadorTexto, horário $horario"
             }
-            val densidade = resources.displayMetrics.density
-            val larguraDisponivel = if (gradeResultados.width > 0) gradeResultados.width else resources.displayMetrics.widthPixels
-            val larguraCelula = ((larguraDisponivel - (12 * densidade).toInt()) / 9).coerceAtLeast(1)
             val lp = GridLayout.LayoutParams().apply {
-                width = larguraCelula
-                height = (26 * resources.displayMetrics.density).toInt()
-                columnSpec = GridLayout.spec(GridLayout.UNDEFINED)
-                setMargins(0, 1, 0, 1)
+                width = 0
+                height = (34 * resources.displayMetrics.density).toInt()
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                setMargins(1, 2, 1, 2)
             }
             gradeResultados.addView(item, lp)
         }
@@ -731,8 +728,6 @@ private fun atualizarPainelEstrategia() {
             linha.addView(txt(estadoTexto,12f,if(estado=="POSSÍVEL ENTRADA")Color.rgb(90,220,145) else if(estado=="INSUFICIENTE")cinza else Color.WHITE,true))
             quadroPadroes.addView(linha,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=3 })
         }
-        quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",17f,cinza,true))
-        quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",15f,cinza))
         quadroDetalhes.addView(txt("DETALHES",19f,Color.WHITE,true))
         quadroDetalhes.addView(txt("Ciclo rosa: $rosas/8 nas últimas 30.",16f,cinza))
         quadroDetalhes.addView(txt("Espelho: ${valoresCasas.size}/6 casas • $baixasEspelho abaixo de 2x.",16f,cinza))
