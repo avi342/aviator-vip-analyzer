@@ -98,8 +98,9 @@ private var primeiraLeituraOCR = true
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(3, 3, 3, 3)
-            setBackgroundColor(Color.BLACK)
+            setPadding(5, 5, 5, 5)
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(10, 13, 25), Color.rgb(2, 3, 8)))
         }
 
         val controlesCaptura = LinearLayout(this).apply {
@@ -109,8 +110,8 @@ private var primeiraLeituraOCR = true
         val iniciar = Button(this).apply {
             text = "▶ OCR"
             setOnClickListener { solicitarCaptura() }
-            estilizarBotao(this, Color.rgb(15, 125, 115), Color.rgb(75, 235, 205))
-            textSize = 8f
+            estilizarBotao(this, Color.rgb(7, 70, 66), Color.rgb(0, 235, 170))
+            textSize = 10f
             minimumHeight = 0
             minHeight = 0
             minimumWidth = 0
@@ -125,8 +126,8 @@ private var primeiraLeituraOCR = true
                 frequenciaRosas.fill(0)
                 atualizarPainelMonitoramentoRosas()
             }
-            estilizarBotao(this, Color.rgb(75, 35, 65), Color.rgb(230, 85, 155))
-            textSize = 8f
+            estilizarBotao(this, Color.rgb(75, 12, 39), Color.rgb(255, 55, 115))
+            textSize = 10f
             minimumHeight = 0
             minHeight = 0
             minimumWidth = 0
@@ -160,9 +161,9 @@ private var primeiraLeituraOCR = true
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 14f
+            textSize = 16f
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
+            setTextColor(Color.rgb(245, 248, 255))
             setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(2, 2, 2, 2)
             contentDescription = "Relógio digital com horas, minutos e segundos"
@@ -200,7 +201,7 @@ private var primeiraLeituraOCR = true
             minHeight = minimumHeight
             minimumWidth = 0
             setPadding(2, 0, 2, 0)
-            background = cartao(Color.rgb(25, 31, 49))
+            background = cartaoModerno(Color.rgb(18, 25, 43), Color.rgb(65, 105, 170), 12f)
             setOnClickListener {
                 historicoExpandido = !historicoExpandido
                 atualizarGrade()
@@ -230,8 +231,8 @@ private var primeiraLeituraOCR = true
             setPadding(2, 2, 2, 2)
             setBackgroundColor(Color.BLACK)
         }
-        painelIntervalosRosa = TextView(this).apply { textSize = 9f; setTextColor(Color.WHITE); setPadding(3, 2, 3, 2) }
-        painelFrequenciaRosa = TextView(this).apply { textSize = 9f; setTextColor(Color.WHITE); setPadding(3, 2, 3, 2) }
+        painelIntervalosRosa = TextView(this).apply { textSize = 11f; setTextColor(Color.WHITE); setPadding(8, 5, 8, 5) }
+        painelFrequenciaRosa = TextView(this).apply { textSize = 11f; setTextColor(Color.WHITE); setPadding(8, 5, 8, 5) }
         tela.addView(quadroPadroes, margem())
         // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
@@ -418,7 +419,7 @@ private fun processarOCR(texto: String) {
         painelIntervalosRosa.textSize = 11f
         painelIntervalosRosa.setTextColor(Color.rgb(238, 242, 250))
         painelIntervalosRosa.setTypeface(null, android.graphics.Typeface.BOLD)
-        painelIntervalosRosa.background = cartao(Color.rgb(20, 29, 48))
+        painelIntervalosRosa.background = cartaoModerno(Color.rgb(16, 23, 42), Color.rgb(55, 125, 220), 12f)
         painelFrequenciaRosa.text = buildString {
             append("ROSAS POR FINAL DE MINUTO   ")
             for (i in 0..9) append("$i  ${frequenciaRosas[i]}     ")
@@ -426,7 +427,7 @@ private fun processarOCR(texto: String) {
         painelFrequenciaRosa.textSize = 11f
         painelFrequenciaRosa.setTextColor(Color.rgb(255, 145, 205))
         painelFrequenciaRosa.setTypeface(null, android.graphics.Typeface.BOLD)
-        painelFrequenciaRosa.background = cartao(Color.rgb(38, 20, 37))
+        painelFrequenciaRosa.background = cartaoModerno(Color.rgb(35, 12, 36), Color.rgb(230, 45, 145), 12f)
     }
 
     private fun salvar() {
@@ -505,7 +506,8 @@ private fun atualizarPainelVisual() {
 
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
-        val filtrados = resultados.take(if (historicoExpandido) resultados.size else 18).withIndex()
+        // Uma linha de resultados recentes libera espaço para os painéis de análise.
+        val filtrados = resultados.take(if (historicoExpandido) resultados.size else 9).withIndex()
         gradeResultados.removeAllViews()
         filtrados.forEach { (indice, valor) ->
             val cor = when {
@@ -614,6 +616,18 @@ private fun atualizarPainelVisual() {
             setColor(cor)
             setStroke(1, Color.rgb(65, 80, 115))
             cornerRadius = 18f
+        }
+    }
+
+    private fun cartaoModerno(fundo: Int, borda: Int, raioDp: Float = 12f): GradientDrawable {
+        val claro = Color.rgb(
+            (Color.red(fundo) * 1.18f).toInt().coerceAtMost(255),
+            (Color.green(fundo) * 1.18f).toInt().coerceAtMost(255),
+            (Color.blue(fundo) * 1.18f).toInt().coerceAtMost(255)
+        )
+        return GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(claro, fundo)).apply {
+            setStroke((1.2f * resources.displayMetrics.density).toInt().coerceAtLeast(1), borda)
+            cornerRadius = raioDp * resources.displayMetrics.density
         }
     }
 
@@ -759,7 +773,7 @@ private fun atualizarPainelEstrategia() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(5, 1, 5, 1)
-            background = cartao(Color.rgb(12, 17, 29))
+            background = cartaoModerno(Color.rgb(15, 24, 43), Color.rgb(35, 155, 220), 12f)
             val resumo = if (ativo25) "${5-restante25}/5 casas • $acerto25 acerto(s)" else
                 "${ocorrencias25} ocorr. • ${String.format(Locale.US, "%.1f", percentual25)}%"
             addView(txt(estado25, 10f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1.15f))
@@ -837,7 +851,7 @@ private fun atualizarPainelEstrategia() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(5, 0, 5, 0)
-                background = cartao(Color.rgb(12, 17, 29))
+                background = cartaoModerno(Color.rgb(13, 19, 34), Color.rgb(48, 67, 104), 10f)
             }
             val nome = TextView(this).apply {
                 text = "${i + 1}. ${nomes[i]}"
