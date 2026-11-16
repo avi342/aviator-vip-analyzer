@@ -458,7 +458,7 @@ private fun atualizarPainelVisual() {
                 val multiplicador = TextView(this@MainActivity).apply {
                     text = multiplicadorTexto
                     gravity = Gravity.CENTER
-                    textSize = 12f
+                    textSize = 20f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(cor)
                     maxLines = 1
@@ -467,7 +467,7 @@ private fun atualizarPainelVisual() {
                 val hora = TextView(this@MainActivity).apply {
                     text = if (valor >= 10.0) horario else ""
                     gravity = Gravity.CENTER
-                    textSize = 10f
+                    textSize = 12f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
                     visibility = if (valor >= 10.0) android.view.View.VISIBLE else android.view.View.GONE
@@ -480,14 +480,14 @@ private fun atualizarPainelVisual() {
             }
             val lp = GridLayout.LayoutParams().apply {
                 width = 0
-                height = (34 * resources.displayMetrics.density).toInt()
+                height = (54 * resources.displayMetrics.density).toInt()
                 columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                 setMargins(1, 2, 1, 2)
             }
             gradeResultados.addView(item, lp)
         }
         botaoHistorico.text = if (historicoExpandido) "⌃ RECOLHER HISTÓRICO" else "⌄ VER HISTÓRICO COMPLETO"
-        botaoHistorico.visibility = if (resultados.size > 18) View.VISIBLE else View.GONE
+        botaoHistorico.visibility = View.VISIBLE
     }
 
     private fun atualizarContadorDezX() {
