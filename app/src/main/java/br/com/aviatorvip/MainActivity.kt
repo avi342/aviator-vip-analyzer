@@ -711,12 +711,8 @@ private fun atualizarPainelEstrategia() {
         val sinais = listOf(rosas >= 3, valoresCasas.isNotEmpty(), janela6.count { it < 2.0 } >= 2).count { it }
         val p = getSharedPreferences("aviator", MODE_PRIVATE)
         val azul=Color.rgb(85,175,255); val rosa=Color.rgb(235,105,185); val roxo=Color.rgb(175,125,255); val cinza=Color.rgb(180,192,210)
-        fun txt(s:String,n:Float,cor:Int,bold:Boolean=false)=TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(10,5,10,5) }
-        quadroPadroes.addView(txt("ESTRATÉGIAS VIP • ALVO 3x",20f,Color.WHITE,true))
-        fun radar(nome:String,cor:Int,estado:String,detalhe:String,linha:String) {
-            val box=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(12,10,12,10); background=cartao(Color.rgb(20,29,47)); addView(txt(nome,18f,cor,true)); addView(txt(estado,25f,Color.WHITE,true)); addView(txt(detalhe,15f,cinza)); addView(txt(linha,14f,cor,true)) }
-            quadroPadroes.addView(box,margem())
-        }
+        fun txt(s:String,n:Float,cor:Int,bold:Boolean=false)=TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(2,1,2,1) }
+        quadroPadroes.addView(txt("ESTRATÉGIAS VIP • ALVO 3x",17f,Color.WHITE,true))
         val vipNomes=listOf("REBOTE","ESPELHO","ALTERNÂNCIA","QUEBRA DE SEQUÊNCIA","ROSA QUEBRANDO SEQUÊNCIA","REPETIÇÃO DE CASAS PÓS-ROSA")
         val vipCores=listOf(azul,roxo,rosa,azul,rosa,roxo)
         vipNomes.forEachIndexed { i,nome ->
@@ -724,7 +720,16 @@ private fun atualizarPainelEstrategia() {
             val restante=p.getInt("vip_${i}_restantes",3)
             val resultado=p.getString("vip_${i}_resultado","AGUARDANDO") ?: "AGUARDANDO"
             val estado=when { ativo->"AVALIANDO"; resultado=="SIM"->"POSSÍVEL ENTRADA"; resultado=="NÃO"->"INSUFICIENTE"; else->"AGUARDANDO" }
-            radar(nome,vipCores[i],estado,if(ativo)"Sinal em observação • alvo 3x" else "Monitoramento independente",if(ativo)"Rodadas restantes: $restante" else "Sem janela de horário")
+            val linha=LinearLayout(this).apply {
+                orientation=LinearLayout.HORIZONTAL
+                gravity=Gravity.CENTER_VERTICAL
+                setPadding(8,4,8,4)
+                background=cartao(Color.rgb(20,29,47))
+            }
+            linha.addView(txt(nome,13f,vipCores[i],true),LinearLayout.LayoutParams(0,-2,1f))
+            val estadoTexto=if(ativo) "AVALIANDO • $restante" else estado
+            linha.addView(txt(estadoTexto,12f,if(estado=="POSSÍVEL ENTRADA")Color.rgb(90,220,145) else if(estado=="INSUFICIENTE")cinza else Color.WHITE,true))
+            quadroPadroes.addView(linha,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=3 })
         }
         quadroPadroes.addView(txt("MEMÓRIA ${resultados.size}/2000",17f,cinza,true))
         quadroPadroes.addView(txt("Cores • casas • horários • blocos 6/9/12/15",15f,cinza))
