@@ -197,7 +197,8 @@ private var primeiraLeituraOCR = true
             marginStart = (5 * resources.displayMetrics.density).toInt()
             marginEnd = (9 * resources.displayMetrics.density).toInt()
         })
-        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaLinhaStatus))        tela.addView(linhaStatus)
+        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaLinhaStatus))
+        tela.addView(linhaStatus)
 
 
         gradeResultados = GridLayout(this).apply {
@@ -396,7 +397,8 @@ private var primeiraLeituraOCR = true
         try {
             unregisterReceiver(receptor)
         } catch (_: Exception) {
-        }        super.onDestroy()
+        }
+        super.onDestroy()
     }
     
   
@@ -595,7 +597,8 @@ private fun atualizarPainelVisual() {
         val inicioContagem = textoContador.indexOf('(')
         val fimContagem = textoContador.indexOf(')', inicioContagem)
         val textoColorido = android.text.SpannableString(textoContador)
-        if (inicioContagem >= 0 && fimContagem > inicioContagem) {            textoColorido.setSpan(
+        if (inicioContagem >= 0 && fimContagem > inicioContagem) {
+            textoColorido.setSpan(
                 android.text.style.ForegroundColorSpan(Color.WHITE),
                 inicioContagem,
                 fimContagem + 1,
@@ -794,7 +797,8 @@ private fun atualizarPainelEstrategia() {
     private fun descobrirPadroes(serie:List<Double>,alvo:Double,gales:Int,alvoMax:Double?=null):List<Pair<List<Int>,EstatisticaPadrao>> {
         if(serie.size<50)return emptyList()
         val corte=(serie.size*0.65).toInt();val treino=serie.take(corte);val teste=serie.drop(corte)
-        val candidatos=mutableListOf<Pair<List<Int>,EstatisticaPadrao>>()        for(tamanho in 2..5){
+        val candidatos=mutableListOf<Pair<List<Int>,EstatisticaPadrao>>()
+        for(tamanho in 2..5){
             val total=Math.pow(3.0,tamanho.toDouble()).toInt()
             for(codigo in 0 until total){
                 var n=codigo;val padrao=MutableList(tamanho){0}
