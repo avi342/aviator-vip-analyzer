@@ -163,7 +163,7 @@ private var primeiraLeituraOCR = true
 
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 4
+            columnCount = 9
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
