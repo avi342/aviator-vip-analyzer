@@ -35,6 +35,8 @@ private lateinit var historico: LinearLayout
     private lateinit var gradeResultados: GridLayout
     private lateinit var botaoHistorico: Button
     private var historicoExpandido = false
+    private var colunasHistorico = 3
+    private lateinit var textoZoomHistorico: TextView
     private lateinit var campoQuantidade: EditText
     private lateinit var campoMinimo: EditText
     private lateinit var campoMaximo: EditText
@@ -204,6 +206,39 @@ private var primeiraLeituraOCR = true
             }
         }
         tela.addView(botaoHistorico, LinearLayout.LayoutParams(-1, (27 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 3 })
+
+        val preferenciasZoom = getSharedPreferences("aviator", MODE_PRIVATE)
+        colunasHistorico = preferenciasZoom.getInt("airjet_colunas_historico", 3).coerceIn(3, 9)
+        val controleZoom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(6, 0, 6, 0)
+        }
+        textoZoomHistorico = TextView(this).apply {
+            textSize = 10f
+            setTextColor(Color.LTGRAY)
+            minWidth = (88 * resources.displayMetrics.density).toInt()
+        }
+        controleZoom.addView(textoZoomHistorico)
+        val zoomHistorico = SeekBar(this).apply {
+            max = 6
+            progress = colunasHistorico - 3
+            contentDescription = "Tamanho dos cartões do histórico"
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    colunasHistorico = progress + 3
+                    atualizarTextoZoomHistorico()
+                    atualizarGrade()
+                    if (fromUser) preferenciasZoom.edit()
+                        .putInt("airjet_colunas_historico", colunasHistorico).apply()
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
+        }
+        controleZoom.addView(zoomHistorico, LinearLayout.LayoutParams(0, (34 * resources.displayMetrics.density).toInt(), 1f))
+        tela.addView(controleZoom, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()))
+        atualizarTextoZoomHistorico()
 
 
         painelEstrategia = TextView(this).apply {
@@ -563,6 +598,15 @@ private fun atualizarPainelVisual() {
         else -> 5
     }
 
+    private fun atualizarTextoZoomHistorico() {
+        if (!::textoZoomHistorico.isInitialized) return
+        textoZoomHistorico.text = when {
+            colunasHistorico <= 4 -> "GRANDE"
+            colunasHistorico <= 6 -> "MÉDIO"
+            else -> "PEQUENO"
+        } + " · ${colunasHistorico} col."
+    }
+
     private fun atualizarGrade() {
         if (!::gradeResultados.isInitialized) return
         gradeResultados.removeAllViews()
@@ -570,7 +614,7 @@ private fun atualizarPainelVisual() {
         // Compacto: 18 resultados em duas linhas. Expandido: até 50 em três colunas.
         val densidade = resources.displayMetrics.density
         val quantidade = if (historicoExpandido) 50 else 18
-        val colunas = if (historicoExpandido) 3 else 9
+        val colunas = colunasHistorico
         gradeResultados.columnCount = colunas
         gradeResultados.rowCount = (quantidade + colunas - 1) / colunas
         val valoresVisiveis = resultados.take(quantidade)
@@ -598,7 +642,7 @@ private fun atualizarPainelVisual() {
                     addView(TextView(this@MainActivity).apply {
                         text = "%.2fx".format(Locale.US, valor)
                         gravity = Gravity.CENTER
-                        textSize = if (historicoExpandido) 17f else 13f
+                        textSize = when (colunas) { in 3..4 -> 17f; in 5..6 -> 14f; else -> 11f }
                         setTypeface(null, android.graphics.Typeface.BOLD)
                         setTextColor(Color.WHITE)
                         maxLines = 1
@@ -609,7 +653,7 @@ private fun atualizarPainelVisual() {
                         addView(TextView(this@MainActivity).apply {
                             text = horario
                             gravity = Gravity.CENTER
-                            textSize = 10f
+                            textSize = when (colunas) { in 3..4 -> 11f; in 5..6 -> 9f; else -> 8f }
                             setTextColor(Color.rgb(225, 230, 240))
                             maxLines = 1
                             setSingleLine(true)
@@ -631,11 +675,7 @@ private fun atualizarPainelVisual() {
                 GridLayout.spec(coluna, 1f)
             ).apply {
                 width = 0
-                height = if (historicoExpandido) {
-                    (54 * densidade).toInt()
-                } else {
-                    (48 * densidade).toInt()
-                }
+                height = when (colunas) { in 3..4 -> (54 * densidade).toInt(); in 5..6 -> (46 * densidade).toInt(); else -> (39 * densidade).toInt() }
                 setMargins((2 * densidade).toInt(), (2 * densidade).toInt(),
                     (2 * densidade).toInt(), (2 * densidade).toInt())
             }
