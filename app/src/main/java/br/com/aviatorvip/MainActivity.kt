@@ -486,6 +486,20 @@ private var primeiraLeituraOCR = true
   
 private fun processarOCR(texto: String) {
 
+    if (texto.startsWith("PLATFORM:JETX:")) {
+        if (jogoAtivo != "JetX") {
+            jogoAtivo = "JetX"
+            carregarHistoricoJogo("JetX")
+            atualizarHistorico()
+            atualizarContadorDezX()
+            atualizarGrade()
+            avaliarEstrategia()
+            atualizarBibliotecaPadroes()
+        }
+        status.text = "JetX reconhecido • ${texto.substringAfterLast(":")}"
+        return
+    }
+
     if (texto == "NO_ROUND_END") {
         candidatoOCR = null
         leiturasDoCandidato = 0
