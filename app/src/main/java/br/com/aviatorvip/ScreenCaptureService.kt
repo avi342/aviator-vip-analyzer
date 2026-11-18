@@ -158,13 +158,13 @@ bitmap.recycle()
             .filter { bloco ->
                 val caixa = bloco.boundingBox
                 caixa != null && caixa.top >= limite &&
-                    Regex("""\\d{1,5}[.,]\\d{1,2}\\s*x""", RegexOption.IGNORE_CASE)
+                    Regex("""\d{1,5}[.,]\d{1,2}\s*x""", RegexOption.IGNORE_CASE)
                         .containsMatchIn(bloco.text)
             }
             .sortedBy { it.boundingBox!!.top }
 
         val numero = candidatos.firstOrNull()?.let { bloco ->
-            Regex("""(\\d{1,5}[.,]\\d{1,2})\\s*x""", RegexOption.IGNORE_CASE)
+            Regex("""(\d{1,5}[.,]\d{1,2})\s*x""", RegexOption.IGNORE_CASE)
                 .find(bloco.text)?.groupValues?.get(1)
         }
 
