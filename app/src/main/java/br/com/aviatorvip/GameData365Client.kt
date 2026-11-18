@@ -48,7 +48,19 @@ class GameData365Client(
                     ?: throw IllegalStateException("O AirJet veio sem game_id.")
             }
         }
-        throw IllegalStateException("AirJet não aparece nos jogos liberados para esta chave.")
+        val disponiveis = (0 until games.length()).mapNotNull { index ->
+            games.optJSONObject(index)?.let { game ->
+                "${game.optString("game_name", "sem nome")} (ID: ${game.optString("game_id", "sem ID")})"
+            }
+        }
+        throw IllegalStateException(
+            if (disponiveis.isEmpty()) {
+                "A API não retornou jogos liberados para esta chave."
+            } else {
+                "AirJet não foi encontrado pelo nome. Jogos retornados pela API: " +
+                    disponiveis.joinToString("; ")
+            }
+        )
     }
 
     /** Retorna a última rodada do jogo cujo nome contém AirJet. */
