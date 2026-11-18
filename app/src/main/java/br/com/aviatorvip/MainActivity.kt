@@ -43,6 +43,7 @@ private lateinit var historico: LinearLayout
     private lateinit var seletorCor: Spinner
     private var filtroRapido = "Todos"
     
+    private var jogoAtivo = "AirJet"
     private val resultados = mutableListOf<Double>()
     private val horarios = mutableListOf<String>()
     private val marcasTempo = mutableListOf<Long>()
@@ -66,24 +67,7 @@ private var primeiraLeituraOCR = true
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val salvos = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getString("resultados", "") ?: ""
-
-        if (salvos.isNotEmpty()) {
-            salvos.split(",").forEach {
-                it.toDoubleOrNull()?.let(resultados::add)
-            }
-        }
-        val horariosSalvos = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getString("horarios_resultados", "") ?: ""
-        if (horariosSalvos.isNotEmpty()) horarios.addAll(horariosSalvos.split("|"))
-        while (horarios.size < resultados.size) horarios.add("--:--:--")
-        val temposSalvos = getSharedPreferences("aviator", MODE_PRIVATE)
-            .getString("tempos_resultados", "") ?: ""
-        if (temposSalvos.isNotEmpty()) temposSalvos.split(",").forEach {
-            it.toLongOrNull()?.let(marcasTempo::add)
-        }
-        while (marcasTempo.size < resultados.size) marcasTempo.add(0L)
+        carregarHistoricoJogo(jogoAtivo, migrarLegado = true)
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -125,14 +109,23 @@ private var primeiraLeituraOCR = true
         controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
         tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
 
-        val importarAirJet = Button(this).apply {
-            text = "IMPORTAR HISTÓRICO AIRJET (ATÉ 50)"
-            textSize = 10f
-            isAllCaps = false
-            setOnClickListener { solicitarImportacaoAirJet() }
-            estilizarBotao(this, Color.rgb(20, 55, 75), Color.rgb(65, 190, 230))
+        val linhaImportacao = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
         }
-        tela.addView(importarAirJet, LinearLayout.LayoutParams(-1, (30 * resources.displayMetrics.density).toInt()).apply {
+        listOf("AirJet", "JetX").forEach { nomeJogo ->
+            val botao = Button(this).apply {
+                text = "IMPORTAR $nomeJogo"
+                textSize = 9f
+                isAllCaps = false
+                setOnClickListener { solicitarImportacaoJogo(nomeJogo) }
+                estilizarBotao(this, Color.rgb(20, 55, 75), if (nomeJogo == "JetX") Color.rgb(245, 175, 55) else Color.rgb(65, 190, 230))
+            }
+            linhaImportacao.addView(botao, LinearLayout.LayoutParams(0, (30 * resources.displayMetrics.density).toInt(), 1f).apply {
+                marginEnd = 3
+            })
+        }
+        tela.addView(linhaImportacao, LinearLayout.LayoutParams(-1, (33 * resources.displayMetrics.density).toInt()).apply {
             bottomMargin = 3
         })
 
@@ -308,7 +301,7 @@ private var primeiraLeituraOCR = true
 
     }
 
-    private fun solicitarImportacaoAirJet() {
+    private fun solicitarImportacaoJogo(nomeJogo: String) {
         val campoChave = EditText(this).apply {
             hint = "Cole aqui sua chave GameData365"
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
@@ -327,8 +320,8 @@ private var primeiraLeituraOCR = true
             })
         }
         AlertDialog.Builder(this)
-            .setTitle("Importar histórico AirJet")
-            .setMessage("A importação consulta a lista de jogos e depois busca até 50 rodadas. Isso usa 2 requisições da sua cota.")
+            .setTitle("Importar histórico $nomeJogo")
+            .setMessage("A consulta identifica o jogo pela lista liberada para sua chave e busca até 50 rodadas. Usa 2 requisições.")
             .setView(container)
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Importar", null)
@@ -341,19 +334,20 @@ private var primeiraLeituraOCR = true
                             return@setOnClickListener
                         }
                         dialog.dismiss()
-                        status.text = "Conectando à GameData365..."
+                        status.text = "Conectando à GameData365 ($nomeJogo)..."
                         Thread {
                             try {
                                 val api = GameData365Client(chave)
-                                val gameId = api.findAirJetGameId()
+                                val gameId = api.findGameId(nomeJogo)
                                 val historicoApi = api.fetchAirJetHistory(gameId, limit = 50)
                                 runOnUiThread {
+                                    jogoAtivo = nomeJogo
+                                    carregarHistoricoJogo(nomeJogo)
                                     val preferencias = getSharedPreferences("aviator", MODE_PRIVATE)
-                                    val idsSalvos = preferencias.getStringSet("airjet_round_ids", emptySet())
+                                    val chaveIds = "${nomeJogo.lowercase(Locale.ROOT)}_round_ids"
+                                    val idsSalvos = preferencias.getStringSet(chaveIds, emptySet())
                                         ?.toMutableSet() ?: mutableSetOf()
                                     var adicionados = 0
-                                    // A API entrega do mais recente para o mais antigo.
-                                    // Inserir do mais antigo para o mais recente mantém o índice zero como atual.
                                     historicoApi.rounds.asReversed().forEach { rodada ->
                                         if (idsSalvos.add(rodada.roundId)) {
                                             resultados.add(0, rodada.multiplier)
@@ -367,30 +361,23 @@ private var primeiraLeituraOCR = true
                                         if (horarios.isNotEmpty()) horarios.removeAt(horarios.lastIndex)
                                         if (marcasTempo.isNotEmpty()) marcasTempo.removeAt(marcasTempo.lastIndex)
                                     }
-                                    preferencias.edit()
-                                        .putStringSet("airjet_round_ids", idsSalvos)
-                                        .apply()
+                                    preferencias.edit().putStringSet(chaveIds, idsSalvos).apply()
                                     salvar()
                                     atualizarHistorico()
                                     atualizarContadorDezX()
                                     atualizarGrade()
                                     avaliarEstrategia()
                                     atualizarBibliotecaPadroes()
-                                    status.text = "AirJet: $adicionados rodadas importadas."
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "$adicionados resultados importados do AirJet.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
+                                    status.text = "$nomeJogo: $adicionados rodadas importadas."
+                                    Toast.makeText(this@MainActivity, "$adicionados resultados importados do $nomeJogo.", Toast.LENGTH_LONG).show()
                                 }
                             } catch (erro: Exception) {
                                 runOnUiThread {
-                                    status.text = "Falha ao importar AirJet."
+                                    status.text = "Falha ao importar $nomeJogo."
                                     AlertDialog.Builder(this@MainActivity)
-                                        .setTitle("Não foi possível importar")
+                                        .setTitle("Não foi possível importar $nomeJogo")
                                         .setMessage(erro.message ?: "Erro de conexão com a GameData365.")
-                                        .setPositiveButton("OK", null)
-                                        .show()
+                                        .setPositiveButton("OK", null).show()
                                 }
                             }
                         }.start()
@@ -398,6 +385,26 @@ private var primeiraLeituraOCR = true
                 }
                 dialog.show()
             }
+    }
+
+    private fun carregarHistoricoJogo(nomeJogo: String, migrarLegado: Boolean = false) {
+        resultados.clear()
+        horarios.clear()
+        marcasTempo.clear()
+        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
+        val prefixo = nomeJogo.lowercase(Locale.ROOT)
+        val legado = migrarLegado && nomeJogo == "AirJet"
+        val valores = prefs.getString("${prefixo}_resultados", null)
+            ?: if (legado) prefs.getString("resultados", "") else ""
+        val horas = prefs.getString("${prefixo}_horarios", null)
+            ?: if (legado) prefs.getString("horarios_resultados", "") else ""
+        val tempos = prefs.getString("${prefixo}_tempos", null)
+            ?: if (legado) prefs.getString("tempos_resultados", "") else ""
+        valores.orEmpty().takeIf { it.isNotBlank() }?.split(",")?.forEach { it.toDoubleOrNull()?.let(resultados::add) }
+        horas.orEmpty().takeIf { it.isNotBlank() }?.split("|")?.let(horarios::addAll)
+        tempos.orEmpty().takeIf { it.isNotBlank() }?.split(",")?.forEach { it.toLongOrNull()?.let(marcasTempo::add) }
+        while (horarios.size < resultados.size) horarios.add("--:--:--")
+        while (marcasTempo.size < resultados.size) marcasTempo.add(0L)
     }
 
     private fun horarioDaApi(timestamp: String?): String {
@@ -528,11 +535,11 @@ private fun processarOCR(texto: String) {
 }
 
     private fun salvar() {
-        getSharedPreferences("aviator", MODE_PRIVATE)
-            .edit()
-            .putString("resultados", resultados.joinToString(","))
-            .putString("horarios_resultados", horarios.joinToString("|"))
-            .putString("tempos_resultados", marcasTempo.joinToString(","))
+        val prefixo = jogoAtivo.lowercase(Locale.ROOT)
+        getSharedPreferences("aviator", MODE_PRIVATE).edit()
+            .putString("${prefixo}_resultados", resultados.joinToString(","))
+            .putString("${prefixo}_horarios", horarios.joinToString("|"))
+            .putString("${prefixo}_tempos", marcasTempo.joinToString(","))
             .apply()
     }
 
