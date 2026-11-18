@@ -145,7 +145,8 @@ bitmap.recycle()
         enviar("PLATFORM:JETX:$plataforma")
     }
 
-    val marcador = blocos.firstOrNull {
+    val linhas = blocos.flatMap { bloco -> bloco.lines }
+    val marcador = linhas.firstOrNull {
         it.text.contains("VOOU", ignoreCase = true) ||
         it.text.contains("PARA LONGE", ignoreCase = true)
     }
@@ -154,19 +155,23 @@ bitmap.recycle()
         enviar("NO_ROUND_END")
     } else {
         val limite = marcador.boundingBox?.bottom ?: 0
-        val candidatos = blocos
-            .filter { bloco ->
-                val caixa = bloco.boundingBox
+        val regexMultiplicador = Regex(
+            """(\\d{1,5}[.,]\\d{1,2})\\s*x""",
+            RegexOption.IGNORE_CASE
+        )
+
+        // O JetX pode colocar o texto "Voou para longe!" e o multiplicador
+        // no mesmo bloco de texto. Por isso, a busca é feita linha a linha.
+        val numero = linhas
+            .filter { linha ->
+                val caixa = linha.boundingBox
                 caixa != null && caixa.top >= limite &&
-                    Regex("""\d{1,5}[.,]\d{1,2}\s*x""", RegexOption.IGNORE_CASE)
-                        .containsMatchIn(bloco.text)
+                    regexMultiplicador.containsMatchIn(linha.text)
             }
             .sortedBy { it.boundingBox!!.top }
-
-        val numero = candidatos.firstOrNull()?.let { bloco ->
-            Regex("""(\d{1,5}[.,]\d{1,2})\s*x""", RegexOption.IGNORE_CASE)
-                .find(bloco.text)?.groupValues?.get(1)
-        }
+            .firstNotNullOfOrNull { linha ->
+                regexMultiplicador.find(linha.text)?.groupValues?.get(1)
+            }
 
         if (numero != null) enviar("ROUND_RESULT:$numero")
         else enviar("ROUND_WAIT")
