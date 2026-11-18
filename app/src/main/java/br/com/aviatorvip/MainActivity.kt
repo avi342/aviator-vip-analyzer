@@ -2,6 +2,7 @@
 package br.com.aviatorvip
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -121,6 +122,17 @@ private var primeiraLeituraOCR = true
         controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginEnd = 2 })
         controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
         tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
+
+        val importarAirJet = Button(this).apply {
+            text = "IMPORTAR HISTÓRICO AIRJET (ATÉ 50)"
+            textSize = 10f
+            isAllCaps = false
+            setOnClickListener { solicitarImportacaoAirJet() }
+            estilizarBotao(this, Color.rgb(20, 55, 75), Color.rgb(65, 190, 230))
+        }
+        tela.addView(importarAirJet, LinearLayout.LayoutParams(-1, (30 * resources.displayMetrics.density).toInt()).apply {
+            bottomMargin = 3
+        })
 
         val linhaStatus = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         status = TextView(this).apply {
@@ -259,6 +271,118 @@ private var primeiraLeituraOCR = true
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
 
+    }
+
+    private fun solicitarImportacaoAirJet() {
+        val campoChave = EditText(this).apply {
+            hint = "Cole aqui sua chave GameData365"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setSingleLine(true)
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 8, 32, 0)
+            addView(campoChave)
+            addView(TextView(this@MainActivity).apply {
+                text = "A chave será usada nesta consulta e não será salva no aplicativo nem no GitHub."
+                textSize = 12f
+                setTextColor(Color.LTGRAY)
+                setPadding(0, 8, 0, 0)
+            })
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Importar histórico AirJet")
+            .setMessage("A importação consulta a lista de jogos e depois busca até 50 rodadas. Isso usa 2 requisições da sua cota.")
+            .setView(container)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Importar", null)
+            .create().also { dialog ->
+                dialog.setOnShowListener {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        val chave = campoChave.text.toString().trim()
+                        if (chave.isBlank()) {
+                            campoChave.error = "Informe sua chave"
+                            return@setOnClickListener
+                        }
+                        dialog.dismiss()
+                        status.text = "Conectando à GameData365..."
+                        Thread {
+                            try {
+                                val api = GameData365Client(chave)
+                                val gameId = api.findAirJetGameId()
+                                val historicoApi = api.fetchAirJetHistory(gameId, limit = 50)
+                                runOnUiThread {
+                                    val preferencias = getSharedPreferences("aviator", MODE_PRIVATE)
+                                    val idsSalvos = preferencias.getStringSet("airjet_round_ids", emptySet())
+                                        ?.toMutableSet() ?: mutableSetOf()
+                                    var adicionados = 0
+                                    // A API entrega do mais recente para o mais antigo.
+                                    // Inserir do mais antigo para o mais recente mantém o índice zero como atual.
+                                    historicoApi.rounds.asReversed().forEach { rodada ->
+                                        if (idsSalvos.add(rodada.roundId)) {
+                                            resultados.add(0, rodada.multiplier)
+                                            horarios.add(0, horarioDaApi(rodada.timestamp))
+                                            marcasTempo.add(0, instanteDaApi(rodada.timestamp))
+                                            adicionados++
+                                        }
+                                    }
+                                    while (resultados.size > 2000) {
+                                        resultados.removeAt(resultados.lastIndex)
+                                        if (horarios.isNotEmpty()) horarios.removeAt(horarios.lastIndex)
+                                        if (marcasTempo.isNotEmpty()) marcasTempo.removeAt(marcasTempo.lastIndex)
+                                    }
+                                    preferencias.edit()
+                                        .putStringSet("airjet_round_ids", idsSalvos)
+                                        .apply()
+                                    salvar()
+                                    atualizarHistorico()
+                                    atualizarContadorDezX()
+                                    atualizarGrade()
+                                    avaliarEstrategia()
+                                    atualizarBibliotecaPadroes()
+                                    status.text = "AirJet: $adicionados rodadas importadas."
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "$adicionados resultados importados do AirJet.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            } catch (erro: Exception) {
+                                runOnUiThread {
+                                    status.text = "Falha ao importar AirJet."
+                                    AlertDialog.Builder(this@MainActivity)
+                                        .setTitle("Não foi possível importar")
+                                        .setMessage(erro.message ?: "Erro de conexão com a GameData365.")
+                                        .setPositiveButton("OK", null)
+                                        .show()
+                                }
+                            }
+                        }.start()
+                    }
+                }
+                dialog.show()
+            }
+    }
+
+    private fun horarioDaApi(timestamp: String?): String {
+        if (timestamp.isNullOrBlank()) return "--:--:--"
+        return timestamp.substringAfter("T", timestamp.substringAfter(" ")).take(8)
+    }
+
+    private fun instanteDaApi(timestamp: String?): Long {
+        if (timestamp.isNullOrBlank()) return 0L
+        return try {
+            val formato = if (timestamp.contains("T")) {
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.US)
+            } else {
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+            }
+            formato.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            formato.parse(timestamp)?.time ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
     }
 
     private fun solicitarCaptura() {
