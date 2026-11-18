@@ -154,18 +154,18 @@ bitmap.recycle()
     if (marcador == null) {
         enviar("NO_ROUND_END")
     } else {
-        val limite = marcador.boundingBox?.bottom ?: 0
+        val topoMarcador = marcador.boundingBox?.top ?: 0
+        // Aceita o multiplicador na mesma linha do marcador ou logo abaixo.
+        // Importante: em Kotlin raw strings, a regex usa uma única barra.
         val regexMultiplicador = Regex(
-            """(\\d{1,5}[.,]\\d{1,2})\\s*x""",
+            """(\d{1,5}[.,]\d{1,2})\s*x?""",
             RegexOption.IGNORE_CASE
         )
 
-        // O JetX pode colocar o texto "Voou para longe!" e o multiplicador
-        // no mesmo bloco de texto. Por isso, a busca é feita linha a linha.
         val numero = linhas
             .filter { linha ->
                 val caixa = linha.boundingBox
-                caixa != null && caixa.top >= limite &&
+                caixa != null && caixa.top >= topoMarcador &&
                     regexMultiplicador.containsMatchIn(linha.text)
             }
             .sortedBy { it.boundingBox!!.top }
