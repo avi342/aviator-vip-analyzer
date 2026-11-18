@@ -33,7 +33,25 @@ class GameData365Client(
         require(apiKey.isNotBlank()) { "A chave da GameData365 é obrigatória." }
     }
 
-    /** Retorna a última rodada do jogo cujo nome é AirJet. */
+    /** Localiza o identificador interno do AirJet na lista de jogos desta chave. */
+    fun findAirJetGameId(): String {
+        val json = get("/v1/crash/live")
+        require(json.optString("status") == "ok") {
+            "A API não confirmou status ok na consulta ao vivo."
+        }
+        val games = json.optJSONArray("games")
+            ?: throw IllegalStateException("A API não retornou a lista games.")
+        for (i in 0 until games.length()) {
+            val game = games.optJSONObject(i) ?: continue
+            if (game.optString("game_name").contains("AirJet", ignoreCase = true)) {
+                return game.optString("game_id").takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException("O AirJet veio sem game_id.")
+            }
+        }
+        throw IllegalStateException("AirJet não aparece nos jogos liberados para esta chave.")
+    }
+
+    /** Retorna a última rodada do jogo cujo nome contém AirJet. */
     fun fetchLatestAirJet(): Round {
         val json = get("/v1/crash/live")
         require(json.optString("status") == "ok") {
@@ -43,14 +61,12 @@ class GameData365Client(
             ?: throw IllegalStateException("A API não retornou a lista games.")
         for (i in 0 until games.length()) {
             val game = games.optJSONObject(i) ?: continue
-            if (!game.optString("game_name").equals("AirJet", ignoreCase = true)) continue
+            if (!game.optString("game_name").contains("AirJet", ignoreCase = true)) continue
             val latest = game.optJSONObject("latest")
                 ?: throw IllegalStateException("O AirJet não trouxe latest.")
             return parseRound(latest)
         }
-        throw IllegalStateException(
-            "AirJet não aparece nos jogos liberados para esta chave. Confira /v1/meta e os jogos do plano."
-        )
+        throw IllegalStateException("AirJet não aparece nos jogos liberados para esta chave.")
     }
 
     /**
