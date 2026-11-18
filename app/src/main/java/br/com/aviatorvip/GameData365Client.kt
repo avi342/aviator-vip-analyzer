@@ -3,12 +3,14 @@ package br.com.aviatorvip
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 /**
- * Cliente mínimo da GameData365 para o AirJet.
+ * Cliente da API GameData365 para localizar o AirJet.
  *
- * Execute as chamadas fora da thread principal. Não grave a chave no código
- * nem em arquivos versionados; solicite-a ao usuário e guarde-a localmente.
+ * O game_id é descoberto pela resposta de /v1/crash/live; não presumimos
+ * que o identificador interno do jogo seja "airjet".
+ * Execute as chamadas fora da thread principal.
  */
 class GameData365Client(
     private val apiKey: String,
@@ -16,12 +18,13 @@ class GameData365Client(
     private val readTimeoutMs: Int = 10_000
 ) {
     data class Round(
-        val roundId: String?,
+        val roundId: String,
         val multiplier: Double,
         val timestamp: String?
     )
 
     data class History(
+        val gameId: String,
         val rounds: List<Round>,
         val nextCursor: String?
     )
@@ -30,56 +33,89 @@ class GameData365Client(
         require(apiKey.isNotBlank()) { "A chave da GameData365 é obrigatória." }
     }
 
+    /** Retorna a última rodada do jogo cujo nome é AirJet. */
     fun fetchLatestAirJet(): Round {
         val json = get("/v1/crash/live")
-        val latest = json.optJSONObject("latest")
-            ?: throw IllegalStateException("A API não retornou o campo latest.")
-        val gameId = json.optString("game_id")
-        require(gameId == "air_jet") {
-            "A API retornou outro jogo: ${gameId.ifBlank { "desconhecido" }}."
+        require(json.optString("status") == "ok") {
+            "A API não confirmou status ok na consulta ao vivo."
         }
-        val multiplier = latest.optDouble("multiplier", Double.NaN)
-        require(multiplier.isFinite() && multiplier >= 1.0) {
-            "Multiplicador ausente ou inválido na resposta."
+        val games = json.optJSONArray("games")
+            ?: throw IllegalStateException("A API não retornou a lista games.")
+        for (i in 0 until games.length()) {
+            val game = games.optJSONObject(i) ?: continue
+            if (!game.optString("game_name").equals("AirJet", ignoreCase = true)) continue
+            val latest = game.optJSONObject("latest")
+                ?: throw IllegalStateException("O AirJet não trouxe latest.")
+            return parseRound(latest)
         }
-        return Round(
-            roundId = latest.optString("round_id").takeIf { it.isNotBlank() },
-            multiplier = multiplier,
-            timestamp = latest.optString("timestamp").takeIf { it.isNotBlank() }
+        throw IllegalStateException(
+            "AirJet não aparece nos jogos liberados para esta chave. Confira /v1/meta e os jogos do plano."
         )
     }
 
-    fun fetchAirJetHistory(limit: Int = 50, cursor: String? = null): History {
-        require(limit in 1..50) { "O limite deve ficar entre 1 e 50." }
+    /**
+     * Consulta histórico. Informe o gameId obtido no resultado ao vivo.
+     * Se a conta tiver apenas um jogo crash, a API permite omitir game.
+     */
+    fun fetchAirJetHistory(
+        gameId: String,
+        limit: Int = 50,
+        cursor: String? = null
+    ): History {
+        require(gameId.isNotBlank()) { "O game_id do AirJet é obrigatório." }
+        require(limit in 1..1000) { "O limite deve ficar entre 1 e 1000." }
+
         val query = buildString {
-            append("?game=air_jet&limit=").append(limit)
-            if (!cursor.isNullOrBlank()) append("&cursor=").append(
-                java.net.URLEncoder.encode(cursor, Charsets.UTF_8.name())
-            )
+            append("?game=").append(URLEncoder.encode(gameId, Charsets.UTF_8.name()))
+            append("&limit=").append(limit)
+            if (!cursor.isNullOrBlank()) {
+                append("&cursor=").append(URLEncoder.encode(cursor, Charsets.UTF_8.name()))
+            }
         }
         val json = get("/v1/crash/history$query")
+        require(json.optString("status") == "ok") {
+            "A API não confirmou status ok no histórico."
+        }
+        val returnedGameId = json.optString("game_id")
+        require(returnedGameId == gameId) {
+            "O histórico retornou outro jogo: ${returnedGameId.ifBlank { "desconhecido" }}."
+        }
         val array = json.optJSONArray("rounds")
             ?: throw IllegalStateException("A API não retornou a lista rounds.")
         val rounds = buildList {
             for (i in 0 until array.length()) {
                 val item = array.optJSONObject(i) ?: continue
-                val value = item.optDouble("multiplier", Double.NaN)
-                if (value.isFinite() && value >= 1.0) {
-                    add(
-                        Round(
-                            roundId = item.optString("round_id").takeIf { it.isNotBlank() },
-                            multiplier = value,
-                            timestamp = item.optString("timestamp").takeIf { it.isNotBlank() }
-                        )
-                    )
+                // Ignora itens sem multiplicador válido; a API pode evoluir seu formato.
+                val multiplier = item.optDouble("multiplier", Double.NaN)
+                val id = item.optString("round_id")
+                if (multiplier.isFinite() && multiplier >= 1.0 && id.isNotBlank()) {
+                    add(parseRound(item))
                 }
             }
         }
-        return History(rounds, json.optString("next_cursor").takeIf { it.isNotBlank() })
+        return History(
+            gameId = returnedGameId,
+            rounds = rounds,
+            nextCursor = json.optString("next_cursor").takeIf { it.isNotBlank() && it != "null" }
+        )
+    }
+
+    private fun parseRound(json: JSONObject): Round {
+        val multiplier = json.optDouble("multiplier", Double.NaN)
+        require(multiplier.isFinite() && multiplier >= 1.0) {
+            "Multiplicador ausente ou inválido na resposta."
+        }
+        val roundId = json.optString("round_id")
+        require(roundId.isNotBlank()) { "A rodada veio sem round_id." }
+        return Round(
+            roundId = roundId,
+            multiplier = multiplier,
+            timestamp = json.optString("timestamp").takeIf { it.isNotBlank() && it != "null" }
+        )
     }
 
     private fun get(pathAndQuery: String): JSONObject {
-        val connection = (URL(BASE_URL + pathAndQuery).openConnection() as HttpURLConnection)
+        val connection = URL(BASE_URL + pathAndQuery).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "GET"
             connection.connectTimeout = connectTimeoutMs
