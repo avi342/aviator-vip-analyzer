@@ -6,7 +6,7 @@
 
     <application
         android:theme="@android:style/Theme.Material.NoActionBar"
-        android:label="Aviator VIP Analyzer"
+        android:label="AirJet Analyzer"
         android:allowBackup="true"
         android:supportsRtl="true">
 
