@@ -30,6 +30,7 @@ class ScreenCaptureService : Service() {
     private var reader: ImageReader? = null
     private var worker: HandlerThread? = null
     private var ultimaLeitura = 0L
+    private var ultimaPlataformaEnviada = ""
 
     private val reconhecedor by lazy {
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -127,6 +128,22 @@ bitmap.recycle()
                   
               .addOnSuccessListener { resultado ->
     val blocos = resultado.textBlocks
+    val textoTela = resultado.text.uppercase(java.util.Locale.ROOT)
+        .replace(" ", "")
+        .replace("\\n", "")
+
+    val ehJetX = textoTela.contains("JETX")
+    val plataforma = when {
+        textoTela.contains("APOSTABOOM") || textoTela.contains("APOSTABOOMBET") -> "APOSTABOOM"
+        textoTela.contains("PINGOL") || textoTela.contains("PINGOL.IO") -> "PINGOL"
+        ehJetX -> "PINGOL"
+        else -> ""
+    }
+
+    if (ehJetX && plataforma.isNotBlank() && plataforma != ultimaPlataformaEnviada) {
+        ultimaPlataformaEnviada = plataforma
+        enviar("PLATFORM:JETX:$plataforma")
+    }
 
     val marcador = blocos.firstOrNull {
         it.text.contains("VOOU", ignoreCase = true) ||
@@ -137,30 +154,22 @@ bitmap.recycle()
         enviar("NO_ROUND_END")
     } else {
         val limite = marcador.boundingBox?.bottom ?: 0
-
-        val abaixo = blocos
-            .filter {
-                it.boundingBox != null &&
-               it.boundingBox!!.top >= limite
+        val candidatos = blocos
+            .filter { bloco ->
+                val caixa = bloco.boundingBox
+                caixa != null && caixa.top >= limite &&
+                    Regex("""\\d{1,5}[.,]\\d{1,2}\\s*x""", RegexOption.IGNORE_CASE)
+                        .containsMatchIn(bloco.text)
             }
             .sortedBy { it.boundingBox!!.top }
 
-        val texto = abaixo.take(3).joinToString(" ") {
-            it.text
+        val numero = candidatos.firstOrNull()?.let { bloco ->
+            Regex("""(\\d{1,5}[.,]\\d{1,2})\\s*x""", RegexOption.IGNORE_CASE)
+                .find(bloco.text)?.groupValues?.get(1)
         }
 
-        val regex = Regex(
-            """(\d{1,5}(?:[.,]\d{1,2})?)\s*x?""",
-            RegexOption.IGNORE_CASE
-        )
-
-        val numero = regex.find(texto)?.groupValues?.get(1)
-
-        if (numero != null) {
-            enviar("ROUND_RESULT:$numero")
-        } else {
-            enviar("ROUND_WAIT")
-        }
+        if (numero != null) enviar("ROUND_RESULT:$numero")
+        else enviar("ROUND_WAIT")
     }
 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
