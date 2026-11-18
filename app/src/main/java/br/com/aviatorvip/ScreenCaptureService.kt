@@ -30,6 +30,8 @@ class ScreenCaptureService : Service() {
     private var reader: ImageReader? = null
     private var worker: HandlerThread? = null
     private var ultimaLeitura = 0L
+    private var leituraEmAndamento = false
+    private var leiturasSemResultado = 0
     private var ultimaPlataformaEnviada = ""
 
     private val reconhecedor by lazy {
@@ -97,7 +99,7 @@ class ScreenCaptureService : Service() {
 
         reader!!.setOnImageAvailableListener({ fonte ->
             val agora = System.currentTimeMillis()
-            if (agora - ultimaLeitura < 1200L) {
+            if (agora - ultimaLeitura < 650L || leituraEmAndamento) {
                 fonte.acquireLatestImage()?.close()
                 return@setOnImageAvailableListener
             }
@@ -105,6 +107,7 @@ class ScreenCaptureService : Service() {
             val imagem = fonte.acquireLatestImage()
                 ?: return@setOnImageAvailableListener
             ultimaLeitura = agora
+            leituraEmAndamento = true
 
             val plano = imagem.planes[0]
             val largura = imagem.width
@@ -152,13 +155,15 @@ bitmap.recycle()
     }
 
     if (marcador == null) {
-        enviar("NO_ROUND_END")
+        leiturasSemResultado++
+        if (leiturasSemResultado >= 2) enviar("NO_ROUND_END")
     } else {
+        leiturasSemResultado = 0
         val topoMarcador = marcador.boundingBox?.top ?: 0
         // Aceita o multiplicador na mesma linha do marcador ou logo abaixo.
         // Importante: em Kotlin raw strings, a regex usa uma única barra.
         val regexMultiplicador = Regex(
-            """(\d{1,5}[.,]\d{1,2})\s*x?""",
+            """(\d{1,5}[.,]\d{1,2})\s*x""",
             RegexOption.IGNORE_CASE
         )
 
@@ -178,7 +183,10 @@ bitmap.recycle()
     }
 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener { recorte.recycle() }
+                 .addOnCompleteListener {
+                    recorte.recycle()
+                    leituraEmAndamento = false
+                }
 
         }, handler)
 
