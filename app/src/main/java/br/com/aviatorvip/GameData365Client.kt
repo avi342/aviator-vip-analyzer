@@ -33,8 +33,9 @@ class GameData365Client(
         require(apiKey.isNotBlank()) { "A chave da GameData365 é obrigatória." }
     }
 
-    /** Localiza o identificador interno do AirJet na lista de jogos desta chave. */
-    fun findAirJetGameId(): String {
+    /** Localiza o identificador interno de um jogo pelo nome retornado pela API. */
+    fun findGameId(gameName: String): String {
+        require(gameName.isNotBlank()) { "Informe o nome do jogo." }
         val json = get("/v1/crash/live")
         require(json.optString("status") == "ok") {
             "A API não confirmou status ok na consulta ao vivo."
@@ -43,9 +44,9 @@ class GameData365Client(
             ?: throw IllegalStateException("A API não retornou a lista games.")
         for (i in 0 until games.length()) {
             val game = games.optJSONObject(i) ?: continue
-            if (game.optString("game_name").contains("AirJet", ignoreCase = true)) {
+            if (game.optString("game_name").contains(gameName, ignoreCase = true)) {
                 return game.optString("game_id").takeIf { it.isNotBlank() }
-                    ?: throw IllegalStateException("O AirJet veio sem game_id.")
+                    ?: throw IllegalStateException("$gameName veio sem game_id.")
             }
         }
         val disponiveis = (0 until games.length()).mapNotNull { index ->
@@ -57,11 +58,13 @@ class GameData365Client(
             if (disponiveis.isEmpty()) {
                 "A API não retornou jogos liberados para esta chave."
             } else {
-                "AirJet não foi encontrado pelo nome. Jogos retornados pela API: " +
+                "$gameName não foi encontrado. Jogos retornados pela API: " +
                     disponiveis.joinToString("; ")
             }
         )
     }
+
+    fun findAirJetGameId(): String = findGameId("AirJet")
 
     /** Retorna a última rodada do jogo cujo nome contém AirJet. */
     fun fetchLatestAirJet(): Round {
