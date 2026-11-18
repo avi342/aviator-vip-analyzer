@@ -66,7 +66,15 @@ class GameData365Client(
                 ?: throw IllegalStateException("O AirJet não trouxe latest.")
             return parseRound(latest)
         }
-        throw IllegalStateException("AirJet não aparece nos jogos liberados para esta chave.")
+        val disponiveis = (0 until games.length()).mapNotNull { i ->
+            games.optJSONObject(i)?.let { game ->
+                "${game.optString("game_name")} [${game.optString("game_id")}]"
+            }
+        }
+        throw IllegalStateException(
+            "AirJet não veio na lista desta chave. Jogos recebidos pela API: " +
+                if (disponiveis.isEmpty()) "nenhum" else disponiveis.joinToString(", ")
+        )
     }
 
     /**
