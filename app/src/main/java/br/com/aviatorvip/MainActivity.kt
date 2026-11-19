@@ -894,6 +894,27 @@ private fun atualizarPainelEstrategia() {
             if (ms <= 0L) return "--"
             return "${ms / 60000L} min"
         }
+        fun faixaHorizontal(titulo: String, itens: List<String>, cor: Int) {
+            linha(titulo, 13f, cor, true)
+            val faixa = HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = true
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    itens.forEach { item ->
+                        addView(TextView(this@MainActivity).apply {
+                            text = item
+                            textSize = 13f
+                            setTextColor(Color.WHITE)
+                            setPadding(8, 5, 8, 5)
+                            background = cartao(Color.rgb(28, 34, 48))
+                        }, LinearLayout.LayoutParams(-2, -2).apply {
+                            rightMargin = (5 * resources.displayMetrics.density).toInt()
+                        })
+                    }
+                })
+            }
+            quadroPadroes.addView(faixa)
+        }
         val azuis = janela.count { it < 2.0 }
         val roxas = janela.count { it >= 2.0 && it < 10.0 }
         val rosas = janela.count { it >= 10.0 }
@@ -913,7 +934,6 @@ private fun atualizarPainelEstrategia() {
                 if (serie[idx] >= 10.0 && serie[rosasCrono[i - 1]] >= 10.0 &&
                     anterior > 0L && atual > anterior) intervalos10x.add(atual - anterior)
             }
-            if (idx < (serie.size - 40).coerceAtLeast(0)) continue
             var casa = 0
             for (j in idx + 1 until minOf(serie.size, idx + 21)) {
                 casa++
@@ -926,7 +946,6 @@ private fun atualizarPainelEstrategia() {
         }
         val frequencias = posicoes.groupingBy { it }.eachCount().entries
             .sortedWith(compareByDescending<Map.Entry<Int,Int>> { it.value }.thenBy { it.key })
-            .take(8)
         val espelhos = janela.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         val rosasRecentes = janela.indices.filter { janela[it] >= 10.0 }
         val minutosJanela = if (rosasRecentes.size >= 2) {
@@ -937,9 +956,9 @@ private fun atualizarPainelEstrategia() {
             tempos.zipWithNext().map { it.second - it.first }.filter { it > 0L }
         } else emptyList()
 
-        linha("CASAS MAIS REPETIDAS APÓS 10X+  (janela até 20 casas)", 13f, Color.rgb(245,150,205), true)
-        linha(if (janela.size < 40) "Aguardando completar 40 casas" else if (frequencias.isEmpty()) "Sem repetição registrada na amostra" else
-            frequencias.joinToString("     ") { "${it.key}ª: ${it.value}x" }, 15f, Color.WHITE, true)
+        faixaHorizontal("CASAS MAIS REPETIDAS APÓS 10X+  •  HISTÓRICO COMPLETO",
+            frequencias.map { "${it.key}ª casa  ${it.value}x" }.ifEmpty { listOf("Aguardando repetições") },
+            Color.rgb(245,150,205))
         linha("ROSAS CONSECUTIVAS: $espelhos", 12f, Color.rgb(245,150,205), true)
 
         val ultimo10 = serie.indices.lastOrNull { serie[it] >= 10.0 }
@@ -951,22 +970,18 @@ private fun atualizarPainelEstrategia() {
         }
         linha("ÚLTIMO 10X+: $ultimo10Texto", 12f, Color.WHITE, true)
 
-        linha("ÚLTIMAS 4 CASAS 10X+  •  INTERVALO EM MINUTOS", 13f, Color.rgb(245,150,205), true)
-        val quatroCasas = rosasCrono.takeLast(4)
-        if (quatroCasas.isEmpty()) {
-            linha("Aguardando resultados 10x+", 14f, Color.WHITE, true)
-        } else {
-            quatroCasas.forEachIndexed { indice, idx ->
-                val horario = horariosCronologicos.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
-                val posicaoCrono = rosasCrono.indexOf(idx)
-                val anteriorIdx = if (posicaoCrono > 0) rosasCrono[posicaoCrono - 1] else -1
-                val t0 = temposSessao.getOrNull(anteriorIdx) ?: 0L
-                val t1 = temposSessao.getOrNull(idx) ?: 0L
-                val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "--"
-                linha("${indice + 1}ª casa     $horario     ($intervalo)", 14f, Color.WHITE, true)
-            }
+        val registrosMinutagem = rosasCrono.mapIndexed { indice, idx ->
+            val horario = horariosCronologicos.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
+            val anteriorIdx = if (indice > 0) rosasCrono[indice - 1] else -1
+            val t0 = temposSessao.getOrNull(anteriorIdx) ?: 0L
+            val t1 = temposSessao.getOrNull(idx) ?: 0L
+            val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "início"
+            "${serie[idx]}x  $horario  ($intervalo)"
         }
-        linha("Análise de ciclo: até 20 casas e 40 minutos", 11f, Color.LTGRAY)
+        faixaHorizontal("PADRÃO DE MINUTAGEM  •  TODOS OS REGISTROS DA SESSÃO",
+            registrosMinutagem.ifEmpty { listOf("Aguardando resultados 10x+") },
+            Color.rgb(245,150,205))
+        linha("Análise contínua: registros sem limite; deslize para consultar os anteriores", 11f, Color.LTGRAY)
 
         quadroDezX.addView(TextView(this).apply {
             text = "As posições e os intervalos são contagens históricas; precisam de amostra para ganhar significado."
