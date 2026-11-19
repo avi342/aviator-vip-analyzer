@@ -45,7 +45,6 @@ private lateinit var historico: LinearLayout
     private val atualizarMinutosRunnable = object : Runnable {
         override fun run() {
             atualizarContadorDezX()
-            atualizarBibliotecaPadroes()
             atualizadorMinutos.postDelayed(this, 1000L)
         }
     }
