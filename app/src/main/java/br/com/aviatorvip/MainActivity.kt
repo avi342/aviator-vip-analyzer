@@ -834,6 +834,7 @@ private fun atualizarPainelEstrategia() {
                 if (serie[idx] >= 10.0 && serie[rosasCrono[i - 1]] >= 10.0 &&
                     anterior > 0L && atual > anterior) intervalos10x.add(atual - anterior)
             }
+            if (idx < (serie.size - 40).coerceAtLeast(0)) continue
             var casa = 0
             for (j in idx + 1 until minOf(serie.size, idx + 21)) {
                 casa++
@@ -847,7 +848,7 @@ private fun atualizarPainelEstrategia() {
         val frequencias = posicoes.groupingBy { it }.eachCount().entries
             .sortedWith(compareByDescending<Map.Entry<Int,Int>> { it.value }.thenBy { it.key })
             .take(8)
-        val espelhos = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
+        val espelhos = janela.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         val rosasRecentes = janela.indices.filter { janela[it] >= 10.0 }
         val minutosJanela = if (rosasRecentes.size >= 2) {
             val tempos = rosasRecentes.mapNotNull { janelaIdx ->
