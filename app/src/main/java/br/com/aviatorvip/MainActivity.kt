@@ -863,7 +863,7 @@ private fun atualizarPainelEstrategia() {
                 if (serie[j] >= 10.0) {
                     val t0 = marcasTempo.getOrNull(idx) ?: 0L
                     val t1 = marcasTempo.getOrNull(j) ?: 0L
-                    if (t0 > 0L && t1 > t0 && t1 - t0 <= 9L * 60L * 1000L) posicoes.add(casa)
+                    if (t0 > 0L && t1 > t0 && t1 - t0 <= 40L * 60L * 1000L) posicoes.add(casa)
                 }
             }
         }
@@ -909,7 +909,7 @@ private fun atualizarPainelEstrategia() {
                 linha("${indice + 1}ª casa     $horario     ($intervalo)", 14f, Color.WHITE, true)
             }
         }
-        linha("Análise de ciclo: até 20 casas e 9 minutos", 11f, Color.LTGRAY)
+        linha("Análise de ciclo: até 20 casas e 40 minutos", 11f, Color.LTGRAY)
 
         quadroDezX.addView(TextView(this).apply {
             text = "As posições e os intervalos são contagens históricas; precisam de amostra para ganhar significado."
