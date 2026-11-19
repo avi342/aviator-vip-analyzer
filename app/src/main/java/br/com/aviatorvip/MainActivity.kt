@@ -859,7 +859,7 @@ private fun atualizarPainelEstrategia() {
         } else emptyList()
 
         linha("CASAS MAIS REPETIDAS APÓS 10X+  (janela até 20 casas)", 13f, Color.rgb(245,150,205), true)
-        linha(if (frequencias.isEmpty()) "Aguardando ocorrências suficientes" else
+        linha(if (janela.size < 40) "Aguardando completar 40 casas" else if (frequencias.isEmpty()) "Sem repetição registrada na amostra" else
             frequencias.joinToString("     ") { "${it.key}ª: ${it.value}x" }, 15f, Color.WHITE, true)
         linha("ROSAS CONSECUTIVAS: $espelhos", 12f, Color.rgb(245,150,205), true)
 
