@@ -34,8 +34,11 @@ private lateinit var historico: LinearLayout
     private lateinit var quadroEstrategias: LinearLayout
     private lateinit var gradeResultados: GridLayout
     private lateinit var botaoHistorico: Button
+    private lateinit var botaoPainelCompleto: Button
+    private lateinit var painelCompleto: LinearLayout
     private var historicoExpandido = false
-    private var colunasHistorico = 5
+    private var painelExpandido = false
+    private var colunasHistorico = 9
     private lateinit var textoZoomHistorico: TextView
     private lateinit var campoQuantidade: EditText
     private lateinit var campoMinimo: EditText
@@ -143,8 +146,8 @@ private var primeiraLeituraOCR = true
         tela.addView(linhaStatus)
 
         gradeResultados = GridLayout(this).apply {
-            columnCount = 5
-            rowCount = 8
+            columnCount = 9
+            rowCount = 2
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
@@ -182,13 +185,33 @@ private var primeiraLeituraOCR = true
             setPadding(4, 3, 4, 3)
             setBackgroundColor(Color.BLACK)
         }
-        tela.addView(quadroPadroes, margem())
         quadroDezX = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(4, 3, 4, 3)
             setBackgroundColor(Color.BLACK)
         }
-        tela.addView(quadroDezX, margem())
+        botaoPainelCompleto = Button(this).apply {
+            text = "MOSTRAR RESTANTE DO PAINEL"
+            textSize = 10f
+            isAllCaps = false
+            setTextColor(Color.WHITE)
+            minimumHeight = (29 * resources.displayMetrics.density).toInt()
+            minHeight = minimumHeight
+            background = cartao(Color.rgb(25, 31, 49))
+            setOnClickListener {
+                painelExpandido = !painelExpandido
+                painelCompleto.visibility = if (painelExpandido) View.VISIBLE else View.GONE
+                text = if (painelExpandido) "RECOLHER PAINEL" else "MOSTRAR RESTANTE DO PAINEL"
+            }
+        }
+        tela.addView(botaoPainelCompleto, margem())
+        painelCompleto = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            addView(quadroPadroes, margem())
+            addView(quadroDezX, margem())
+        }
+        tela.addView(painelCompleto, margem())
 
         painelEstrategia = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f }
         painelEstatisticas = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f }
@@ -539,10 +562,10 @@ private fun atualizarPainelVisual() {
         if (!::gradeResultados.isInitialized) return
         gradeResultados.removeAllViews()
 
-        // Compacto: 18 resultados em duas linhas. Expandido: até 50 em três colunas.
+        // Resumo inicial: 18 resultados em duas linhas de nove. Expandido: até 80.
         val densidade = resources.displayMetrics.density
-        val quantidade = if (historicoExpandido) 80 else 40
-        val colunas = colunasHistorico
+        val quantidade = if (historicoExpandido) 80 else 18
+        val colunas = 9
         gradeResultados.columnCount = colunas
         gradeResultados.rowCount = (quantidade + colunas - 1) / colunas
         val valoresVisiveis = resultados.take(quantidade)
@@ -611,11 +634,11 @@ private fun atualizarPainelVisual() {
         }
 
         botaoHistorico.text = if (historicoExpandido) {
-            "⌃ MOSTRAR RESUMO (40)"
+            "⌃ MOSTRAR RESUMO (18)"
         } else {
             "VER MAIS HISTÓRICO (${resultados.size.coerceAtMost(80)})"
         }
-        botaoHistorico.visibility = if (resultados.size > 40) View.VISIBLE else View.GONE
+        botaoHistorico.visibility = if (resultados.size > 18) View.VISIBLE else View.GONE
     }
 
     private fun atualizarContadorDezX() {
@@ -812,8 +835,7 @@ private fun atualizarPainelEstrategia() {
         }
         fun tempo(ms: Long): String {
             if (ms <= 0L) return "--"
-            val total = ms / 1000L
-            return String.format(Locale.getDefault(), "%02d:%02d", total / 60L, total % 60L)
+            return "${ms / 60000L} min"
         }
         val azuis = janela.count { it < 2.0 }
         val roxas = janela.count { it >= 2.0 && it < 10.0 }
@@ -872,14 +894,22 @@ private fun atualizarPainelEstrategia() {
         }
         linha("ÚLTIMO 10X+: $ultimo10Texto", 12f, Color.WHITE, true)
 
-        val ultimosIntervalos = intervalos10x.takeLast(5).asReversed()
-        linha("INTERVALOS ENTRE 10X+  (min:seg)", 13f, Color.rgb(245,150,205), true)
-        linha(if (ultimosIntervalos.isEmpty()) "Aguardando dois resultados 10x+" else
-            ultimosIntervalos.joinToString("     ") { tempo(it) }, 15f, Color.WHITE, true)
-        val ultimosRosas = intervalosRosas.takeLast(5).asReversed()
-        linha("INTERVALOS ENTRE ROSAS", 12f, Color.rgb(175,145,255), true)
-        linha(if (ultimosRosas.isEmpty()) "--" else ultimosRosas.joinToString("     ") { tempo(it) }, 14f, Color.WHITE, true)
-        linha("CASAS/MINUTOS ROSA: limite de 20 casas e 09:00", 11f, Color.LTGRAY)
+        linha("ÚLTIMAS 4 CASAS 10X+  •  INTERVALO EM MINUTOS", 13f, Color.rgb(245,150,205), true)
+        val quatroCasas = rosasCrono.takeLast(4)
+        if (quatroCasas.isEmpty()) {
+            linha("Aguardando resultados 10x+", 14f, Color.WHITE, true)
+        } else {
+            quatroCasas.forEachIndexed { indice, idx ->
+                val horario = horarios.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
+                val posicaoCrono = rosasCrono.indexOf(idx)
+                val anteriorIdx = if (posicaoCrono > 0) rosasCrono[posicaoCrono - 1] else -1
+                val t0 = marcasTempo.getOrNull(anteriorIdx) ?: 0L
+                val t1 = marcasTempo.getOrNull(idx) ?: 0L
+                val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "--"
+                linha("${indice + 1}ª casa     $horario     ($intervalo)", 14f, Color.WHITE, true)
+            }
+        }
+        linha("Análise de ciclo: até 20 casas e 9 minutos", 11f, Color.LTGRAY)
 
         quadroDezX.addView(TextView(this).apply {
             text = "As posições e os intervalos são contagens históricas; precisam de amostra para ganhar significado."
