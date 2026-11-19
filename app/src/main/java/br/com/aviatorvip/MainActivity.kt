@@ -35,7 +35,7 @@ private lateinit var historico: LinearLayout
     private lateinit var gradeResultados: GridLayout
     private lateinit var botaoHistorico: Button
     private var historicoExpandido = false
-    private var colunasHistorico = 3
+    private var colunasHistorico = 5
     private lateinit var textoZoomHistorico: TextView
     private lateinit var campoQuantidade: EditText
     private lateinit var campoMinimo: EditText
@@ -109,82 +109,59 @@ private var primeiraLeituraOCR = true
         controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
         tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
 
-        val linhaImportacao = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-        listOf("AirJet", "JetX").forEach { nomeJogo ->
-            val botao = Button(this).apply {
-                text = "IMPORTAR $nomeJogo"
-                textSize = 9f
-                isAllCaps = false
-                setOnClickListener { solicitarImportacaoJogo(nomeJogo) }
-                estilizarBotao(this, Color.rgb(20, 55, 75), if (nomeJogo == "JetX") Color.rgb(245, 175, 55) else Color.rgb(65, 190, 230))
-            }
-            linhaImportacao.addView(botao, LinearLayout.LayoutParams(0, (30 * resources.displayMetrics.density).toInt(), 1f).apply {
-                marginEnd = 3
-            })
-        }
-        tela.addView(linhaImportacao, LinearLayout.LayoutParams(-1, (33 * resources.displayMetrics.density).toInt()).apply {
-            bottomMargin = 3
-        })
-
         val linhaStatus = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         status = TextView(this).apply {
             text = "Aguardando captura..."
-            textSize = 14f
+            textSize = 13f
             gravity = Gravity.CENTER_VERTICAL
-            includeFontPadding = true
             setTextColor(Color.WHITE)
-            setPadding(2, 2, 2, 2)
+            setPadding(3, 2, 3, 2)
         }
         contadorDezX = TextView(this).apply {
             text = "10x: --"
-            textSize = 20f
+            textSize = 18f
             gravity = Gravity.CENTER_VERTICAL or Gravity.END
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(2, 2, 4, 2)
+            setPadding(2, 2, 3, 2)
             maxLines = 1
         }
         relogioDigital = TextClock(this).apply {
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 15f
+            textSize = 13f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             setTypeface(null, android.graphics.Typeface.BOLD)
             setPadding(2, 2, 2, 2)
-            contentDescription = "Relógio digital com horas, minutos e segundos"
         }
-        val alturaLinhaStatus = (38 * resources.displayMetrics.density).toInt()
-        linhaStatus.addView(status, LinearLayout.LayoutParams(0, alturaLinhaStatus, 1f))
-        // Coluna central com largura reservada e respiro antes do contador rosa.
-        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((72 * resources.displayMetrics.density).toInt(), alturaLinhaStatus).apply {
-            marginStart = (5 * resources.displayMetrics.density).toInt()
-            marginEnd = (9 * resources.displayMetrics.density).toInt()
-        })
-        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaLinhaStatus))
+        val alturaStatus = (34 * resources.displayMetrics.density).toInt()
+        linhaStatus.addView(status, LinearLayout.LayoutParams(0, alturaStatus, 1f))
+        linhaStatus.addView(relogioDigital, LinearLayout.LayoutParams((68 * resources.displayMetrics.density).toInt(), alturaStatus))
+        linhaStatus.addView(contadorDezX, LinearLayout.LayoutParams(-2, alturaStatus))
         tela.addView(linhaStatus)
 
-
         gradeResultados = GridLayout(this).apply {
-            columnCount = 9
-            rowCount = 2
+            columnCount = 5
+            rowCount = 8
             alignmentMode = GridLayout.ALIGN_BOUNDS
             useDefaultMargins = false
             setPadding(1, 1, 1, 1)
             setBackgroundColor(Color.BLACK)
         }
-        tela.addView(
-            gradeResultados,
-            LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 4
-            }
-        )
+        val tituloHistorico = TextView(this).apply {
+            text = "ÚLTIMAS CASAS"
+            textSize = 12f
+            setTextColor(Color.rgb(175, 190, 215))
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(3, 5, 3, 2)
+        }
+        tela.addView(tituloHistorico)
+        tela.addView(gradeResultados, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 2 })
+
         botaoHistorico = Button(this).apply {
-            text = "⌄ VER HISTÓRICO COMPLETO"
+            text = "VER MAIS HISTÓRICO"
             textSize = 9f
             isAllCaps = false
             setTextColor(Color.WHITE)
@@ -198,95 +175,25 @@ private var primeiraLeituraOCR = true
                 atualizarGrade()
             }
         }
-        tela.addView(botaoHistorico, LinearLayout.LayoutParams(-1, (27 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 3 })
+        tela.addView(botaoHistorico, LinearLayout.LayoutParams(-1, (27 * resources.displayMetrics.density).toInt()).apply { bottomMargin = 4 })
 
-        val preferenciasZoom = getSharedPreferences("aviator", MODE_PRIVATE)
-        colunasHistorico = preferenciasZoom.getInt("airjet_colunas_historico", 3).coerceIn(3, 9)
-        val controleZoom = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(6, 0, 6, 0)
-        }
-        textoZoomHistorico = TextView(this).apply {
-            textSize = 10f
-            setTextColor(Color.LTGRAY)
-            minWidth = (88 * resources.displayMetrics.density).toInt()
-        }
-        controleZoom.addView(textoZoomHistorico)
-        val zoomHistorico = SeekBar(this).apply {
-            max = 6
-            progress = colunasHistorico - 3
-            contentDescription = "Tamanho dos cartões do histórico"
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    colunasHistorico = progress + 3
-                    atualizarTextoZoomHistorico()
-                    atualizarGrade()
-                    if (fromUser) preferenciasZoom.edit()
-                        .putInt("airjet_colunas_historico", colunasHistorico).apply()
-                }
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-            })
-        }
-        controleZoom.addView(zoomHistorico, LinearLayout.LayoutParams(0, (34 * resources.displayMetrics.density).toInt(), 1f))
-        tela.addView(controleZoom, LinearLayout.LayoutParams(-1, (34 * resources.displayMetrics.density).toInt()))
-        atualizarTextoZoomHistorico()
-
-
-        painelEstrategia = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            textSize = 15f
-            setPadding(16, 18, 16, 18)
-            background = cartao(Color.rgb(27, 35, 58))
-        }
-
-
-        val tituloPadroes = TextView(this).apply {
-            text = "PADRÕES IDENTIFICADOS"
-            textSize = 14f
-            setTextColor(Color.rgb(100, 205, 255))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(4, 7, 4, 4)
-        }
-        // Cabeçalho da central removido para liberar espaço.
         quadroPadroes = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(2, 2, 2, 2)
+            setPadding(4, 3, 4, 3)
             setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroPadroes, margem())
-        // Título da central especial removido para liberar espaço.
         quadroDezX = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(2, 2, 2, 2)
+            setPadding(4, 3, 4, 3)
             setBackgroundColor(Color.BLACK)
         }
         tela.addView(quadroDezX, margem())
 
-        painelEstatisticas = TextView(this).apply {
-            setTextColor(Color.WHITE)
-            textSize = 14f
-            setPadding(16, 16, 16, 16)
-            background = cartao(Color.rgb(20, 30, 52))
-        }
-
-
-        val cabecalho = TextView(this).apply {
-            text = "ESTRATÉGIA PRINCIPAL • PADRÃO DE 2 RODADAS"
-            textSize = 14f
-            setTextColor(Color.rgb(255, 90, 175))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(4, 18, 4, 8)
-        }
-
-        quadroEstrategias = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(12, 10, 12, 10)
-            background = cartao(Color.rgb(22, 28, 43))
-        }
-
-
+        painelEstrategia = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f }
+        painelEstatisticas = TextView(this).apply { setTextColor(Color.WHITE); textSize = 14f }
+        quadroEstrategias = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        
         val rolagemTela = ScrollView(this).apply {
             isFillViewport = true
             setBackgroundColor(Color.BLACK)
@@ -634,7 +541,7 @@ private fun atualizarPainelVisual() {
 
         // Compacto: 18 resultados em duas linhas. Expandido: até 50 em três colunas.
         val densidade = resources.displayMetrics.density
-        val quantidade = if (historicoExpandido) 50 else 18
+        val quantidade = if (historicoExpandido) 80 else 40
         val colunas = colunasHistorico
         gradeResultados.columnCount = colunas
         gradeResultados.rowCount = (quantidade + colunas - 1) / colunas
@@ -704,11 +611,11 @@ private fun atualizarPainelVisual() {
         }
 
         botaoHistorico.text = if (historicoExpandido) {
-            "⌃ MOSTRAR RESUMO (18)"
+            "⌃ MOSTRAR RESUMO (40)"
         } else {
-            "⌄ VER HISTÓRICO COMPLETO (${resultados.size.coerceAtMost(50)} RODADAS)"
+            "VER MAIS HISTÓRICO (${resultados.size.coerceAtMost(80)})"
         }
-        botaoHistorico.visibility = View.VISIBLE
+        botaoHistorico.visibility = if (resultados.size > 40) View.VISIBLE else View.GONE
     }
 
     private fun atualizarContadorDezX() {
@@ -889,40 +796,96 @@ private fun atualizarPainelEstrategia() {
 
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
-        quadroPadroes.removeAllViews(); quadroDezX.removeAllViews(); quadroDezX.visibility = View.GONE
-        val cronologico = resultados.asReversed()
-        val ultimas30 = cronologico.takeLast(30)
-        val rosas = ultimas30.count { it >= 10.0 && it < 40.0 }
-        val ultimoDez = (0 until (cronologico.size - 13).coerceAtLeast(0)).lastOrNull { cronologico[it] >= 10.0 } ?: -1
-        val casas = listOf(2, 3, 4, 5, 9, 13)
-        val valoresCasas = casas.mapNotNull { casa -> val idx = ultimoDez + casa; if (ultimoDez >= 0 && idx < cronologico.size) cronologico[idx] else null }
-        val baixasEspelho = valoresCasas.count { it < 2.0 }
-        val janela6 = cronologico.takeLast(6)
-        val quebra = janela6.windowed(2).any { it[0] < 2.0 && it[1] in 3.0..5.99 }
-        val completos = listOf(rosas >= 8, valoresCasas.size == 6 && baixasEspelho >= 2, quebra).count { it }
-        val sinais = listOf(rosas >= 3, valoresCasas.isNotEmpty(), janela6.count { it < 2.0 } >= 2).count { it }
-        val p = getSharedPreferences("aviator", MODE_PRIVATE)
-        val azul=Color.rgb(85,175,255); val rosa=Color.rgb(235,105,185); val roxo=Color.rgb(175,125,255); val cinza=Color.rgb(180,192,210)
-        fun txt(s:String,n:Float,cor:Int,bold:Boolean=false)=TextView(this).apply { text=s; textSize=n; setTextColor(cor); if(bold)setTypeface(null,android.graphics.Typeface.BOLD); setPadding(2,1,2,1) }
-        quadroPadroes.addView(txt("ESTRATÉGIAS VIP • ALVO 3x",17f,Color.WHITE,true))
-        val vipNomes=listOf("REBOTE","ESPELHO","ALTERNÂNCIA","QUEBRA DE SEQUÊNCIA","ROSA QUEBRANDO SEQUÊNCIA","REPETIÇÃO DE CASAS PÓS-ROSA")
-        val vipCores=listOf(azul,roxo,rosa,azul,rosa,roxo)
-        vipNomes.forEachIndexed { i,nome ->
-            val ativo=p.getBoolean("vip_${i}_ativo",false)
-            val restante=p.getInt("vip_${i}_restantes",3)
-            val resultado=p.getString("vip_${i}_resultado","AGUARDANDO") ?: "AGUARDANDO"
-            val estado=when { ativo->"AVALIANDO"; resultado=="SIM"->"POSSÍVEL ENTRADA"; resultado=="NÃO"->"INSUFICIENTE"; else->"AGUARDANDO" }
-            val linha=LinearLayout(this).apply {
-                orientation=LinearLayout.HORIZONTAL
-                gravity=Gravity.CENTER_VERTICAL
-                setPadding(8,4,8,4)
-                background=cartao(Color.rgb(20,29,47))
-            }
-            linha.addView(txt(nome,13f,vipCores[i],true),LinearLayout.LayoutParams(0,-2,1f))
-            val estadoTexto=if(ativo) "AVALIANDO • $restante" else estado
-            linha.addView(txt(estadoTexto,12f,if(estado=="POSSÍVEL ENTRADA")Color.rgb(90,220,145) else if(estado=="INSUFICIENTE")cinza else Color.WHITE,true))
-            quadroPadroes.addView(linha,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=3 })
+        quadroPadroes.removeAllViews()
+        quadroDezX.removeAllViews()
+        val serie = resultados.asReversed()
+        val janela = serie.takeLast(40)
+        val cores = listOf(Color.rgb(70,165,245), Color.rgb(160,115,245), Color.rgb(245,90,175))
+        fun linha(texto: String, tamanho: Float = 13f, cor: Int = Color.WHITE, negrito: Boolean = false) {
+            quadroPadroes.addView(TextView(this).apply {
+                text = texto
+                textSize = tamanho
+                setTextColor(cor)
+                if (negrito) setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(3, 2, 3, 2)
+            })
         }
+        fun tempo(ms: Long): String {
+            if (ms <= 0L) return "--"
+            val total = ms / 1000L
+            return String.format(Locale.getDefault(), "%02d:%02d", total / 60L, total % 60L)
+        }
+        val azuis = janela.count { it < 2.0 }
+        val roxas = janela.count { it >= 2.0 && it < 10.0 }
+        val rosas = janela.count { it >= 10.0 }
+        linha("RADAR DE LEITURA", 16f, Color.rgb(100,205,255), true)
+        linha("AMOSTRA  ${janela.size}/40 casas     •     AZUL $azuis   ROXO $roxas   ROSA $rosas", 12f, Color.LTGRAY, true)
+
+        val posicoes = mutableListOf<Int>()
+        val intervalosRosas = mutableListOf<Long>()
+        val intervalos10x = mutableListOf<Long>()
+        val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
+        for (i in rosasCrono.indices) {
+            val idx = rosasCrono[i]
+            if (i > 0) {
+                val anterior = marcasTempo.getOrNull(rosasCrono[i - 1]) ?: 0L
+                val atual = marcasTempo.getOrNull(idx) ?: 0L
+                if (anterior > 0L && atual > anterior) intervalosRosas.add(atual - anterior)
+                if (serie[idx] >= 10.0 && serie[rosasCrono[i - 1]] >= 10.0 &&
+                    anterior > 0L && atual > anterior) intervalos10x.add(atual - anterior)
+            }
+            var casa = 0
+            for (j in idx + 1 until minOf(serie.size, idx + 21)) {
+                casa++
+                if (serie[j] >= 10.0) {
+                    val t0 = marcasTempo.getOrNull(idx) ?: 0L
+                    val t1 = marcasTempo.getOrNull(j) ?: 0L
+                    if (t0 > 0L && t1 > t0 && t1 - t0 <= 9L * 60L * 1000L) posicoes.add(casa)
+                }
+            }
+        }
+        val frequencias = posicoes.groupingBy { it }.eachCount().entries
+            .sortedWith(compareByDescending<Map.Entry<Int,Int>> { it.value }.thenBy { it.key })
+            .take(8)
+        val espelhos = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
+        val rosasRecentes = janela.indices.filter { janela[it] >= 10.0 }
+        val minutosJanela = if (rosasRecentes.size >= 2) {
+            val tempos = rosasRecentes.mapNotNull { janelaIdx ->
+                val idx = serie.size - janela.size + janelaIdx
+                marcasTempo.getOrNull(idx)?.takeIf { it > 0L }
+            }
+            tempos.zipWithNext().map { it.second - it.first }.filter { it > 0L }
+        } else emptyList()
+
+        linha("CASAS MAIS REPETIDAS APÓS 10X+  (janela até 20 casas)", 13f, Color.rgb(245,150,205), true)
+        linha(if (frequencias.isEmpty()) "Aguardando ocorrências suficientes" else
+            frequencias.joinToString("     ") { "${it.key}ª: ${it.value}x" }, 15f, Color.WHITE, true)
+        linha("ROSAS CONSECUTIVAS: $espelhos", 12f, Color.rgb(245,150,205), true)
+
+        val ultimo10 = serie.indices.lastOrNull { serie[it] >= 10.0 }
+        val ultimo10Texto = if (ultimo10 == null) "--" else {
+            val idxDesc = serie.lastIndex - ultimo10
+            val t = marcasTempo.getOrNull(ultimo10) ?: 0L
+            val desde = if (t > 0L) tempo((System.currentTimeMillis() - t).coerceAtLeast(0L)) else "--"
+            "${serie[ultimo10]}x  •  há $idxDesc casas  •  $desde"
+        }
+        linha("ÚLTIMO 10X+: $ultimo10Texto", 12f, Color.WHITE, true)
+
+        val ultimosIntervalos = intervalos10x.takeLast(5).asReversed()
+        linha("INTERVALOS ENTRE 10X+  (min:seg)", 13f, Color.rgb(245,150,205), true)
+        linha(if (ultimosIntervalos.isEmpty()) "Aguardando dois resultados 10x+" else
+            ultimosIntervalos.joinToString("     ") { tempo(it) }, 15f, Color.WHITE, true)
+        val ultimosRosas = intervalosRosas.takeLast(5).asReversed()
+        linha("INTERVALOS ENTRE ROSAS", 12f, Color.rgb(175,145,255), true)
+        linha(if (ultimosRosas.isEmpty()) "--" else ultimosRosas.joinToString("     ") { tempo(it) }, 14f, Color.WHITE, true)
+        linha("CASAS/MINUTOS ROSA: limite de 20 casas e 09:00", 11f, Color.LTGRAY)
+
+        quadroDezX.addView(TextView(this).apply {
+            text = "As posições e os intervalos são contagens históricas; precisam de amostra para ganhar significado."
+            textSize = 10f
+            setTextColor(Color.GRAY)
+            setPadding(3, 2, 3, 2)
+        })
     }
 
     private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
