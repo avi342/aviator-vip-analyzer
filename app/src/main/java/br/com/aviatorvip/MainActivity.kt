@@ -970,17 +970,30 @@ private fun atualizarPainelEstrategia() {
         }
         linha("ÚLTIMO 10X+: $ultimo10Texto", 12f, Color.WHITE, true)
 
-        val registrosMinutagem = rosasCrono.mapIndexed { indice, idx ->
+        val registrosMinutagem10x = rosasCrono.mapIndexed { indice, idx ->
             val horario = horariosCronologicos.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
             val anteriorIdx = if (indice > 0) rosasCrono[indice - 1] else -1
             val t0 = temposSessao.getOrNull(anteriorIdx) ?: 0L
             val t1 = temposSessao.getOrNull(idx) ?: 0L
             val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "início"
             "${serie[idx]}x  $horario  ($intervalo)"
-        }
-        faixaHorizontal("PADRÃO DE MINUTAGEM  •  TODOS OS REGISTROS DA SESSÃO",
-            registrosMinutagem.ifEmpty { listOf("Aguardando resultados 10x+") },
+        }.asReversed()
+        faixaHorizontal("PADRÃO DE MINUTAGEM 10X+  •  MAIS RECENTE À ESQUERDA",
+            registrosMinutagem10x.ifEmpty { listOf("Aguardando resultados 10x+") },
             Color.rgb(245,150,205))
+
+        val rosas42Crono = serie.indices.filter { serie[it] > 42.0 }
+        val registrosMinutagem42x = rosas42Crono.mapIndexed { indice, idx ->
+            val horario = horariosCronologicos.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
+            val anteriorIdx = if (indice > 0) rosas42Crono[indice - 1] else -1
+            val t0 = temposSessao.getOrNull(anteriorIdx) ?: 0L
+            val t1 = temposSessao.getOrNull(idx) ?: 0L
+            val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "início"
+            "${serie[idx]}x  $horario  ($intervalo)"
+        }.asReversed()
+        faixaHorizontal("PADRÃO DE MINUTAGEM 42X+  •  MAIS RECENTE À ESQUERDA",
+            registrosMinutagem42x.ifEmpty { listOf("Aguardando resultados acima de 42x") },
+            Color.rgb(255,190,110))
         linha("Análise contínua: registros sem limite; deslize para consultar os anteriores", 11f, Color.LTGRAY)
 
         quadroDezX.addView(TextView(this).apply {
