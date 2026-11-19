@@ -945,7 +945,7 @@ private fun atualizarPainelEstrategia() {
             }
         }
         val frequencias = posicoes.groupingBy { it }.eachCount().entries
-            .sortedWith(compareByDescending<Map.Entry<Int,Int>> { it.value }.thenBy { it.key })
+            .sortedBy { it.key }
         val espelhos = janela.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         val rosasRecentes = janela.indices.filter { janela[it] >= 10.0 }
         val minutosJanela = if (rosasRecentes.size >= 2) {
