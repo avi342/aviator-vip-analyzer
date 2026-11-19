@@ -873,6 +873,7 @@ private fun atualizarPainelEstrategia() {
         quadroPadroes.removeAllViews()
         quadroDezX.removeAllViews()
         val temposCronologicos = marcasTempo.asReversed()
+        val horariosCronologicos = horarios.asReversed()
         val serieCompleta = resultados.asReversed()
         val inicioIdx = temposCronologicos.indexOfFirst { it >= inicioAnaliseSessao }
             .let { if (it < 0) temposCronologicos.size else it }
@@ -956,7 +957,7 @@ private fun atualizarPainelEstrategia() {
             linha("Aguardando resultados 10x+", 14f, Color.WHITE, true)
         } else {
             quatroCasas.forEachIndexed { indice, idx ->
-                val horario = horarios.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
+                val horario = horariosCronologicos.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
                 val posicaoCrono = rosasCrono.indexOf(idx)
                 val anteriorIdx = if (posicaoCrono > 0) rosasCrono[posicaoCrono - 1] else -1
                 val t0 = temposSessao.getOrNull(anteriorIdx) ?: 0L
