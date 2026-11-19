@@ -10,6 +10,8 @@ import android.content.IntentFilter
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
@@ -38,6 +40,15 @@ private lateinit var historico: LinearLayout
     private lateinit var painelCompleto: LinearLayout
     private var historicoExpandido = false
     private var painelExpandido = false
+    private var inicioAnaliseSessao = 0L
+    private val atualizadorMinutos = Handler(Looper.getMainLooper())
+    private val atualizarMinutosRunnable = object : Runnable {
+        override fun run() {
+            atualizarContadorDezX()
+            atualizarBibliotecaPadroes()
+            atualizadorMinutos.postDelayed(this, 1000L)
+        }
+    }
     private var colunasHistorico = 9
     private lateinit var textoZoomHistorico: TextView
     private lateinit var campoQuantidade: EditText
@@ -71,6 +82,7 @@ private var primeiraLeituraOCR = true
         super.onCreate(savedInstanceState)
 
         carregarHistoricoJogo(jogoAtivo, migrarLegado = true)
+        iniciarNovaSessaoAnalise()
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -109,7 +121,24 @@ private var primeiraLeituraOCR = true
         }
         val alturaControle = (23 * resources.displayMetrics.density).toInt()
         controlesCaptura.addView(iniciar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginEnd = 2 })
-        controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 1f).apply { marginStart = 2 })
+        controlesCaptura.addView(parar, LinearLayout.LayoutParams(0, alturaControle, 0.8f).apply { marginStart = 2 })
+        val resetar = Button(this).apply {
+            text = "↻ RESET"
+            setOnClickListener {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Reiniciar análise?")
+                    .setMessage("Zerar casas, minutos e gatilhos da sessão? O histórico de rodadas será mantido.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("RESETAR") { _, _ ->
+                        iniciarNovaSessaoAnalise()
+                        atualizarContadorDezX()
+                        atualizarBibliotecaPadroes()
+                        status.text = "Nova análise iniciada. Histórico preservado."
+                    }.show()
+            }
+            estilizarBotao(this, Color.rgb(85, 35, 45), Color.rgb(245, 90, 130))
+        }
+        controlesCaptura.addView(resetar, LinearLayout.LayoutParams(0, alturaControle, 0.8f).apply { marginStart = 2 })
         tela.addView(controlesCaptura, LinearLayout.LayoutParams(-1, alturaControle).apply { bottomMargin = 2 })
 
         val linhaStatus = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
@@ -228,6 +257,7 @@ private var primeiraLeituraOCR = true
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
+        atualizadorMinutos.post(atualizarMinutosRunnable)
 
     }
 
@@ -406,6 +436,7 @@ private var primeiraLeituraOCR = true
         }
     }
     override fun onDestroy() {
+        atualizadorMinutos.removeCallbacks(atualizarMinutosRunnable)
         try {
             unregisterReceiver(receptor)
         } catch (_: Exception) {
@@ -641,11 +672,32 @@ private fun atualizarPainelVisual() {
         botaoHistorico.visibility = if (resultados.size > 18) View.VISIBLE else View.GONE
     }
 
+    private fun iniciarNovaSessaoAnalise() {
+        inicioAnaliseSessao = System.currentTimeMillis()
+        val editor = getSharedPreferences("aviator", MODE_PRIVATE).edit()
+        for (id in listOf("10", "25")) {
+            editor.putBoolean("radar${id}x_ativo", false)
+                .putInt("radar${id}x_restantes", 0)
+                .putInt("radar${id}x_acertos", 0)
+                .putString("radar${id}x_resultado", "AGUARDANDO")
+                .putInt("radar${id}x_ultimo_gatilho", -1)
+        }
+        for (i in 0 until 6) {
+            editor.putBoolean("vip_${i}_ativo", false)
+                .putInt("vip_${i}_restantes", 0)
+                .putString("vip_${i}_resultado", "AGUARDANDO")
+                .putInt("vip_${i}_ultimo_gatilho", -1)
+        }
+        editor.apply()
+    }
+
     private fun atualizarContadorDezX() {
         if (!::contadorDezX.isInitialized) return
         // resultados[0] é a rodada mais recente. O índice do último 10x
         // equivale à quantidade de rodadas/casas desde aquele multiplicador.
-        val indice = resultados.indexOfFirst { it >= 10.0 }
+        val indice = resultados.indices.firstOrNull { i ->
+            resultados[i] >= 10.0 && (marcasTempo.getOrNull(i) ?: 0L) >= inicioAnaliseSessao
+        } ?: -1
         if (indice < 0) {
             contadorDezX.text = "Último 10x: (--) "
             return
@@ -821,7 +873,12 @@ private fun atualizarPainelEstrategia() {
         if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
         quadroPadroes.removeAllViews()
         quadroDezX.removeAllViews()
-        val serie = resultados.asReversed()
+        val temposCronologicos = marcasTempo.asReversed()
+        val serieCompleta = resultados.asReversed()
+        val inicioIdx = temposCronologicos.indexOfFirst { it >= inicioAnaliseSessao }
+            .let { if (it < 0) temposCronologicos.size else it }
+        val serie = serieCompleta.drop(inicioIdx)
+        val temposSessao = temposCronologicos.drop(inicioIdx)
         val janela = serie.takeLast(40)
         val cores = listOf(Color.rgb(70,165,245), Color.rgb(160,115,245), Color.rgb(245,90,175))
         fun linha(texto: String, tamanho: Float = 13f, cor: Int = Color.WHITE, negrito: Boolean = false) {
@@ -850,8 +907,8 @@ private fun atualizarPainelEstrategia() {
         for (i in rosasCrono.indices) {
             val idx = rosasCrono[i]
             if (i > 0) {
-                val anterior = marcasTempo.getOrNull(rosasCrono[i - 1]) ?: 0L
-                val atual = marcasTempo.getOrNull(idx) ?: 0L
+                val anterior = temposSessao.getOrNull(rosasCrono[i - 1]) ?: 0L
+                val atual = temposSessao.getOrNull(idx) ?: 0L
                 if (anterior > 0L && atual > anterior) intervalosRosas.add(atual - anterior)
                 if (serie[idx] >= 10.0 && serie[rosasCrono[i - 1]] >= 10.0 &&
                     anterior > 0L && atual > anterior) intervalos10x.add(atual - anterior)
@@ -861,8 +918,8 @@ private fun atualizarPainelEstrategia() {
             for (j in idx + 1 until minOf(serie.size, idx + 21)) {
                 casa++
                 if (serie[j] >= 10.0) {
-                    val t0 = marcasTempo.getOrNull(idx) ?: 0L
-                    val t1 = marcasTempo.getOrNull(j) ?: 0L
+                    val t0 = temposSessao.getOrNull(idx) ?: 0L
+                    val t1 = temposSessao.getOrNull(j) ?: 0L
                     if (t0 > 0L && t1 > t0 && t1 - t0 <= 40L * 60L * 1000L) posicoes.add(casa)
                 }
             }
@@ -875,7 +932,7 @@ private fun atualizarPainelEstrategia() {
         val minutosJanela = if (rosasRecentes.size >= 2) {
             val tempos = rosasRecentes.mapNotNull { janelaIdx ->
                 val idx = serie.size - janela.size + janelaIdx
-                marcasTempo.getOrNull(idx)?.takeIf { it > 0L }
+                temposSessao.getOrNull(idx)?.takeIf { it > 0L }
             }
             tempos.zipWithNext().map { it.second - it.first }.filter { it > 0L }
         } else emptyList()
@@ -888,7 +945,7 @@ private fun atualizarPainelEstrategia() {
         val ultimo10 = serie.indices.lastOrNull { serie[it] >= 10.0 }
         val ultimo10Texto = if (ultimo10 == null) "--" else {
             val idxDesc = serie.lastIndex - ultimo10
-            val t = marcasTempo.getOrNull(ultimo10) ?: 0L
+            val t = temposSessao.getOrNull(ultimo10) ?: 0L
             val desde = if (t > 0L) tempo((System.currentTimeMillis() - t).coerceAtLeast(0L)) else "--"
             "${serie[ultimo10]}x  •  há $idxDesc casas  •  $desde"
         }
@@ -903,8 +960,8 @@ private fun atualizarPainelEstrategia() {
                 val horario = horarios.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
                 val posicaoCrono = rosasCrono.indexOf(idx)
                 val anteriorIdx = if (posicaoCrono > 0) rosasCrono[posicaoCrono - 1] else -1
-                val t0 = marcasTempo.getOrNull(anteriorIdx) ?: 0L
-                val t1 = marcasTempo.getOrNull(idx) ?: 0L
+                val t0 = temposSessao.getOrNull(anteriorIdx) ?: 0L
+                val t1 = temposSessao.getOrNull(idx) ?: 0L
                 val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "--"
                 linha("${indice + 1}ª casa     $horario     ($intervalo)", 14f, Color.WHITE, true)
             }
