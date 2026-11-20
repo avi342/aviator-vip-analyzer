@@ -39,6 +39,7 @@ private lateinit var historico: LinearLayout
     private lateinit var botaoPainelCompleto: Button
     private lateinit var painelCompleto: LinearLayout
     private var historicoExpandido = false
+    private var inicioGraficoTempoReal = 0L
     private var painelExpandido = false
     private var inicioAnaliseSessao = 0L
     private val atualizadorMinutos = Handler(Looper.getMainLooper())
@@ -82,6 +83,8 @@ private var primeiraLeituraOCR = true
         super.onCreate(savedInstanceState)
 
         carregarHistoricoJogo(jogoAtivo, migrarLegado = true)
+        inicioGraficoTempoReal = getSharedPreferences("aviator", MODE_PRIVATE)
+            .getLong("grafico_inicio_tempo_real", 0L)
         iniciarNovaSessaoAnalise()
 
         val tela = LinearLayout(this).apply {
@@ -126,14 +129,17 @@ private var primeiraLeituraOCR = true
             text = "↻ RESET"
             setOnClickListener {
                 AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Reiniciar análise?")
-                    .setMessage("Zerar casas, minutos e gatilhos da sessão? O histórico de rodadas será mantido.")
+                    .setTitle("Zerar gráfico em tempo real?")
+                    .setMessage("O gráfico começará novamente a partir de agora. As análises dos últimos 60 minutos, estratégias, Radar e histórico de até 2.000 rodadas serão preservados.")
                     .setNegativeButton("Cancelar", null)
-                    .setPositiveButton("RESETAR") { _, _ ->
-                        iniciarNovaSessaoAnalise()
-                        atualizarContadorDezX()
-                        atualizarBibliotecaPadroes()
-                        status.text = "Nova análise iniciada. Histórico preservado."
+                    .setPositiveButton("ZERAR GRÁFICO") { _, _ ->
+                        inicioGraficoTempoReal = System.currentTimeMillis()
+                        getSharedPreferences("aviator", MODE_PRIVATE).edit()
+                            .putLong("grafico_inicio_tempo_real", inicioGraficoTempoReal)
+                            .apply()
+                        historicoExpandido = false
+                        atualizarGrade()
+                        status.text = "Gráfico zerado. Histórico e análises preservados."
                     }.show()
             }
             estilizarBotao(this, Color.rgb(85, 35, 45), Color.rgb(245, 90, 130))
@@ -593,16 +599,20 @@ private fun atualizarPainelVisual() {
         if (!::gradeResultados.isInitialized) return
         gradeResultados.removeAllViews()
 
-        // Resumo compacto: uma linha de nove resultados. Expandido: até 2.000.
+        // O gráfico mostra apenas as rodadas registradas desde o último RESET.
+        // O histórico completo permanece salvo separadamente, sem ser apagado.
         val densidade = resources.displayMetrics.density
-        val quantidade = if (historicoExpandido) 2000 else 9
+        val indicesGrafico = resultados.indices.filter { indice ->
+            (marcasTempo.getOrNull(indice) ?: 0L) >= inicioGraficoTempoReal
+        }
+        val quantidade = if (historicoExpandido) indicesGrafico.size.coerceAtLeast(9) else 9
         val colunas = 9
         gradeResultados.columnCount = colunas
         gradeResultados.rowCount = (quantidade + colunas - 1) / colunas
-        val valoresVisiveis = resultados.take(quantidade)
 
         for (posicao in 0 until quantidade) {
-            val valor = valoresVisiveis.getOrNull(posicao)
+            val indiceResultado = indicesGrafico.getOrNull(posicao)
+            val valor = indiceResultado?.let { resultados.getOrNull(it) }
             val cor = when {
                 valor == null -> Color.rgb(35, 39, 50)
                 valor < 2.0 -> Color.rgb(30, 105, 155)
@@ -630,7 +640,7 @@ private fun atualizarPainelVisual() {
                         maxLines = 1
                         setSingleLine(true)
                     })
-                    val horario = horarios.getOrNull(posicao).orEmpty()
+                    val horario = indiceResultado?.let { horarios.getOrNull(it) }.orEmpty()
                     if (horario.isNotBlank() && horario != "--:--:--") {
                         addView(TextView(this@MainActivity).apply {
                             text = horario
@@ -665,11 +675,11 @@ private fun atualizarPainelVisual() {
         }
 
         botaoHistorico.text = if (historicoExpandido) {
-            "⌃ MOSTRAR RESUMO (18)"
+            "⌃ RECOLHER GRÁFICO"
         } else {
-            "VER MAIS HISTÓRICO (${resultados.size.coerceAtMost(2000)})"
+            "VER MAIS GRÁFICO (${indicesGrafico.size.coerceAtMost(2000)})"
         }
-        botaoHistorico.visibility = if (resultados.size > 9) View.VISIBLE else View.GONE
+        botaoHistorico.visibility = if (indicesGrafico.size > 9) View.VISIBLE else View.GONE
     }
 
     private fun iniciarNovaSessaoAnalise() {
