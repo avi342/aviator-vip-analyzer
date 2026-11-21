@@ -449,17 +449,21 @@ private var primeiraLeituraOCR = true
   
 private fun processarOCR(texto: String) {
 
-    if (texto.startsWith("PLATFORM:JETX:")) {
-        if (jogoAtivo != "JetX") {
-            jogoAtivo = "JetX"
-            carregarHistoricoJogo("JetX")
+    if (texto.startsWith("PLATFORM:JETX:") || texto.startsWith("PLATFORM:AVIATOR:")) {
+        val novoJogo = if (texto.startsWith("PLATFORM:JETX:")) "JetX" else "Aviator"
+        if (jogoAtivo != novoJogo) {
+            jogoAtivo = novoJogo
+            candidatoOCR = null
+            leiturasDoCandidato = 0
+            rodadaRegistrada = false
+            carregarHistoricoJogo(novoJogo)
             atualizarHistorico()
             atualizarContadorDezX()
             atualizarGrade()
             avaliarEstrategia()
             atualizarBibliotecaPadroes()
         }
-        status.text = "JetX reconhecido • ${texto.substringAfterLast(":")}"
+        status.text = "$novoJogo reconhecido • ${texto.substringAfterLast(":")}"
         return
     }
 
