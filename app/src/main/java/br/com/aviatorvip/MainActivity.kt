@@ -1075,18 +1075,47 @@ private fun atualizarPainelEstrategia() {
         // As faixas de minutagem continuam usando a janela móvel de 60 minutos.
         val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
         val registrosMinutagem10x = rosasCrono.mapIndexed { indice, idx ->
-            val horario = horariosJanela.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
             val anteriorIdx = if (indice > 0) rosasCrono[indice - 1] else -1
             val casas = if (anteriorIdx >= 0) idx - anteriorIdx else 0
             val t0 = if (anteriorIdx >= 0) tempos.getOrNull(anteriorIdx) ?: 0L else 0L
             val t1 = tempos.getOrNull(idx) ?: 0L
-            val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "início da janela"
-            val casaTexto = if (anteriorIdx >= 0) "${casas}ª casa" else "início"
-            "$casaTexto  •  ${serie[idx]}x  •  $intervalo  •  $horario"
-        }.asReversed()
-        faixaHorizontal("INTERVALOS ENTRE 10X+  •  60 MIN",
-            registrosMinutagem10x.ifEmpty { listOf("Aguardando resultados 10x+") },
-            Color.rgb(245,150,205))
+            val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "--"
+            val casaTexto = if (anteriorIdx >= 0) "${casas}ª" else "—"
+            Triple(casaTexto, "${serie[idx]}x", intervalo)
+        }.asReversed().take(5)
+
+        linha("ÚLTIMOS 5 RESULTADOS 10X+", 13f, Color.rgb(245,150,205), true)
+        if (registrosMinutagem10x.isEmpty()) {
+            linha("Aguardando resultados 10x+", 11f, Color.LTGRAY)
+        } else {
+            val grade10x = GridLayout(this).apply {
+                columnCount = 5
+                rowCount = 1
+                useDefaultMargins = false
+                setPadding(1, 2, 1, 2)
+            }
+            registrosMinutagem10x.forEachIndexed { posicao, registro ->
+                val celula = TextView(this).apply {
+                    text = "${registro.first} casa\\n${registro.second}\\n${registro.third}"
+                    gravity = Gravity.CENTER
+                    textSize = 11f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    setPadding(2, 7, 2, 7)
+                    maxLines = 3
+                    background = cartao(Color.rgb(28, 34, 48))
+                }
+                grade10x.addView(celula, GridLayout.LayoutParams(
+                    GridLayout.spec(0, 1),
+                    GridLayout.spec(posicao, 1f)
+                ).apply {
+                    width = 0
+                    height = (66 * resources.displayMetrics.density).toInt()
+                    setMargins(2, 2, 2, 2)
+                })
+            }
+            quadroPadroes.addView(grade10x)
+        }
 
         val rosas42Crono = serie.indices.filter { serie[it] > 42.0 }
         val registrosMinutagem42x = rosas42Crono.mapIndexed { indice, idx ->
