@@ -996,6 +996,53 @@ private fun atualizarPainelEstrategia() {
         } else {
             quadroPadroes.addView(gradeCasas)
         }
+        // Painel paralelo: repetição dos intervalos em minutos entre eventos 10x+,
+        // calculados somente com eventos ocorridos dentro da mesma janela móvel de 20 minutos.
+        val frequenciasMinutos = mutableMapOf<Int, Int>()
+        for (i in 1 until rosas20Min.size) {
+            val indiceAnterior = indices20Min[rosas20Min[i - 1]]
+            val indiceAtual = indices20Min[rosas20Min[i]]
+            val tAnterior = temposCronoCompleta.getOrNull(indiceAnterior) ?: 0L
+            val tAtual = temposCronoCompleta.getOrNull(indiceAtual) ?: 0L
+            if (tAnterior > 0L && tAtual > tAnterior) {
+                val minutos = ((tAtual - tAnterior) / 60000L).toInt()
+                if (minutos in 1..20) {
+                    frequenciasMinutos[minutos] = (frequenciasMinutos[minutos] ?: 0) + 1
+                }
+            }
+        }
+        linha("INTERVALOS EM MINUTOS QUE SE REPETIRAM ENTRE 10X+  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(100,205,255), true)
+        val gradeMinutos = GridLayout(this).apply {
+            columnCount = 10
+            rowCount = 2
+            useDefaultMargins = false
+            setPadding(1, 2, 1, 2)
+        }
+        for (minuto in 1..20) {
+            val contagem = frequenciasMinutos[minuto] ?: 0
+            if (contagem == 0) continue
+            val celula = TextView(this).apply {
+                text = "${minuto} min\\n${contagem}x"
+                gravity = Gravity.CENTER
+                textSize = 10f
+                setTextColor(Color.WHITE)
+                setPadding(1, 5, 1, 5)
+                background = cartao(Color.rgb(28, 34, 48))
+            }
+            gradeMinutos.addView(celula, GridLayout.LayoutParams(
+                GridLayout.spec((minuto - 1) / 10, 1),
+                GridLayout.spec((minuto - 1) % 10, 1f)
+            ).apply {
+                width = 0
+                height = (38 * resources.displayMetrics.density).toInt()
+                setMargins(2, 2, 2, 2)
+            })
+        }
+        if (frequenciasMinutos.isEmpty()) {
+            linha("Nenhum intervalo em minutos se repetiu nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        } else {
+            quadroPadroes.addView(gradeMinutos)
+        }
         val rosasConsecutivas = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         linha("ROSAS CONSECUTIVAS: $rosasConsecutivas", 12f, Color.rgb(245,150,205), true)
 
