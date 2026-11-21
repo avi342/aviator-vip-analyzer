@@ -1043,6 +1043,49 @@ private fun atualizarPainelEstrategia() {
         } else {
             quadroPadroes.addView(gradeMinutos)
         }
+        // Painel de repetição do último algarismo dos segundos nos horários dos eventos 10x+.
+        // Ex.: 23:22:52 registra somente o dígito 2.
+        val frequenciasUltimoSegundo = mutableMapOf<Int, Int>()
+        for (idx in rosas20Min) {
+            val indiceCompleto = indices20Min[idx]
+            val instante = temposCronoCompleta.getOrNull(indiceCompleto) ?: 0L
+            if (instante > 0L) {
+                val ultimoDigito = ((instante / 1000L) % 60L).toInt() % 10
+                frequenciasUltimoSegundo[ultimoDigito] = (frequenciasUltimoSegundo[ultimoDigito] ?: 0) + 1
+            }
+        }
+        linha("ÚLTIMO DÍGITO DOS SEGUNDOS REPETIDO EM 10X+  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(100,205,255), true)
+        val gradeSegundos = GridLayout(this).apply {
+            columnCount = 10
+            rowCount = 1
+            useDefaultMargins = false
+            setPadding(1, 2, 1, 2)
+        }
+        for (digito in 0..9) {
+            val contagem = frequenciasUltimoSegundo[digito] ?: 0
+            if (contagem < 2) continue
+            val celula = TextView(this).apply {
+                text = "$digito\\n${contagem}x"
+                gravity = Gravity.CENTER
+                textSize = 11f
+                setTextColor(Color.WHITE)
+                setPadding(2, 6, 2, 6)
+                background = cartao(Color.rgb(28, 34, 48))
+            }
+            gradeSegundos.addView(celula, GridLayout.LayoutParams(
+                GridLayout.spec(0, 1),
+                GridLayout.spec(digito, 1f)
+            ).apply {
+                width = 0
+                height = (38 * resources.displayMetrics.density).toInt()
+                setMargins(2, 2, 2, 2)
+            })
+        }
+        if (frequenciasUltimoSegundo.values.none { it >= 2 }) {
+            linha("Nenhum último dígito de segundo se repetiu nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        } else {
+            quadroPadroes.addView(gradeSegundos)
+        }
         val rosasConsecutivas = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         linha("ROSAS CONSECUTIVAS: $rosasConsecutivas", 12f, Color.rgb(245,150,205), true)
 
