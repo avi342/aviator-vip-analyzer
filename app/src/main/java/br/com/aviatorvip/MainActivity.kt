@@ -932,6 +932,15 @@ private fun atualizarPainelEstrategia() {
                     }
                 })
             }
+            faixa.setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN,
+                    android.view.MotionEvent.ACTION_MOVE -> view.parent?.requestDisallowInterceptTouchEvent(true)
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> view.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+                false
+            }
             quadroPadroes.addView(faixa)
         }
 
@@ -941,23 +950,32 @@ private fun atualizarPainelEstrategia() {
         linha("RADAR DE LEITURA  •  ÚLTIMOS 60 MINUTOS", 16f, Color.rgb(100,205,255), true)
         linha("AMOSTRA  ${serie.size} rodadas     •     AZUL $azuis   ROXO $roxas   ROSA $rosas", 12f, Color.LTGRAY, true)
 
-        val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
+        // O painel de casas usa uma janela móvel independente de 20 minutos.
+        val corteCasas = agora - 20L * 60L * 1000L
+        val indices20Min = serieCronoCompleta.indices.filter { idx ->
+            val instante = temposCronoCompleta.getOrNull(idx) ?: 0L
+            instante in corteCasas..agora
+        }
+        val serie20Min = indices20Min.map { serieCronoCompleta[it] }
+        val rosas20Min = serie20Min.indices.filter { serie20Min[it] >= 10.0 }
         val frequenciasCasas = mutableMapOf<Int, Int>()
-        for (i in 1 until rosasCrono.size) {
-            val casas = rosasCrono[i] - rosasCrono[i - 1]
+        for (i in 1 until rosas20Min.size) {
+            val casas = rosas20Min[i] - rosas20Min[i - 1]
             if (casas in 1..20) frequenciasCasas[casas] = (frequenciasCasas[casas] ?: 0) + 1
         }
-        linha("CASAS MAIS REPETIDAS APÓS 10X+  •  JANELA MÓVEL DE 60 MIN", 13f, Color.rgb(245,150,205), true)
+        linha("CASAS QUE SE REPETIRAM APÓS 10X+  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(245,150,205), true)
         val gradeCasas = GridLayout(this).apply {
             columnCount = 10
             rowCount = 2
             useDefaultMargins = false
             setPadding(1, 2, 1, 2)
         }
+        // Só aparecem as posições com repetição observada na janela atual.
         for (casa in 1..20) {
             val contagem = frequenciasCasas[casa] ?: 0
+            if (contagem == 0) continue
             val celula = TextView(this).apply {
-                text = "${casa}ª\n${contagem}x"
+                text = "${casa}ª\\n${contagem}x"
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setTextColor(Color.WHITE)
@@ -973,7 +991,11 @@ private fun atualizarPainelEstrategia() {
                 setMargins(2, 2, 2, 2)
             })
         }
-        quadroPadroes.addView(gradeCasas)
+        if (frequenciasCasas.isEmpty()) {
+            linha("Nenhuma casa repetida nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        } else {
+            quadroPadroes.addView(gradeCasas)
+        }
         val rosasConsecutivas = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         linha("ROSAS CONSECUTIVAS: $rosasConsecutivas", 12f, Color.rgb(245,150,205), true)
 
