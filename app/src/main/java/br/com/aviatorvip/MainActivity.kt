@@ -1043,48 +1043,60 @@ private fun atualizarPainelEstrategia() {
         } else {
             quadroPadroes.addView(gradeMinutos)
         }
-        // Painel de repetição do último algarismo dos segundos nos horários dos eventos 10x+.
-        // Ex.: 23:22:52 registra somente o dígito 2.
-        val frequenciasUltimoSegundo = mutableMapOf<Int, Int>()
+        // Conta o segundo completo (00..59) no horário salvo quando o OCR confirma cada evento 10x+.
+        // O horário é o da captura/confirmação no celular, não necessariamente o instante oficial do jogo.
+        val eventosPorSegundo = mutableMapOf<Int, MutableList<String>>()
         for (idx in rosas20Min) {
             val indiceCompleto = indices20Min[idx]
             val instante = temposCronoCompleta.getOrNull(indiceCompleto) ?: 0L
             if (instante > 0L) {
-                val ultimoDigito = ((instante / 1000L) % 60L).toInt() % 10
-                frequenciasUltimoSegundo[ultimoDigito] = (frequenciasUltimoSegundo[ultimoDigito] ?: 0) + 1
+                val segundo = ((instante / 1000L) % 60L).toInt()
+                val horarioEvento = horariosCronoCompleta.getOrNull(indiceCompleto)
+                    ?.takeIf { it.isNotBlank() && it != "--:--:--" }
+                    ?: SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(instante))
+                eventosPorSegundo.getOrPut(segundo) { mutableListOf() }.add(horarioEvento)
             }
         }
-        linha("ÚLTIMO DÍGITO DOS SEGUNDOS REPETIDO EM 10X+  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(100,205,255), true)
+        linha("SEGUNDOS COMPLETOS REPETIDOS EM 10X+  •  00 A 59  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(100,205,255), true)
         val gradeSegundos = GridLayout(this).apply {
             columnCount = 10
-            rowCount = 1
+            rowCount = 6
             useDefaultMargins = false
             setPadding(1, 2, 1, 2)
         }
-        for (digito in 0..9) {
-            val contagem = frequenciasUltimoSegundo[digito] ?: 0
-            if (contagem < 2) continue
+        for (segundo in 0..59) {
+            val eventos = eventosPorSegundo[segundo] ?: continue
+            if (eventos.size < 2) continue
             val celula = TextView(this).apply {
-                text = "$digito\\n${contagem}x"
+                text = String.format(Locale.getDefault(), "%02d\\n%dx", segundo, eventos.size)
                 gravity = Gravity.CENTER
-                textSize = 11f
+                textSize = 10f
                 setTextColor(Color.WHITE)
-                setPadding(2, 6, 2, 6)
+                setPadding(2, 5, 2, 5)
                 background = cartao(Color.rgb(28, 34, 48))
+                contentDescription = "Segundo ${String.format(Locale.getDefault(), "%02d", segundo)}, repetido ${eventos.size} vezes. Horários: ${eventos.joinToString(", ")}"
+                setOnClickListener {
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Segundo ${String.format(Locale.getDefault(), "%02d", segundo)} • ${eventos.size}x")
+                        .setMessage("Horários registrados na captura:\\n" + eventos.joinToString("\\n"))
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
             }
             gradeSegundos.addView(celula, GridLayout.LayoutParams(
-                GridLayout.spec(0, 1),
-                GridLayout.spec(digito, 1f)
+                GridLayout.spec(segundo / 10, 1),
+                GridLayout.spec(segundo % 10, 1f)
             ).apply {
                 width = 0
-                height = (38 * resources.displayMetrics.density).toInt()
+                height = (40 * resources.displayMetrics.density).toInt()
                 setMargins(2, 2, 2, 2)
             })
         }
-        if (frequenciasUltimoSegundo.values.none { it >= 2 }) {
-            linha("Nenhum último dígito de segundo se repetiu nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        if (eventosPorSegundo.values.none { it.size >= 2 }) {
+            linha("Nenhum segundo completo se repetiu nesta janela de 20 minutos.", 11f, Color.LTGRAY)
         } else {
             quadroPadroes.addView(gradeSegundos)
+            linha("Toque em um segundo repetido para conferir os horários das capturas que formaram a contagem.", 10f, Color.LTGRAY)
         }
         val rosasConsecutivas = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         linha("ROSAS CONSECUTIVAS: $rosasConsecutivas", 12f, Color.rgb(245,150,205), true)
