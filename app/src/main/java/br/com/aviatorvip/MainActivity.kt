@@ -975,7 +975,7 @@ private fun atualizarPainelEstrategia() {
             val contagem = frequenciasCasas[casa] ?: 0
             if (contagem == 0) continue
             val celula = TextView(this).apply {
-                text = "${casa}ª\\n${contagem}x"
+                text = "${casa}ª\n${contagem}x"
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setTextColor(Color.WHITE)
@@ -1022,7 +1022,7 @@ private fun atualizarPainelEstrategia() {
             val contagem = frequenciasMinutos[minuto] ?: 0
             if (contagem == 0) continue
             val celula = TextView(this).apply {
-                text = "${minuto} min\\n${contagem}x"
+                text = "${minuto} min\n${contagem}x"
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setTextColor(Color.WHITE)
@@ -1100,7 +1100,7 @@ private fun atualizarPainelEstrategia() {
             }
             registrosMinutagem10x.forEachIndexed { posicao, registro ->
                 val celula = TextView(this).apply {
-                    text = "${registro.first} casa\\n${registro.second}\\n${registro.third}"
+                    text = "${registro.first}\n${registro.second}\n${registro.third}"
                     gravity = Gravity.CENTER
                     textSize = 11f
                     setTypeface(null, android.graphics.Typeface.BOLD)
