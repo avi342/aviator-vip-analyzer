@@ -999,6 +999,8 @@ private fun atualizarPainelEstrategia() {
         val rosasConsecutivas = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
         linha("ROSAS CONSECUTIVAS: $rosasConsecutivas", 12f, Color.rgb(245,150,205), true)
 
+        // As faixas de minutagem continuam usando a janela móvel de 60 minutos.
+        val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
         val registrosMinutagem10x = rosasCrono.mapIndexed { indice, idx ->
             val horario = horariosJanela.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
             val anteriorIdx = if (indice > 0) rosasCrono[indice - 1] else -1
