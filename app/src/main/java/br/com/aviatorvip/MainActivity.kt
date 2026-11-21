@@ -42,6 +42,7 @@ private lateinit var historico: LinearLayout
     private var inicioGraficoTempoReal = 0L
     private var painelExpandido = false
     private var inicioAnaliseSessao = 0L
+    private val posicoesRolagemFaixas = mutableMapOf<String, Int>()
     private val atualizadorMinutos = Handler(Looper.getMainLooper())
     private val atualizarMinutosRunnable = object : Runnable {
         override fun run() {
@@ -876,6 +877,7 @@ private fun atualizarPainelEstrategia() {
 
     private fun atualizarBibliotecaPadroes() {
         if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
+        val posicoesAntesDaAtualizacao = mutableMapOf<String, Int>().apply { putAll(posicoesRolagemFaixas) }
         quadroPadroes.removeAllViews()
         quadroDezX.removeAllViews()
 
@@ -912,6 +914,9 @@ private fun atualizarPainelEstrategia() {
             linha(titulo, 13f, cor, true)
             val faixa = HorizontalScrollView(this).apply {
                 isHorizontalScrollBarEnabled = true
+                setOnScrollChangeListener { _, scrollX, _, _, _ ->
+                    posicoesRolagemFaixas[titulo] = scrollX
+                }
                 addView(LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
                     itens.forEach { item ->
@@ -937,6 +942,7 @@ private fun atualizarPainelEstrategia() {
                 false
             }
             quadroPadroes.addView(faixa)
+            faixa.post { faixa.scrollTo(posicoesAntesDaAtualizacao[titulo] ?: 0, 0) }
         }
 
         // O painel de casas usa uma janela móvel independente de 20 minutos.
@@ -947,6 +953,7 @@ private fun atualizarPainelEstrategia() {
         }
         val serie20Min = indices20Min.map { serieCronoCompleta[it] }
         val rosas20Min = serie20Min.indices.filter { serie20Min[it] >= 10.0 }
+        val rosas35Min = serie20Min.indices.filter { serie20Min[it] >= 35.0 }
         val frequenciasCasas = mutableMapOf<Int, Int>()
         for (i in 1 until rosas20Min.size) {
             val casas = rosas20Min[i] - rosas20Min[i - 1]
@@ -1032,60 +1039,37 @@ private fun atualizarPainelEstrategia() {
         } else {
             quadroPadroes.addView(gradeMinutos)
         }
-        // Conta o segundo completo (00..59) no horário salvo quando o OCR confirma cada evento 10x+.
-        // O horário é o da captura/confirmação no celular, não necessariamente o instante oficial do jogo.
-        val eventosPorSegundo = mutableMapOf<Int, MutableList<String>>()
-        for (idx in rosas20Min) {
-            val indiceCompleto = indices20Min[idx]
-            val instante = temposCronoCompleta.getOrNull(indiceCompleto) ?: 0L
-            if (instante > 0L) {
-                val segundo = ((instante / 1000L) % 60L).toInt()
-                val horarioEvento = horariosCronoCompleta.getOrNull(indiceCompleto)
-                    ?.takeIf { it.isNotBlank() && it != "--:--:--" }
-                    ?: SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(instante))
-                eventosPorSegundo.getOrPut(segundo) { mutableListOf() }.add(horarioEvento)
-            }
+        // Análise adicional de eventos acima de 35x: casas e minutos entre ocorrências.
+        val frequenciasCasas35x = mutableMapOf<Int, Int>()
+        for (i in 1 until rosas35Min.size) {
+            val casas = rosas35Min[i] - rosas35Min[i - 1]
+            if (casas in 1..20) frequenciasCasas35x[casas] = (frequenciasCasas35x[casas] ?: 0) + 1
         }
-        linha("SEGUNDOS COMPLETOS REPETIDOS EM 10X+  •  00 A 59  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(100,205,255), true)
-        val gradeSegundos = GridLayout(this).apply {
-            columnCount = 10
-            rowCount = 6
-            useDefaultMargins = false
-            setPadding(1, 2, 1, 2)
-        }
-        for (segundo in 0..59) {
-            val eventos = eventosPorSegundo[segundo] ?: continue
-            if (eventos.size < 2) continue
-            val celula = TextView(this).apply {
-                text = String.format(Locale.getDefault(), "%02d\\n%dx", segundo, eventos.size)
-                gravity = Gravity.CENTER
-                textSize = 10f
-                setTextColor(Color.WHITE)
-                setPadding(2, 5, 2, 5)
-                background = cartao(Color.rgb(28, 34, 48))
-                contentDescription = "Segundo ${String.format(Locale.getDefault(), "%02d", segundo)}, repetido ${eventos.size} vezes. Horários: ${eventos.joinToString(", ")}"
-                setOnClickListener {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Segundo ${String.format(Locale.getDefault(), "%02d", segundo)} • ${eventos.size}x")
-                        .setMessage("Horários registrados na captura:\\n" + eventos.joinToString("\\n"))
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-            }
-            gradeSegundos.addView(celula, GridLayout.LayoutParams(
-                GridLayout.spec(segundo / 10, 1),
-                GridLayout.spec(segundo % 10, 1f)
-            ).apply {
-                width = 0
-                height = (40 * resources.displayMetrics.density).toInt()
-                setMargins(2, 2, 2, 2)
-            })
-        }
-        if (eventosPorSegundo.values.none { it.size >= 2 }) {
-            linha("Nenhum segundo completo se repetiu nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        linha("CASAS REPETIDAS ENTRE 35X+  •  20 MIN", 13f, Color.rgb(255,190,110), true)
+        val casas35xRepetidas = frequenciasCasas35x.filterValues { it >= 2 }.toSortedMap()
+        if (casas35xRepetidas.isEmpty()) {
+            linha("Sem repetição de casas 35x+ nesta janela.", 11f, Color.LTGRAY)
         } else {
-            quadroPadroes.addView(gradeSegundos)
-            linha("Toque em um segundo repetido para conferir os horários das capturas que formaram a contagem.", 10f, Color.LTGRAY)
+            linha(casas35xRepetidas.entries.joinToString("     ") { "${it.key}ª casa: ${it.value}x" }, 12f, Color.WHITE)
+        }
+
+        val frequenciasMinutos35x = mutableMapOf<Int, Int>()
+        for (i in 1 until rosas35Min.size) {
+            val idxAnterior = indices20Min[rosas35Min[i - 1]]
+            val idxAtual = indices20Min[rosas35Min[i]]
+            val tAnterior = temposCronoCompleta.getOrNull(idxAnterior) ?: 0L
+            val tAtual = temposCronoCompleta.getOrNull(idxAtual) ?: 0L
+            if (tAnterior > 0L && tAtual > tAnterior) {
+                val minutos = ((tAtual - tAnterior) / 60000L).toInt()
+                if (minutos in 1..20) frequenciasMinutos35x[minutos] = (frequenciasMinutos35x[minutos] ?: 0) + 1
+            }
+        }
+        linha("INTERVALOS EM MINUTOS REPETIDOS ENTRE 35X+  •  20 MIN", 13f, Color.rgb(255,190,110), true)
+        val minutos35xRepetidos = frequenciasMinutos35x.filterValues { it >= 2 }.toSortedMap()
+        if (minutos35xRepetidos.isEmpty()) {
+            linha("Sem repetição de minutos 35x+ nesta janela.", 11f, Color.LTGRAY)
+        } else {
+            linha(minutos35xRepetidos.entries.joinToString("     ") { "${it.key} min: ${it.value}x" }, 12f, Color.WHITE)
         }
 
         // As faixas de minutagem continuam usando a janela móvel de 60 minutos.
