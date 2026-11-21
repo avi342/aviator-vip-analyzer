@@ -136,6 +136,7 @@ bitmap.recycle()
         .replace("\\n", "")
 
     val ehJetX = textoTela.contains("JETX")
+    val ehAviator = textoTela.contains("AVIATOR")
     val plataforma = when {
         textoTela.contains("APOSTABOOM") || textoTela.contains("APOSTABOOMBET") -> "APOSTABOOM"
         textoTela.contains("PINGOL") || textoTela.contains("PINGOL.IO") -> "PINGOL"
@@ -143,9 +144,17 @@ bitmap.recycle()
         else -> ""
     }
 
-    if (ehJetX && plataforma.isNotBlank() && plataforma != ultimaPlataformaEnviada) {
-        ultimaPlataformaEnviada = plataforma
-        enviar("PLATFORM:JETX:$plataforma")
+    val jogoDetectado = when {
+        ehJetX -> "JETX"
+        ehAviator -> "AVIATOR"
+        else -> ""
+    }
+    if (jogoDetectado.isNotBlank()) {
+        val identificador = "$jogoDetectado:$plataforma"
+        if (identificador != ultimaPlataformaEnviada) {
+            ultimaPlataformaEnviada = identificador
+            enviar("PLATFORM:$jogoDetectado:$plataforma")
+        }
     }
 
     val linhas = blocos.flatMap { bloco -> bloco.lines }
