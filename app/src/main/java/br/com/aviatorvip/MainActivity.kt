@@ -188,18 +188,11 @@ private var primeiraLeituraOCR = true
             setPadding(1, 1, 1, 1)
             setBackgroundColor(Color.BLACK)
         }
-        val tituloHistorico = TextView(this).apply {
-            text = "ÚLTIMAS CASAS"
-            textSize = 12f
-            setTextColor(Color.rgb(175, 190, 215))
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setPadding(3, 5, 3, 2)
-        }
-        tela.addView(tituloHistorico)
+        gradeResultados.visibility = View.GONE
         tela.addView(gradeResultados, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 2 })
 
         botaoHistorico = Button(this).apply {
-            text = "VER MAIS HISTÓRICO"
+            text = "MOSTRAR GRÁFICO"
             textSize = 9f
             isAllCaps = false
             setTextColor(Color.WHITE)
@@ -210,6 +203,8 @@ private var primeiraLeituraOCR = true
             background = cartao(Color.rgb(25, 31, 49))
             setOnClickListener {
                 historicoExpandido = !historicoExpandido
+                gradeResultados.visibility = if (historicoExpandido) View.VISIBLE else View.GONE
+                text = if (historicoExpandido) "RECOLHER GRÁFICO" else "MOSTRAR GRÁFICO"
                 atualizarGrade()
             }
         }
@@ -944,12 +939,6 @@ private fun atualizarPainelEstrategia() {
             quadroPadroes.addView(faixa)
         }
 
-        val azuis = serie.count { it < 2.0 }
-        val roxas = serie.count { it >= 2.0 && it < 10.0 }
-        val rosas = serie.count { it >= 10.0 }
-        linha("RADAR DE LEITURA  •  ÚLTIMOS 60 MINUTOS", 16f, Color.rgb(100,205,255), true)
-        linha("AMOSTRA  ${serie.size} rodadas     •     AZUL $azuis   ROXO $roxas   ROSA $rosas", 12f, Color.LTGRAY, true)
-
         // O painel de casas usa uma janela móvel independente de 20 minutos.
         val corteCasas = agora - 20L * 60L * 1000L
         val indices20Min = serieCronoCompleta.indices.filter { idx ->
@@ -1098,8 +1087,6 @@ private fun atualizarPainelEstrategia() {
             quadroPadroes.addView(gradeSegundos)
             linha("Toque em um segundo repetido para conferir os horários das capturas que formaram a contagem.", 10f, Color.LTGRAY)
         }
-        val rosasConsecutivas = serie.zipWithNext().count { it.first >= 10.0 && it.second >= 10.0 }
-        linha("ROSAS CONSECUTIVAS: $rosasConsecutivas", 12f, Color.rgb(245,150,205), true)
 
         // As faixas de minutagem continuam usando a janela móvel de 60 minutos.
         val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
@@ -1113,7 +1100,7 @@ private fun atualizarPainelEstrategia() {
             val casaTexto = if (anteriorIdx >= 0) "${casas}ª casa" else "início"
             "$casaTexto  •  ${serie[idx]}x  •  $intervalo  •  $horario"
         }.asReversed()
-        faixaHorizontal("PADRÃO DE MINUTAGEM 10X+  •  ÚLTIMOS 60 MIN  •  MAIS RECENTE À ESQUERDA",
+        faixaHorizontal("INTERVALOS ENTRE 10X+  •  60 MIN",
             registrosMinutagem10x.ifEmpty { listOf("Aguardando resultados 10x+") },
             Color.rgb(245,150,205))
 
@@ -1128,17 +1115,10 @@ private fun atualizarPainelEstrategia() {
             val casasTexto = if (anteriorIdx >= 0) "$casas casas" else "início"
             "${serie[idx]}x  •  $casasTexto  •  $intervalo  •  $horario"
         }.asReversed()
-        faixaHorizontal("PADRÃO DE MINUTAGEM 42X+  •  ÚLTIMOS 60 MIN  •  MAIS RECENTE À ESQUERDA",
+        faixaHorizontal("INTERVALOS ENTRE 42X+  •  60 MIN",
             registrosMinutagem42x.ifEmpty { listOf("Aguardando resultados acima de 42x") },
             Color.rgb(255,190,110))
-        linha("A análise descarta automaticamente registros com mais de 60 minutos; o histórico permanece salvo.", 11f, Color.LTGRAY)
 
-        quadroDezX.addView(TextView(this).apply {
-            text = "As posições e os intervalos são contagens históricas; precisam de amostra para ganhar significado."
-            textSize = 10f
-            setTextColor(Color.GRAY)
-            setPadding(3, 2, 3, 2)
-        })
     }
 
     private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
