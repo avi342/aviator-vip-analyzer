@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Teste de histórico JetX</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080d18;color:#edf2ff;font:15px Arial,sans-serif}main{max-width:900px;margin:auto;padding:16px}h1{font-size:22px}.panel{background:#141d31;border:1px solid #34415d;border-radius:12px;padding:14px;margin:12px 0}p,.small{color:#aebbd4;line-height:1.45}.row{display:flex;gap:8px;flex-wrap:wrap}button{border:0;border-radius:8px;padding:12px 16px;background:#db477d;color:white;font-weight:bold}button:disabled{opacity:.45}button.alt{background:#34415d}#wrap{position:relative;background:#000}video{width:100%;max-height:520px;display:block;object-fit:contain}#layer{position:absolute;inset:0;cursor:crosshair}#box{position:absolute;border:2px solid #39e6a1;background:#39e6a122;display:none;pointer-events:none}.status{padding:10px;background:#0b1425;border-radius:8px;margin-top:10px;color:#8ee5bd}.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.chip{background:#283750;padding:8px 10px;border-radius:8px;font-weight:bold}.new{background:#176448}.small{font-size:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1425;padding:10px;border-radius:8px;color:#d4e1f7}
+</style></head><body><main>
+<h1>Teste separado — leitura do histórico JetX</h1>
+<p>Esta página não altera o teste anterior. Compartilhe a janela do jogo e marque as três linhas do histórico no topo. O novo resultado deve entrar no início da primeira linha, à esquerda.</p>
+<section class="panel"><div class="row"><button id="connect">CONECTAR À TELA</button><button id="stop" class="alt" disabled>PARAR</button><button id="scan" class="alt" disabled>LER AGORA</button><button id="reset" class="alt">REINICIAR COMPARAÇÃO</button></div><div id="status" class="status">Aguardando compartilhamento da tela.</div></section>
+<section class="panel"><b>Marque somente as três linhas do histórico</b><div id="wrap"><video id="video" autoplay muted playsinline></video><div id="layer"><div id="box"></div></div></div><p class="small">Arraste da ponta superior esquerda até a ponta inferior direita dos multiplicadores. Inclua todas as três linhas, sem pegar o multiplicador grande do centro.</p></section>
+<section class="panel"><b>Leitura identificada</b><div id="readings" class="chips"></div><p id="raw" class="small">O resultado do OCR aparecerá aqui.</p></section>
+<section class="panel"><b>Novos resultados detectados</b><div id="added" class="chips"></div><p class="small">A primeira leitura serve como referência. Depois, só será adicionado um resultado quando a sequência antiga for reconhecida avançando no histórico. Se não houver correspondência segura, a página não registra automaticamente.</p></section>
+<section class="panel"><b>Texto bruto do OCR (conferência)</b><pre id="debug">—</pre></section>
+<p class="small">Protótipo experimental. Confira os valores reconhecidos antes de usar os dados. A precisão ainda precisa ser validada com a tela real.</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+(()=>{const $=id=>document.getElementById(id),v=$('video'),layer=$('layer'),box=$('box');let stream=null,worker=null,timer=null,busy=false,drag=null,roi=null,previous=null,records=[];
+const say=t=>$('status').textContent=t;
+function dims(){const r=v.getBoundingClientRect();return {r,w:v.videoWidth,h:v.videoHeight}}
+function paint(){if(!roi){box.style.display='none';return}const d=dims();box.style.display='block';box.style.left=(roi.x/d.w*d.r.width)+'px';box.style.top=(roi.y/d.h*d.r.height)+'px';box.style.width=(roi.w/d.w*d.r.width)+'px';box.style.height=(roi.h/d.h*d.r.height)+'px'}
+layer.addEventListener('pointerdown',e=>{if(!v.videoWidth)return;const d=dims();drag={x:(e.clientX-d.r.left)/d.r.width*d.w,y:(e.clientY-d.r.top)/d.r.height*d.h};layer.setPointerCapture(e.pointerId)});
+layer.addEventListener('pointermove',e=>{if(!drag)return;const d=dims(),x=(e.clientX-d.r.left)/d.r.width*d.w,y=(e.clientY-d.r.top)/d.r.height*d.h;roi={x:Math.max(0,Math.min(d.w,Math.min(drag.x,x))),y:Math.max(0,Math.min(d.h,Math.min(drag.y,y))),w:Math.abs(x-drag.x),h:Math.abs(y-drag.y)};paint()});
+layer.addEventListener('pointerup',()=>{drag=null;if(roi&&roi.w>20&&roi.h>10){paint();say('Área marcada. Iniciando leitura do histórico...');start()}else{roi=null;paint()}});
+async function setup(){if(worker)return;if(!window.Tesseract)throw Error('OCR não carregou. Verifique a internet.');say('Carregando o leitor OCR...');worker=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status)say('Preparando OCR: '+m.status)}});await worker.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1',tessedit_char_whitelist:'0123456789.xX,'})}
+function parse(text){const fixed=text.replace(/,/g,'.');const matches=[...fixed.matchAll(/(\d{1,4}(?:\.\d{1,2})?)\s*[xX]/g)];return matches.map(m=>Number(m[1])).filter(n=>Number.isFinite(n)&&n>=1&&n<=9999).map(n=>n.toFixed(2)+'x')}
+function overlapAdded(now,old){if(!old||!old.length)return null;const max=Math.min(now.length,old.length);for(let k=1;k<=max;k++){const tail=now.slice(k);const head=old.slice(0,tail.length);if(tail.length>=Math.min(5,old.length)&&tail.length===head.length&&tail.every((x,i)=>x===head[i]))return now.slice(0,k)}return null}
+async function scan(){if(busy||!stream||!roi)return;busy=true;try{await setup();const c=document.createElement('canvas'),scale=4;c.width=Math.min(2200,Math.round(roi.w*scale));c.height=Math.min(1000,Math.round(roi.h*scale));const ctx=c.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(v,roi.x,roi.y,roi.w,roi.h,0,0,c.width,c.height);const result=await worker.recognize(c),raw=result.data.text||'',now=parse(raw);$('debug').textContent=raw||'(nenhum texto reconhecido)';$('raw').textContent='Itens reconhecidos: '+now.length;$('readings').innerHTML=now.map(x=>'<span class="chip">'+x+'</span>').join('')||'<span class="small">Nenhum multiplicador reconhecido.</span>';
+if(now.length<5){say('Leitura fraca ('+now.length+' valores). Ajuste a área para incluir as três linhas completas.');return}
+if(!previous){previous=now;say('Referência inicial salva ('+now.length+' valores). Aguardando a próxima rodada.');return}
+const added=overlapAdded(now,previous);
+if(added&&added.length){for(const x of added){records.unshift(x);$('added').insertAdjacentHTML('afterbegin','<span class="chip new">'+x+'</span>')}records=records.slice(0,100);say('Novo resultado detectado no início do histórico: '+added.join(', '));previous=now}
+else if(now.join('|')===previous.join('|'))say('Histórico sem mudança. Aguardando novo resultado.')
+else say('A leitura mudou, mas não encontrei avanço seguro da sequência. Não registrei para evitar duplicação.');
+}catch(e){say('Erro na leitura: '+e.message)}finally{busy=false}}
+function start(){if(timer)clearInterval(timer);timer=setInterval(scan,2200);scan()}
+$('connect').onclick=async()=>{try{stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:5},audio:false});v.srcObject=stream;await v.play();$('connect').disabled=true;$('stop').disabled=false;$('scan').disabled=false;stream.getVideoTracks()[0].addEventListener('ended',stop);say('Tela conectada. Marque as três linhas do histórico no topo.')}catch(e){say('Não foi possível conectar: '+e.message)}};
+function stop(){if(timer)clearInterval(timer);timer=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;v.srcObject=null;$('connect').disabled=false;$('stop').disabled=true;$('scan').disabled=true;say('Captura parada.')}
+$('stop').onclick=stop;$('scan').onclick=scan;$('reset').onclick=()=>{previous=null;records=[];$('added').innerHTML='';say('Comparação reiniciada. A próxima leitura será a referência inicial.')};
+window.addEventListener('resize',paint);window.addEventListener('beforeunload',()=>{stop();if(worker)worker.terminate()});
+})();
+</script></body></html>
