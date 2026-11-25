@@ -269,22 +269,62 @@ class MainActivity : Activity() {
         salvarReacoes()
     }
 
+    private fun assinatura(janela: List<Double>): IntArray = intArrayOf(
+        janela.count { it < 2.0 },
+        janela.count { it >= 2.0 && it < 3.0 },
+        janela.count { it >= 3.0 }
+    )
+
     private fun atualizarReacoes() {
         if (!::painelReacoes.isInitialized) return
-        if (reacoes.isEmpty()) {
-            painelReacoes.text = "Aguardando resultados de 3x ou mais."
+        val historico = resultados.asReversed()
+        if (historico.size < 6) {
+            painelReacoes.text = "RADAR 3x+ • aguardando pelo menos 6 rodadas."
             return
         }
-        val linhas = mutableListOf<String>()
-        linhas += "OCORRÊNCIAS DE 3x+: ${reacoes.size}"
-        reacoes.takeLast(5).asReversed().forEachIndexed { indice, r ->
-            linhas += "------------------------------"
-            linhas += "ALVO: ${String.format(Locale.US, "%.2f", r.alvo)}x"
-            linhas += "ANTES: " + if (r.antes.isEmpty()) "sem histórico" else r.antes.asReversed().joinToString("  ") { String.format(Locale.US, "%.2f", it) + "x" }
-            linhas += "DEPOIS: " + if (r.depois.isEmpty()) "aguardando 5 rodadas" else r.depois.joinToString("  ") { String.format(Locale.US, "%.2f", it) + "x" }
-            linhas += "Pós-rodadas registradas: ${r.depois.size}/5"
+        val atual = historico.takeLast(5)
+        val assinaturaAtual = assinatura(atual)
+        var semelhantes = 0
+        var acertos = 0
+        val tolerancia = 2
+        for (i in 0 until historico.size - 5) {
+            val janela = historico.subList(i, i + 5)
+            val assinaturaHistorica = assinatura(janela)
+            val distancia = assinaturaAtual.indices.sumOf { k ->
+                kotlin.math.abs(assinaturaAtual[k] - assinaturaHistorica[k])
+            }
+            if (distancia <= tolerancia) {
+                semelhantes++
+                if (historico[i + 5] >= 3.0) acertos++
+            }
         }
-        painelReacoes.text = linhas.joinToString("\n")
+        val percentual = if (semelhantes == 0) 0 else (acertos * 100 / semelhantes)
+        val linhas = mutableListOf<String>()
+        linhas += "RADAR ANTECIPADO • ALVO 3x+"
+        linhas += "ÚLTIMAS 5 CASAS: " + atual.joinToString("  ") { String.format(Locale.US, "%.2f", it) + "x" }
+        linhas += "PERFIL: <2x ${assinaturaAtual[0]}  |  2–2,99x ${assinaturaAtual[1]}  |  3x+ ${assinaturaAtual[2]}"
+        linhas += "--------------------------------------"
+        linhas += if (semelhantes == 0) {
+            "Ainda não encontrei janelas históricas parecidas."
+        } else {
+            "REAÇÕES SEMELHANTES: $semelhantes"
+            "SEGUIDAS DE 3x+: $acertos ($percentual%)"
+        }
+        linhas += when {
+            semelhantes < 10 -> "AMOSTRA INSUFICIENTE • aguardando mais casos"
+            percentual >= 60 -> "FREQUÊNCIA HISTÓRICA MAIS ALTA nesta amostra"
+            percentual >= 40 -> "FREQUÊNCIA HISTÓRICA INTERMEDIÁRIA"
+            else -> "FREQUÊNCIA HISTÓRICA MAIS BAIXA nesta amostra"
+        }
+        linhas += "--------------------------------------"
+        linhas += "REGISTROS DE 3x+: ${reacoes.size}"
+        reacoes.takeLast(3).asReversed().forEach { r ->
+            linhas += "${String.format(Locale.US, "%.2f", r.alvo)}x | antes: " +
+                r.antes.asReversed().joinToString(" ") { String.format(Locale.US, "%.2f", it) + "x" } +
+                " | depois: ${r.depois.size}/5"
+        }
+        linhas += "Comparação por quantidade em cada faixa; histórico não prevê a próxima rodada."
+        painelReacoes.text = linhas.joinToString("\\n")
     }
 
     private fun atualizarFrequencia() {
