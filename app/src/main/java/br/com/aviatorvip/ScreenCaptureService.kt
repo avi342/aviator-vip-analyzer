@@ -7,10 +7,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -126,83 +122,71 @@ class ScreenCaptureService : Service() {
        
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
-            // Realça caracteres claros e separadores decimais pequenos antes do OCR.
-            // Mantém a tela inteira para não cortar o resultado nem confundir regiões.
-            val ampliada = Bitmap.createBitmap(
-                (recorte.width * 2).coerceAtLeast(1),
-                (recorte.height * 2).coerceAtLeast(1),
-                Bitmap.Config.ARGB_8888
-            )
-            val matriz = ColorMatrix(floatArrayOf(
-                1.65f, 0f, 0f, 0f, 18f,
-                0f, 1.65f, 0f, 0f, 18f,
-                0f, 0f, 1.65f, 0f, 18f,
-                0f, 0f, 0f, 1f, 0f
-            ))
-            val tinta = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-                colorFilter = ColorMatrixColorFilter(matriz)
-            }
-            Canvas(ampliada).drawBitmap(
-                recorte,
-                null,
-                android.graphics.Rect(0, 0, ampliada.width, ampliada.height),
-                tinta
-            )
-            reconhecedor.process(InputImage.fromBitmap(ampliada, 0))
+            reconhecedor.process(InputImage.fromBitmap(recorte, 0))
                 .addOnSuccessListener { resultado ->
-                    val blocos = resultado.textBlocks.sortedBy { it.boundingBox?.top ?: Int.MAX_VALUE }
+                    val blocos = resultado.textBlocks
                     val marcador = blocos.firstOrNull {
                         it.text.contains("VOOU", ignoreCase = true) ||
                         it.text.contains("PARA LONGE", ignoreCase = true)
                     }
 
-                    val regexMultiplicador = Regex(
-                        """(?<!\d)(\d{1,4}[.,]\d{1,2})\s*x\b""",
-                        RegexOption.IGNORE_CASE
-                    )
-
-                    // AVIATOR: usa o aviso de fim de rodada e lê o resultado junto
-                    // dele ou nos blocos logo abaixo.
-                    val textoAviator = if (marcador != null) {
-                        val topoMarcador = marcador.boundingBox?.top ?: 0
-                        blocos.filter { bloco ->
-                            val topo = bloco.boundingBox?.top ?: topoMarcador
-                            topo >= topoMarcador - 10 &&
-                                topo - topoMarcador <= (ampliada.height * 0.30f).toInt()
-                        }.joinToString(" ") { it.text }
-                    } else ""
-
-                    val numeroAviator = regexMultiplicador.find(textoAviator)?.groupValues?.get(1)
-
-                    if (numeroAviator != null) {
-                        enviar("ROUND_RESULT:" + numeroAviator.replace(",", "."))
+                    if (marcador != null) {
+                        // AVIATOR: mantém a leitura antiga, que era a que apresentava
+                        // melhor comportamento antes das alterações recentes.
+                        val limite = marcador.boundingBox?.bottom ?: 0
+                        val abaixo = blocos
+                            .filter {
+                                it.boundingBox != null &&
+                                    it.boundingBox!!.top >= limite
+                            }
+                            .sortedBy { it.boundingBox!!.top }
+                        val texto = abaixo.take(3).joinToString(" ") { it.text }
+                        val regex = Regex(
+                            """(\\d{1,5}(?:[.,]\\d{1,2})?)\\s*x?""",
+                            RegexOption.IGNORE_CASE
+                        )
+                        val numero = regex.find(texto)?.groupValues?.get(1)
+                        if (numero != null) {
+                            enviar("ROUND_RESULT:$numero")
+                        } else {
+                            enviar("ROUND_WAIT")
+                        }
                     } else {
-                        // TOP GUN (e jogos sem a frase do Aviator): procura somente
-                        // um multiplicador decimal grande no centro da área do jogo.
-                        // Os pequenos resultados do histórico ficam fora desses limites.
-                        val candidatoCentral = blocos.mapNotNull { bloco ->
+                        // TOP GUN: não depende do texto "VOOU PRA LONGE".
+                        // Procura apenas o multiplicador grande no centro do jogo.
+                        // A faixa superior com o histórico fica fora da região vertical.
+                        val candidatos = blocos.mapNotNull { bloco ->
                             val caixa = bloco.boundingBox ?: return@mapNotNull null
                             val centroX = (caixa.left + caixa.right) / 2f
                             val centroY = (caixa.top + caixa.bottom) / 2f
-                            val alturaTexto = caixa.height().toFloat()
-                            val centralizado = centroX in (ampliada.width * 0.28f)..(ampliada.width * 0.72f)
-                            val faixaVertical = centroY in (ampliada.height * 0.18f)..(ampliada.height * 0.58f)
-                            val textoGrande = alturaTexto >= ampliada.height * 0.018f
-                            if (!centralizado || !faixaVertical || !textoGrande) return@mapNotNull null
-                            val numero = regexMultiplicador.find(bloco.text)?.groupValues?.get(1)
+                            val textoAlto = caixa.height().toFloat()
+                            val noCentroHorizontal =
+                                centroX >= largura * 0.28f && centroX <= largura * 0.72f
+                            val noCentroVertical =
+                                centroY >= altura * 0.28f && centroY <= altura * 0.60f
+                            val fonteGrande = textoAlto >= altura * 0.018f
+                            if (!noCentroHorizontal || !noCentroVertical || !fonteGrande) {
+                                return@mapNotNull null
+                            }
+
+                            val regexCentral = Regex(
+                                """(\\d{1,4}[.,]\\d{1,2})\\s*x""",
+                                RegexOption.IGNORE_CASE
+                            )
+                            val numero = regexCentral.find(bloco.text)?.groupValues?.get(1)
                                 ?: return@mapNotNull null
-                            Triple(numero, alturaTexto, centroY)
+                            Triple(numero, textoAlto, centroY)
                         }.maxByOrNull { it.second }
 
-                        if (candidatoCentral != null) {
-                            enviar("ROUND_RESULT:" + candidatoCentral.first.replace(",", "."))
+                        if (candidatos != null) {
+                            enviar("ROUND_RESULT:" + candidatos.first)
                         } else {
                             enviar("NO_ROUND_END")
                         }
                     }
                 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener { ampliada.recycle(); recorte.recycle() }
+                .addOnCompleteListener { recorte.recycle() }
 
         }, handler)
 
