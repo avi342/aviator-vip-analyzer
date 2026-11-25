@@ -122,51 +122,39 @@ class ScreenCaptureService : Service() {
        
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
-            // O resultado final fica no painel central do jogo. Recorta essa região,
-            // amplia a imagem e evita que o OCR leia números do histórico ou do app.
-            val topoJogo = (altura * 0.25f).toInt().coerceIn(0, altura - 1)
-            val fimJogo = (altura * 0.43f).toInt().coerceIn(topoJogo + 1, altura)
-            val esquerda = (largura * 0.10f).toInt().coerceIn(0, largura - 1)
-            val direita = (largura * 0.90f).toInt().coerceIn(esquerda + 1, largura)
-            val regiao = Bitmap.createBitmap(recorte, esquerda, topoJogo,
-                direita - esquerda, fimJogo - topoJogo)
-            val ampliada = Bitmap.createScaledBitmap(regiao,
-                regiao.width * 2, regiao.height * 2, true)
-            regiao.recycle()
-            recorte.recycle()
-
-            reconhecedor.process(InputImage.fromBitmap(ampliada, 0))
+            // Analisa a tela inteira para não cortar o resultado quando o jogo
+            // muda de posição ou escala. O marcador delimita a rodada encerrada.
+            reconhecedor.process(InputImage.fromBitmap(recorte, 0))
                 .addOnSuccessListener { resultado ->
-                    val blocos = resultado.textBlocks
-                    val marcador = blocos.firstOrNull {
+                    val blocos = resultado.textBlocks.sortedBy { it.boundingBox?.top ?: Int.MAX_VALUE }
+                    val indiceMarcador = blocos.indexOfFirst {
                         it.text.contains("VOOU", ignoreCase = true) ||
                         it.text.contains("PARA LONGE", ignoreCase = true)
                     }
-                    if (marcador == null) {
+                    if (indiceMarcador < 0) {
                         enviar("NO_ROUND_END")
                     } else {
-                        val limite = marcador.boundingBox?.bottom ?: 0
-                        val textoAbaixo = blocos
+                        val marcador = blocos[indiceMarcador]
+                        val topoMarcador = marcador.boundingBox?.top ?: 0
+                        val textoResultado = blocos
+                            .drop(indiceMarcador)
                             .filter { bloco ->
-                                val caixa = bloco.boundingBox
-                                caixa != null && caixa.top >= limite &&
-                                    caixa.top - limite < ampliada.height * 0.65
+                                val topo = bloco.boundingBox?.top ?: topoMarcador
+                                topo - topoMarcador <= (altura * 0.30f).toInt()
                             }
-                            .sortedBy { it.boundingBox!!.top }
                             .joinToString(" ") { it.text }
 
+                        // Kotlin raw strings usam barra simples para \d.
+                        // Aceita ponto ou vírgula decimal, sem inventar casas decimais.
                         val regex = Regex(
-                            """(?<!\\d)(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*x\\b""",
+                            """(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*x\b""",
                             RegexOption.IGNORE_CASE
                         )
-                        val numero = regex.find(textoAbaixo)?.groupValues?.get(1)
+                        val numero = regex.find(textoResultado)?.groupValues?.get(1)
                         if (numero != null) {
                             val normalizado = numero.replace(",", ".")
                             val valor = normalizado.toDoubleOrNull()
-                            // Não adivinha separador decimal ausente em valores ambíguos.
-                            val ambiguo = !numero.contains(Regex("[.,]")) &&
-                                numero.length == 3 && numero.startsWith("1")
-                            if (valor != null && valor >= 1.0 && valor <= 10000.0 && !ambiguo) {
+                            if (valor != null && valor >= 1.0 && valor <= 10000.0) {
                                 enviar("ROUND_RESULT:$normalizado")
                             } else {
                                 enviar("ROUND_WAIT")
@@ -177,7 +165,7 @@ bitmap.recycle()
                     }
                 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener { ampliada.recycle() }
+                .addOnCompleteListener { recorte.recycle() }
 
         }, handler)
 
