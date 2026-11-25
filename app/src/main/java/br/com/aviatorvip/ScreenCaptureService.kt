@@ -181,7 +181,7 @@ bitmap.recycle()
                                 }
 
                                 val regexCentral = Regex(
-                                    """(\\d{1,4}[.,]\\d{1,2})\\s*x""",
+                                    """(\d{1,4}[.,]\d{1,2})\s*x""",
                                     RegexOption.IGNORE_CASE
                                 )
                                 val numero = regexCentral.find(linha.text)?.groupValues?.get(1)
