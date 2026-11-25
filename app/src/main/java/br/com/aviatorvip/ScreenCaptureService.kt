@@ -1,5 +1,5 @@
 
-package br.com.aviatorvip
+package br.com.topgunvip
 
 import android.app.Service
 import android.app.NotificationChannel
@@ -50,7 +50,7 @@ class ScreenCaptureService : Service() {
         criarCanal()
 
         val notificacao = NotificationCompat.Builder(this, CANAL)
-            .setContentTitle("Aviator VIP Analyzer")
+            .setContentTitle("Top Gun VIP Analyzer")
             .setContentText("Captura OCR ativa")
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .setOngoing(true)
@@ -86,7 +86,7 @@ class ScreenCaptureService : Service() {
         (getSystemService(Context.WINDOW_SERVICE) as WindowManager)
             .defaultDisplay.getRealMetrics(metricas)
 
-        worker = HandlerThread("AviatorOCR").also { it.start() }
+        worker = HandlerThread("Top GunOCR").also { it.start() }
         val handler = Handler(worker!!.looper)
 
         reader = ImageReader.newInstance(
@@ -182,7 +182,7 @@ bitmap.recycle()
         )
 
         display = projection!!.createVirtualDisplay(
-            "AviatorOCR", metricas.widthPixels, metricas.heightPixels,
+            "Top GunOCR", metricas.widthPixels, metricas.heightPixels,
             metricas.densityDpi,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
             reader!!.surface, null, handler
@@ -227,12 +227,12 @@ bitmap.recycle()
     }
 
     companion object {
-        const val ACTION_START = "AVIATOR_START"
-        const val ACTION_STOP = "AVIATOR_STOP"
-        const val ACTION_TEXT = "AVIATOR_TEXT"
+        const val ACTION_START = "TOPGUN_START"
+        const val ACTION_STOP = "TOPGUN_STOP"
+        const val ACTION_TEXT = "TOPGUN_TEXT"
         const val EXTRA_CODE = "codigo"
         const val EXTRA_DATA = "dados"
         const val EXTRA_TEXT = "texto"
-        private const val CANAL = "aviator_ocr"
+        private const val CANAL = "topgun_ocr"
     }
 }
