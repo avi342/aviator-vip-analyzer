@@ -284,7 +284,7 @@ class MainActivity : Activity() {
             linhas += "DEPOIS: " + if (r.depois.isEmpty()) "aguardando 5 rodadas" else r.depois.joinToString("  ") { String.format(Locale.US, "%.2f", it) + "x" }
             linhas += "Pós-rodadas registradas: ${r.depois.size}/5"
         }
-        painelReacoes.text = linhas.joinToString("\\n")
+        painelReacoes.text = linhas.joinToString("\n")
     }
 
     private fun atualizarFrequencia() {
