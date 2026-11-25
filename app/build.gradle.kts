@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "br.com.aviatorvip"
+    namespace = "br.com.topgunvip"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "br.com.aviatorvip"
+        applicationId = "br.com.topgunvip"
         minSdk = 26
         targetSdk = 35
         versionCode = 2
