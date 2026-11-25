@@ -7,6 +7,10 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -122,9 +126,29 @@ class ScreenCaptureService : Service() {
        
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
-            // Analisa a tela inteira para não cortar o resultado quando o jogo
-            // muda de posição ou escala. O marcador delimita a rodada encerrada.
-            reconhecedor.process(InputImage.fromBitmap(recorte, 0))
+            // Realça caracteres claros e separadores decimais pequenos antes do OCR.
+            // Mantém a tela inteira para não cortar o resultado nem confundir regiões.
+            val ampliada = Bitmap.createBitmap(
+                (recorte.width * 2).coerceAtLeast(1),
+                (recorte.height * 2).coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888
+            )
+            val matriz = ColorMatrix(floatArrayOf(
+                1.65f, 0f, 0f, 0f, 18f,
+                0f, 1.65f, 0f, 0f, 18f,
+                0f, 0f, 1.65f, 0f, 18f,
+                0f, 0f, 0f, 1f, 0f
+            ))
+            val tinta = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                colorFilter = ColorMatrixColorFilter(matriz)
+            }
+            Canvas(ampliada).drawBitmap(
+                recorte,
+                null,
+                android.graphics.Rect(0, 0, ampliada.width, ampliada.height),
+                tinta
+            )
+            reconhecedor.process(InputImage.fromBitmap(ampliada, 0))
                 .addOnSuccessListener { resultado ->
                     val blocos = resultado.textBlocks.sortedBy { it.boundingBox?.top ?: Int.MAX_VALUE }
                     val indiceMarcador = blocos.indexOfFirst {
@@ -165,7 +189,7 @@ bitmap.recycle()
                     }
                 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener { recorte.recycle() }
+                .addOnCompleteListener { ampliada.recycle(); recorte.recycle() }
 
         }, handler)
 
