@@ -157,7 +157,7 @@ bitmap.recycle()
                     }
 
                     val regexMultiplicador = Regex(
-                        """(?<!\\d)(\\d{1,4}[.,]\\d{1,2})\\s*x\\b""",
+                        """(?<!\d)(\d{1,4}[.,]\d{1,2})\s*x\b""",
                         RegexOption.IGNORE_CASE
                     )
 
