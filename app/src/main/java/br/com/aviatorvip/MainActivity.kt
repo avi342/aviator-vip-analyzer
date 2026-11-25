@@ -17,12 +17,18 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.TextClock
 import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var contadorCasas: TextView
     private lateinit var relogio: TextClock
     private lateinit var painelFrequencia: TextView
+    private lateinit var painelReacoes: TextView
+    private var reacoesExpandida = false
+    private data class Reacao(val alvo: Double, val antes: List<Double>, val depois: MutableList<Double>)
+    private val reacoes = mutableListOf<Reacao>()
     private var janelaFrequencia = 100
     private var frequenciaExpandida = true
     private val resultados = mutableListOf<Double>()
@@ -41,6 +47,8 @@ class MainActivity : Activity() {
         getSharedPreferences("aviator", MODE_PRIVATE).getString("resultados", "").orEmpty()
             .split(",").filter { it.isNotBlank() }
             .forEach { it.toDoubleOrNull()?.let(resultados::add) }
+
+        carregarReacoes()
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -123,9 +131,24 @@ class MainActivity : Activity() {
             background = cartao()
         }
         tela.addView(painelFrequencia, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+        val botaoReacoes = botao("REGISTRO DE REAÇÕES  ▼", Color.rgb(35, 65, 75)) {
+            reacoesExpandida = !reacoesExpandida
+            painelReacoes.visibility = if (reacoesExpandida) android.view.View.VISIBLE else android.view.View.GONE
+        }
+        tela.addView(botaoReacoes, LinearLayout.LayoutParams(-1, dp(27)).apply { topMargin = dp(3) })
+        painelReacoes = TextView(this).apply {
+            textSize = 10f
+            setTextColor(Color.WHITE)
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            typeface = Typeface.MONOSPACE
+            background = cartao()
+            visibility = android.view.View.GONE
+        }
+        tela.addView(painelReacoes, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
         setContentView(tela)
         atualizarContador()
         atualizarFrequencia()
+        atualizarReacoes()
     }
 
     private fun botao(rotulo: String, cor: Int, acao: () -> Unit) = Button(this).apply {
@@ -197,6 +220,7 @@ class MainActivity : Activity() {
         }
         status.text = "Confirmando: " + String.format(Locale.US, "%.2fx", valor)
         if (leiturasDoCandidato >= 2) {
+            registrarReacao(valor)
             resultados.add(0, valor)
             if (resultados.size > 2000) resultados.removeAt(resultados.lastIndex)
             getSharedPreferences("aviator", MODE_PRIVATE).edit()
@@ -205,7 +229,62 @@ class MainActivity : Activity() {
             status.text = "Registrado: " + String.format(Locale.US, "%.2fx", valor)
             atualizarContador()
             atualizarFrequencia()
+            atualizarReacoes()
         }
+    }
+
+    private fun carregarReacoes() {
+        val bruto = getSharedPreferences("aviator", MODE_PRIVATE).getString("reacoes_3x", "[]") ?: "[]"
+        try {
+            val array = JSONArray(bruto)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val antesJson = obj.getJSONArray("antes")
+                val depoisJson = obj.getJSONArray("depois")
+                val antes = (0 until antesJson.length()).map { antesJson.getDouble(it) }
+                val depois = (0 until depoisJson.length()).map { depoisJson.getDouble(it) }.toMutableList()
+                reacoes.add(Reacao(obj.getDouble("alvo"), antes, depois))
+            }
+        } catch (_: Exception) { reacoes.clear() }
+    }
+
+    private fun salvarReacoes() {
+        val array = JSONArray()
+        reacoes.forEach { reacao ->
+            val obj = JSONObject()
+            obj.put("alvo", reacao.alvo)
+            obj.put("antes", JSONArray(reacao.antes))
+            obj.put("depois", JSONArray(reacao.depois))
+            array.put(obj)
+        }
+        getSharedPreferences("aviator", MODE_PRIVATE).edit().putString("reacoes_3x", array.toString()).apply()
+    }
+
+    private fun registrarReacao(valor: Double) {
+        reacoes.forEach { if (it.depois.size < 5) it.depois.add(valor) }
+        if (valor >= 3.0) {
+            reacoes.add(Reacao(valor, resultados.take(5), mutableListOf()))
+            if (reacoes.size > 100) reacoes.removeAt(0)
+        }
+        salvarReacoes()
+    }
+
+    private fun atualizarReacoes() {
+        if (!::painelReacoes.isInitialized) return
+        if (reacoes.isEmpty()) {
+            painelReacoes.text = "Aguardando resultados de 3x ou mais."
+            return
+        }
+        val linhas = mutableListOf<String>()
+        linhas += "OCORRÊNCIAS DE 3x+: ${reacoes.size}"
+        reacoes.takeLast(5).asReversed().forEachIndexed { indice, r ->
+            linhas += "------------------------------"
+            linhas += "ALVO: ${String.format(Locale.US, "%.2f", r.alvo)}x"
+            linhas += "ANTES: " + if (r.antes.isEmpty()) "sem histórico" else r.antes.asReversed().joinToString("  ") { String.format(Locale.US, "%.2f", it) + "x" }
+            linhas += "DEPOIS: " + if (r.depois.isEmpty()) "aguardando 5 rodadas" else r.depois.joinToString("  ") { String.format(Locale.US, "%.2f", it) + "x" }
+            linhas += "Pós-rodadas registradas: ${r.depois.size}/5"
+        }
+        painelReacoes.text = linhas.joinToString("\\n")
     }
 
     private fun atualizarFrequencia() {
