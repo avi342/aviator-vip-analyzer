@@ -53,7 +53,7 @@ class MainActivity : Activity() {
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            setPadding(8, 8, 8, 8)
+            setPadding(4, 4, 4, 4)
             setBackgroundColor(Color.BLACK)
         }
         val topo = LinearLayout(this).apply {
@@ -65,7 +65,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }
         controles.addView(botao("▶ OCR", Color.rgb(15, 125, 115)) { solicitarCaptura() },
-            LinearLayout.LayoutParams(dp(78), dp(25)).apply { marginEnd = dp(3) })
+            LinearLayout.LayoutParams(dp(82), dp(24)).apply { marginEnd = dp(3) })
         controles.addView(botao("■ PARAR", Color.rgb(95, 35, 55)) {
             stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
             status.text = "Captura parada"
@@ -76,34 +76,34 @@ class MainActivity : Activity() {
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 14f
+            textSize = 12f
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             setTextColor(Color.WHITE)
             setTypeface(null, Typeface.BOLD)
         }
-        topo.addView(relogio, LinearLayout.LayoutParams(dp(72), dp(32)).apply { marginStart = dp(5) })
+        topo.addView(relogio, LinearLayout.LayoutParams(dp(64), dp(28)).apply { marginStart = dp(5) })
         tela.addView(topo)
 
         status = TextView(this).apply {
             text = "Aguardando captura OCR..."
-            textSize = 11f
+            textSize = 9f
             gravity = Gravity.CENTER_VERTICAL
             setTextColor(Color.LTGRAY)
             setPadding(2, dp(2), 2, dp(2))
             maxLines = 1
         }
-        tela.addView(status, LinearLayout.LayoutParams(-1, dp(22)))
+        tela.addView(status, LinearLayout.LayoutParams(-1, dp(18)))
 
         contadorCasas = TextView(this).apply {
             text = "Casas após 10x: --"
-            textSize = 14f
+            textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, Typeface.BOLD)
             setPadding(1, dp(1), 1, dp(1))
             background = cartao()
         }
-        tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(23)).apply { topMargin = dp(2) })
+        tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(20)).apply { topMargin = dp(1) })
 
         val seletorJanela = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         listOf(100, 300, 500, 2000).forEach { quantidade ->
@@ -111,20 +111,20 @@ class MainActivity : Activity() {
                 janelaFrequencia = quantidade
                 atualizarFrequencia()
             }
-            seletorJanela.addView(b, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
+            seletorJanela.addView(b, LinearLayout.LayoutParams(0, dp(23), 1f).apply {
                 marginStart = dp(2); marginEnd = dp(2)
             })
         }
-        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(27)).apply { topMargin = dp(3) })
+        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(23)).apply { topMargin = dp(2) })
 
         val botaoFrequencia = botao("LEITOR DE FREQUÊNCIA  ▼", Color.rgb(35, 45, 70)) {
             frequenciaExpandida = !frequenciaExpandida
             painelFrequencia.visibility = if (frequenciaExpandida) android.view.View.VISIBLE else android.view.View.GONE
         }
-        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(27)).apply { topMargin = dp(2) })
+        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(23)).apply { topMargin = dp(1) })
 
         painelFrequencia = TextView(this).apply {
-            textSize = 10f
+            textSize = 9f
             setTextColor(Color.WHITE)
             setPadding(dp(6), dp(5), dp(6), dp(5))
             typeface = Typeface.MONOSPACE
@@ -153,7 +153,10 @@ class MainActivity : Activity() {
 
     private fun botao(rotulo: String, cor: Int, acao: () -> Unit) = Button(this).apply {
         text = rotulo
-        textSize = 12f
+        textSize = 10f
+        minHeight = 0
+        minimumHeight = 0
+        setPadding(dp(2), 0, dp(2), 0)
         isAllCaps = false
         setTextColor(Color.WHITE)
         setOnClickListener { acao() }
