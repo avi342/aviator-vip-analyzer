@@ -313,7 +313,18 @@ class MainActivity : Activity() {
                 " | depois: ${r.depois.size}/5"
         }
         linhas += "Comparação por quantidade em cada faixa; histórico não prevê a próxima rodada."
-        painelReacoes.text = linhas.joinToString("\\n")
+        val textoRadar = linhas.joinToString("\n")
+        val destaqueRadar = SpannableStringBuilder(textoRadar)
+        listOf("REAÇÕES SEMELHANTES:", "AMOSTRA INSUFICIENTE", "FREQUÊNCIA HISTÓRICA").forEach { termo ->
+            val inicio = textoRadar.indexOf(termo)
+            if (inicio >= 0) {
+                val fim = textoRadar.indexOf('\n', inicio).let { if (it < 0) textoRadar.length else it }
+                destaqueRadar.setSpan(BackgroundColorSpan(Color.rgb(42, 48, 68)), inicio, fim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                destaqueRadar.setSpan(ForegroundColorSpan(Color.rgb(255, 215, 90)), inicio, fim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                destaqueRadar.setSpan(StyleSpan(Typeface.BOLD), inicio, fim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+        painelReacoes.text = destaqueRadar
     }
 
     private fun atualizarFrequencia() {
