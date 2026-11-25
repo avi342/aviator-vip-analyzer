@@ -57,12 +57,12 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }
         controles.addView(botao("▶ OCR", Color.rgb(15, 125, 115)) { solicitarCaptura() },
-            LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(3) })
+            LinearLayout.LayoutParams(dp(78), dp(25)).apply { marginEnd = dp(3) })
         controles.addView(botao("■ PARAR", Color.rgb(95, 35, 55)) {
             stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
             status.text = "Captura parada"
-        }, LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginStart = dp(3) })
-        topo.addView(controles, LinearLayout.LayoutParams(0, dp(29), 1f))
+        }, LinearLayout.LayoutParams(dp(78), dp(25)).apply { marginStart = dp(3) })
+        topo.addView(controles, LinearLayout.LayoutParams(0, dp(26), 1f))
 
         relogio = TextClock(this).apply {
             format12Hour = "HH:mm:ss"
@@ -92,10 +92,10 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, Typeface.BOLD)
-            setPadding(2, dp(3), 2, dp(3))
+            setPadding(1, dp(1), 1, dp(1))
             background = cartao()
         }
-        tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(3) })
+        tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(23)).apply { topMargin = dp(2) })
 
         val seletorJanela = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         listOf(100, 300, 500, 2000).forEach { quantidade ->
@@ -103,17 +103,17 @@ class MainActivity : Activity() {
                 janelaFrequencia = quantidade
                 atualizarFrequencia()
             }
-            seletorJanela.addView(b, LinearLayout.LayoutParams(0, dp(34), 1f).apply {
+            seletorJanela.addView(b, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
                 marginStart = dp(2); marginEnd = dp(2)
             })
         }
-        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(31)).apply { topMargin = dp(4) })
+        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(27)).apply { topMargin = dp(3) })
 
         val botaoFrequencia = botao("LEITOR DE FREQUÊNCIA  ▼", Color.rgb(35, 45, 70)) {
             frequenciaExpandida = !frequenciaExpandida
             painelFrequencia.visibility = if (frequenciaExpandida) android.view.View.VISIBLE else android.view.View.GONE
         }
-        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(30)).apply { topMargin = dp(3) })
+        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(27)).apply { topMargin = dp(2) })
 
         painelFrequencia = TextView(this).apply {
             textSize = 10f
@@ -212,11 +212,11 @@ class MainActivity : Activity() {
         if (!::painelFrequencia.isInitialized) return
         val amostra = resultados.take(janelaFrequencia)
         val faixas = listOf(
-            "1.00–1.99x" to { v: Double -> v >= 1.0 && v < 2.0 },
-            "2.00–2.99x" to { v: Double -> v >= 2.0 && v < 3.0 },
-            "3.00–4.99x" to { v: Double -> v >= 3.0 && v < 5.0 },
-            "5.00–9.99x" to { v: Double -> v >= 5.0 && v < 10.0 },
-            "10x ou mais" to { v: Double -> v >= 10.0 }
+            "1–1,99x" to { v: Double -> v >= 1.0 && v < 2.0 },
+            "2–2,99x" to { v: Double -> v >= 2.0 && v < 3.0 },
+            "3–4,99x" to { v: Double -> v >= 3.0 && v < 5.0 },
+            "5–9,99x" to { v: Double -> v >= 5.0 && v < 10.0 },
+            "10x+" to { v: Double -> v >= 10.0 }
         )
         val cronologico = amostra.asReversed()
         val totalGeral = (cronologico.size - 1).coerceAtLeast(0)
@@ -226,30 +226,24 @@ class MainActivity : Activity() {
             if (cronologico[i + 1] >= meta) geral[j]++
         }
         fun pct(n: Int, total: Int): String =
-            if (total == 0) "--" else String.format(Locale.US, "%.0f%%", n * 100.0 / total)
+            if (total == 0) "—" else String.format(Locale.US, "%.0f", n * 100.0 / total)
         val linhas = mutableListOf<String>()
-        linhas += "AMOSTRA: $totalGeral transições • MÉDIA GERAL"
-        linhas += "≥2x ${pct(geral[0], totalGeral)}  ≥3x ${pct(geral[1], totalGeral)}  ≥5x ${pct(geral[2], totalGeral)}  ≥10x ${pct(geral[3], totalGeral)}"
-        linhas += "----------------------------------------"
+        linhas += "FAIXA       QTD   2x   3x   5x  10x"
+        linhas += "MÉDIA GERAL       ${pct(geral[0], totalGeral)}%  ${pct(geral[1], totalGeral)}%  ${pct(geral[2], totalGeral)}%  ${pct(geral[3], totalGeral)}%"
         faixas.forEach { (nome, pertence) ->
             var total = 0
             val acertos = IntArray(4)
-            for (i in 0 until totalGeral) {
-                if (pertence(cronologico[i])) {
-                    total++
-                    metas.forEachIndexed { j, meta -> if (cronologico[i + 1] >= meta) acertos[j]++ }
-                }
+            for (i in 0 until totalGeral) if (pertence(cronologico[i])) {
+                total++
+                metas.forEachIndexed { j, meta -> if (cronologico[i + 1] >= meta) acertos[j]++ }
             }
-            val resumo = metas.indices.joinToString("  ") { j ->
-                "${j.let { listOf("2x", "3x", "5x", "10x")[it] }} ${pct(acertos[j], total)} (${acertos[j]}/$total)"
-            }
-            linhas += "$nome  •  n=$total"
-            linhas += resumo
+            linhas += "${nome.padEnd(10)} ${total.toString().padStart(3)}   " +
+                metas.indices.joinToString("   ") { j -> if (total == 0) "—" else "${pct(acertos[j], total)}%" }
         }
         painelFrequencia.text =
-            "ÚLTIMAS $janelaFrequencia RODADAS • ${amostra.size} resultados\n" +
+            "ÚLTIMAS $janelaFrequencia • ${amostra.size} resultados\n" +
             linhas.joinToString("\n") +
-            "\n\nPercentuais históricos; comparação descritiva, não previsão."
+            "\n\nToque nos detalhes? Percentuais históricos, não previsões."
     }
 
     private fun atualizarContador() {
