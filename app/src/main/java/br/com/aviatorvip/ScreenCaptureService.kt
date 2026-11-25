@@ -125,33 +125,7 @@ bitmap.recycle()
             reconhecedor.process(InputImage.fromBitmap(recorte, 0))
                 .addOnSuccessListener { resultado ->
                     val blocos = resultado.textBlocks
-                    val marcador = blocos.firstOrNull {
-                        it.text.contains("VOOU", ignoreCase = true) ||
-                        it.text.contains("PARA LONGE", ignoreCase = true)
-                    }
-
-                    if (marcador != null) {
-                        // AVIATOR: mantém a leitura antiga, que era a que apresentava
-                        // melhor comportamento antes das alterações recentes.
-                        val limite = marcador.boundingBox?.bottom ?: 0
-                        val abaixo = blocos
-                            .filter {
-                                it.boundingBox != null &&
-                                    it.boundingBox!!.top >= limite
-                            }
-                            .sortedBy { it.boundingBox!!.top }
-                        val texto = abaixo.take(3).joinToString(" ") { it.text }
-                        val regex = Regex(
-                            """(\d{1,5}(?:[.,]\d{1,2})?)\s*x?""",
-                            RegexOption.IGNORE_CASE
-                        )
-                        val numero = regex.find(texto)?.groupValues?.get(1)
-                        if (numero != null) {
-                            enviar("ROUND_RESULT:$numero")
-                        } else {
-                            enviar("ROUND_WAIT")
-                        }
-                    } else {
+                    // Leitura exclusiva do resultado central do Top Gun.
                         // TOP GUN: não depende do texto "VOOU PRA LONGE".
                         // Procura apenas o multiplicador grande no centro do jogo.
                         // A faixa superior com o histórico fica fora da região vertical.
