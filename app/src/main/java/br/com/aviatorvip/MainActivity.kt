@@ -65,12 +65,12 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }
         controles.addView(botao("▶ OCR", Color.rgb(15, 125, 115)) { solicitarCaptura() },
-            LinearLayout.LayoutParams(dp(82), dp(24)).apply { marginEnd = dp(3) })
+            LinearLayout.LayoutParams(0, dp(20), 1f).apply { marginEnd = dp(2) })
         controles.addView(botao("■ PARAR", Color.rgb(95, 35, 55)) {
             stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
             status.text = "Captura parada"
-        }, LinearLayout.LayoutParams(dp(78), dp(25)).apply { marginStart = dp(3) })
-        topo.addView(controles, LinearLayout.LayoutParams(0, dp(26), 1f))
+        }, LinearLayout.LayoutParams(0, dp(20), 1f).apply { marginStart = dp(2) })
+        topo.addView(controles, LinearLayout.LayoutParams(0, dp(22), 1f))
 
         relogio = TextClock(this).apply {
             format12Hour = "HH:mm:ss"
@@ -105,32 +105,14 @@ class MainActivity : Activity() {
         }
         tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(20)).apply { topMargin = dp(1) })
 
-        val seletorJanela = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        listOf(100, 300, 500, 2000).forEach { quantidade ->
-            val b = botao(quantidade.toString(), Color.rgb(35, 45, 70)) {
-                janelaFrequencia = quantidade
-                atualizarFrequencia()
-            }
-            seletorJanela.addView(b, LinearLayout.LayoutParams(0, dp(23), 1f).apply {
-                marginStart = dp(2); marginEnd = dp(2)
-            })
-        }
-        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(23)).apply { topMargin = dp(2) })
-
-        val botaoFrequencia = botao("LEITOR DE FREQUÊNCIA  ▼", Color.rgb(35, 45, 70)) {
-            frequenciaExpandida = !frequenciaExpandida
-            painelFrequencia.visibility = if (frequenciaExpandida) android.view.View.VISIBLE else android.view.View.GONE
-        }
-        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(23)).apply { topMargin = dp(1) })
-
         painelFrequencia = TextView(this).apply {
             textSize = 9f
             setTextColor(Color.WHITE)
-            setPadding(dp(6), dp(5), dp(6), dp(5))
+            setPadding(dp(5), dp(3), dp(5), dp(3))
             typeface = Typeface.MONOSPACE
             background = cartao()
         }
-        tela.addView(painelFrequencia, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+        tela.addView(painelFrequencia, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
         val botaoReacoes = botao("REGISTRO DE REAÇÕES  ▼", Color.rgb(35, 65, 75)) {
             reacoesExpandida = !reacoesExpandida
             painelReacoes.visibility = if (reacoesExpandida) android.view.View.VISIBLE else android.view.View.GONE
@@ -331,65 +313,30 @@ class MainActivity : Activity() {
 
     private fun atualizarFrequencia() {
         if (!::painelFrequencia.isInitialized) return
-        val amostra = resultados.take(janelaFrequencia)
-        val faixas = listOf(
-            "1,00–1,99x" to { v: Double -> v >= 1.0 && v < 2.0 },
-            "2,00–2,99x" to { v: Double -> v >= 2.0 && v < 3.0 },
-            "3,00–4,99x" to { v: Double -> v >= 3.0 && v < 5.0 },
-            "5,00–9,99x" to { v: Double -> v >= 5.0 && v < 10.0 },
-            "10x ou mais" to { v: Double -> v >= 10.0 }
-        )
-        val cronologico = amostra.asReversed()
-        val totalGeral = (cronologico.size - 1).coerceAtLeast(0)
-        var acertosGerais = 0
-        for (i in 0 until totalGeral) if (cronologico[i + 1] >= 2.0) acertosGerais++
-        val mediaGeral = if (totalGeral == 0) 0.0 else acertosGerais * 100.0 / totalGeral
-
-        data class ResultadoFaixa(val nome: String, val casos: Int, val acertos: Int) {
-            val percentual: Double get() = if (casos == 0) 0.0 else acertos * 100.0 / casos
-        }
-        val dados = faixas.map { (nome, pertence) ->
+        val cronologico = resultados.asReversed()
+        fun analisar(casas: Int): String {
+            if (cronologico.size <= casas) return "${casas} CASAS: aguardando histórico"
+            val padraoAtual = cronologico.takeLast(casas)
             var casos = 0
             var acertos = 0
-            for (i in 0 until totalGeral) {
-                if (pertence(cronologico[i])) {
+            // Compara sequências históricas completas, sem usar a rodada atual como resultado futuro.
+            for (i in 0 until cronologico.size - casas) {
+                val janela = cronologico.subList(i, i + casas)
+                val semelhante = janela.indices.all { k ->
+                    kotlin.math.abs(janela[k] - padraoAtual[k]) <=
+                        maxOf(0.75, padraoAtual[k] * 0.35)
+                }
+                if (semelhante) {
                     casos++
-                    if (cronologico[i + 1] >= 2.0) acertos++
+                    if (cronologico[i + casas] >= 2.0) acertos++
                 }
             }
-            ResultadoFaixa(nome, casos, acertos)
+            val pct = if (casos == 0) 0 else acertos * 100 / casos
+            val estado = if (casos < 10) "poucos casos" else "amostra"
+            return "${casas} CASAS • ${acertos}/${casos} após 2x+ • ${pct}% • ${estado}"
         }
-        val melhor = dados.filter { it.casos > 0 }.maxByOrNull { it.percentual }
-        fun percentual(valor: Double): String = String.format(Locale.US, "%.0f%%", valor)
-        val linhas = mutableListOf<String>()
-        linhas += "ANÁLISE: QUAL FAIXA MAIS ANTECEDE 2x+?"
-        linhas += "MÉDIA GERAL: ${percentual(mediaGeral)} em $totalGeral transições"
-        linhas += "--------------------------------------"
-        if (melhor == null) {
-            linhas += "Aguardando rodadas suficientes para analisar."
-        } else {
-            linhas += "MAIOR FREQUÊNCIA: ${melhor.nome}"
-            linhas += "${percentual(melhor.percentual)}  •  ${melhor.acertos} de ${melhor.casos} casos"
-            val diferenca = melhor.percentual - mediaGeral
-            val comparacao = when {
-                melhor.casos < 20 -> "AMOSTRA PEQUENA: ainda não é confiável"
-                diferenca >= 5.0 -> "${String.format(Locale.US, "+%.0f", diferenca)} pontos vs. média geral"
-                diferenca <= -5.0 -> "${String.format(Locale.US, "%.0f", diferenca)} pontos vs. média geral"
-                else -> "Próxima da média geral"
-            }
-            linhas += comparacao
-        }
-        linhas += "--------------------------------------"
-        linhas += "FAIXA             CASOS   PRÓXIMA 2x+"
-        dados.forEach { item ->
-            val marca = if (melhor?.nome == item.nome) "★ " else "  "
-            val freq = if (item.casos == 0) "—" else percentual(item.percentual)
-            linhas += "$marca${item.nome.padEnd(14)} ${item.casos.toString().padStart(3)}       $freq"
-        }
-        painelFrequencia.text =
-            "ÚLTIMAS $janelaFrequencia • ${amostra.size} resultados\n" +
-            linhas.joinToString("\n") +
-            "\n\nCompara cada faixa com a rodada seguinte. Histórico, não previsão."
+        painelFrequencia.text = "ANÁLISE CURTA (PRÓXIMA 2x+)\n" +
+            analisar(2) + "\n" + analisar(3)
     }
 
     private fun atualizarContador() {
