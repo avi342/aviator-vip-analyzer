@@ -243,7 +243,7 @@ class MainActivity : Activity() {
         painelFrequencia.text =
             "ÚLTIMAS $janelaFrequencia • ${amostra.size} resultados\n" +
             linhas.joinToString("\n") +
-            "\n\nToque nos detalhes? Percentuais históricos, não previsões."
+            "\n\nPercentuais históricos; não são previsões."
     }
 
     private fun atualizarContador() {
