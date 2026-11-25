@@ -142,7 +142,7 @@ bitmap.recycle()
                             .sortedBy { it.boundingBox!!.top }
                         val texto = abaixo.take(3).joinToString(" ") { it.text }
                         val regex = Regex(
-                            """(\\d{1,5}(?:[.,]\\d{1,2})?)\\s*x?""",
+                            """(\d{1,5}(?:[.,]\d{1,2})?)\s*x?""",
                             RegexOption.IGNORE_CASE
                         )
                         val numero = regex.find(texto)?.groupValues?.get(1)
@@ -170,7 +170,7 @@ bitmap.recycle()
                             }
 
                             val regexCentral = Regex(
-                                """(\\d{1,4}[.,]\\d{1,2})\\s*x""",
+                                """(\d{1,4}[.,]\d{1,2})\s*x""",
                                 RegexOption.IGNORE_CASE
                             )
                             val numero = regexCentral.find(bloco.text)?.groupValues?.get(1)
