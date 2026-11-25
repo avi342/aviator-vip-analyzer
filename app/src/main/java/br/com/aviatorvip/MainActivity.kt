@@ -22,6 +22,9 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var contadorCasas: TextView
     private lateinit var relogio: TextClock
+    private lateinit var painelFrequencia: TextView
+    private var janelaFrequencia = 100
+    private var frequenciaExpandida = true
     private val resultados = mutableListOf<Double>()
     private var candidatoOCR: Double? = null
     private var leiturasDoCandidato = 0
@@ -87,8 +90,36 @@ class MainActivity : Activity() {
             background = cartao()
         }
         tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(8) })
+
+        val seletorJanela = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        listOf(100, 300, 500, 2000).forEach { quantidade ->
+            val b = botao(quantidade.toString(), Color.rgb(35, 45, 70)) {
+                janelaFrequencia = quantidade
+                atualizarFrequencia()
+            }
+            seletorJanela.addView(b, LinearLayout.LayoutParams(0, dp(34), 1f).apply {
+                marginStart = dp(2); marginEnd = dp(2)
+            })
+        }
+        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(10) })
+
+        val botaoFrequencia = botao("LEITOR DE FREQUÊNCIA  ▼", Color.rgb(35, 45, 70)) {
+            frequenciaExpandida = !frequenciaExpandida
+            painelFrequencia.visibility = if (frequenciaExpandida) android.view.View.VISIBLE else android.view.View.GONE
+        }
+        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(4) })
+
+        painelFrequencia = TextView(this).apply {
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            typeface = Typeface.MONOSPACE
+            background = cartao()
+        }
+        tela.addView(painelFrequencia, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
         setContentView(tela)
         atualizarContador()
+        atualizarFrequencia()
     }
 
     private fun botao(rotulo: String, cor: Int, acao: () -> Unit) = Button(this).apply {
@@ -167,7 +198,44 @@ class MainActivity : Activity() {
             rodadaRegistrada = true
             status.text = "Registrado: " + String.format(Locale.US, "%.2fx", valor)
             atualizarContador()
+            atualizarFrequencia()
         }
+    }
+
+    private fun atualizarFrequencia() {
+        if (!::painelFrequencia.isInitialized) return
+        val amostra = resultados.take(janelaFrequencia)
+        val faixas = listOf(
+            "1.00–1.99x" to { v: Double -> v >= 1.0 && v < 2.0 },
+            "2.00–2.99x" to { v: Double -> v >= 2.0 && v < 3.0 },
+            "3.00–4.99x" to { v: Double -> v >= 3.0 && v < 5.0 },
+            "5.00–9.99x" to { v: Double -> v >= 5.0 && v < 10.0 },
+            "10x ou mais" to { v: Double -> v >= 10.0 }
+        )
+        val cronologico = amostra.asReversed()
+        val linhas = mutableListOf<String>()
+        linhas += "FAIXA        QTD   ≥2x  ≥3x  ≥5x ≥10x"
+        faixas.forEach { (nome, pertence) ->
+            val quantidade = amostra.count { pertence(it) }
+            var total = 0
+            val acertos = IntArray(4)
+            for (i in 0 until (cronologico.size - 1).coerceAtLeast(0)) {
+                if (pertence(cronologico[i])) {
+                    total++
+                    val seguinte = cronologico[i + 1]
+                    if (seguinte >= 2.0) acertos[0]++
+                    if (seguinte >= 3.0) acertos[1]++
+                    if (seguinte >= 5.0) acertos[2]++
+                    if (seguinte >= 10.0) acertos[3]++
+                }
+            }
+            fun pct(n: Int): String = if (total == 0) "--" else "\${(n * 100.0 / total).toInt()}%"
+            linhas += "\${nome.padEnd(12).take(12)} \${quantidade.toString().padStart(4)}  \${pct(acertos[0]).padStart(3)} \${pct(acertos[1]).padStart(3)} \${pct(acertos[2]).padStart(3)} \${pct(acertos[3]).padStart(3)}"
+        }
+        painelFrequencia.text = "ÚLTIMAS \$janelaFrequencia RODADAS • \${amostra.size} registradas\\n" +
+            "Frequência por faixa e resultado da rodada seguinte\\n" +
+            linhas.joinToString("\\n") +
+            "\\n\\nPercentuais históricos; não são previsão garantida."
     }
 
     private fun atualizarContador() {
