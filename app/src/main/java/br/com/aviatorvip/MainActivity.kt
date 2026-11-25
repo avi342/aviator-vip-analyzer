@@ -219,9 +219,14 @@ class MainActivity : Activity() {
     private fun processarOCR(texto: String) {
         when (texto) {
             "NO_ROUND_END", "ROUND_WAIT" -> {
-                candidatoOCR = null
-                leiturasDoCandidato = 0
-                rodadaRegistrada = false
+                // A ausência momentânea do texto final não apaga um candidato
+                // que já foi lido. Isso permite confirmar resultados que ficam
+                // visíveis por poucos frames.
+                if (rodadaRegistrada) {
+                    rodadaRegistrada = false
+                    candidatoOCR = null
+                    leiturasDoCandidato = 0
+                }
                 status.text = "Aguardando fim da rodada..."
                 return
             }
@@ -230,17 +235,17 @@ class MainActivity : Activity() {
         val valor = texto.substringAfter("ROUND_RESULT:").replace(",", ".").toDoubleOrNull() ?: return
         if (valor < 1.0 || valor > 100000.0) return
 
-        // Não mostra candidatos instáveis na tela. Só aceita o mesmo valor
-        // em três leituras consecutivas, separadas pelo intervalo do OCR.
         if (candidatoOCR == valor) {
             leiturasDoCandidato++
         } else {
             candidatoOCR = valor
             leiturasDoCandidato = 1
         }
-        status.text = "Aguardando resultado estável..."
+        status.text = "Aguardando fim da rodada..."
 
-        if (leiturasDoCandidato >= 3) {
+        // Duas leituras iguais bastam; a terceira exigida antes podia perder
+        // o resultado quando o painel final aparecia por pouco tempo.
+        if (leiturasDoCandidato >= 2) {
             registrarReacao(valor)
             resultados.add(0, valor)
             if (resultados.size > 2000) resultados.removeAt(resultados.lastIndex)
