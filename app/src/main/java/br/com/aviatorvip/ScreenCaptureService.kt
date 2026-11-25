@@ -124,8 +124,8 @@ val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
             // O resultado final fica no painel central do jogo. Recorta essa região,
             // amplia a imagem e evita que o OCR leia números do histórico ou do app.
-            val topoJogo = (altura * 0.38f).toInt().coerceIn(0, altura - 1)
-            val fimJogo = (altura * 0.78f).toInt().coerceIn(topoJogo + 1, altura)
+            val topoJogo = (altura * 0.25f).toInt().coerceIn(0, altura - 1)
+            val fimJogo = (altura * 0.43f).toInt().coerceIn(topoJogo + 1, altura)
             val esquerda = (largura * 0.10f).toInt().coerceIn(0, largura - 1)
             val direita = (largura * 0.90f).toInt().coerceIn(esquerda + 1, largura)
             val regiao = Bitmap.createBitmap(recorte, esquerda, topoJogo,
