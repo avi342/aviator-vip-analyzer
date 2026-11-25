@@ -10,6 +10,11 @@ import android.os.Build
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.Button
@@ -335,8 +340,27 @@ class MainActivity : Activity() {
             val estado = if (casos < 10) "poucos casos" else "amostra"
             return "${casas} CASAS • ${acertos}/${casos} após 2x+ • ${pct}% • ${estado}"
         }
-        painelFrequencia.text = "ANÁLISE CURTA (PRÓXIMA 2x+)\n" +
-            analisar(2) + "\n" + analisar(3)
+        val linha2 = analisar(2)
+        val linha3 = analisar(3)
+        val texto = "ANÁLISE CURTA • PRÓXIMA 2x+\n" + linha2 + "\n" + linha3
+        val destaque = SpannableStringBuilder(texto)
+        listOf(linha2, linha3).forEach { linha ->
+            val inicio = texto.indexOf(linha)
+            val fim = inicio + linha.length
+            val match = Regex("""• (\d+)/(\d+) após 2x+ • (\d+)%""").find(linha)
+            val quantidade = match?.groupValues?.get(2)?.toIntOrNull() ?: 0
+            val fundo = if (quantidade >= 10) Color.rgb(24, 75, 58) else Color.rgb(65, 55, 28)
+            val frente = if (quantidade >= 10) Color.rgb(125, 255, 180) else Color.rgb(255, 220, 130)
+            destaque.setSpan(BackgroundColorSpan(fundo), inicio, fim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            destaque.setSpan(ForegroundColorSpan(frente), inicio, fim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            destaque.setSpan(StyleSpan(Typeface.BOLD), inicio, fim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        val tituloFim = texto.indexOf('\n')
+        if (tituloFim > 0) {
+            destaque.setSpan(ForegroundColorSpan(Color.rgb(100, 210, 255)), 0, tituloFim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            destaque.setSpan(StyleSpan(Typeface.BOLD), 0, tituloFim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        painelFrequencia.text = destaque
     }
 
     private fun atualizarContador() {
