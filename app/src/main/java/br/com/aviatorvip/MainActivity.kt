@@ -1,4 +1,4 @@
-package br.com.aviatorvip
+package br.com.topgunvip
 
 import android.app.Activity
 import android.content.BroadcastReceiver
@@ -52,7 +52,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        getSharedPreferences("aviator", MODE_PRIVATE).getString("resultados", "").orEmpty()
+        getSharedPreferences("topgun", MODE_PRIVATE).getString("resultados", "").orEmpty()
             .split(",").filter { it.isNotBlank() }
             .forEach { it.toDoubleOrNull()?.let(resultados::add) }
 
@@ -249,7 +249,7 @@ class MainActivity : Activity() {
             registrarReacao(valor)
             resultados.add(0, valor)
             if (resultados.size > 2000) resultados.removeAt(resultados.lastIndex)
-            getSharedPreferences("aviator", MODE_PRIVATE).edit()
+            getSharedPreferences("topgun", MODE_PRIVATE).edit()
                 .putString("resultados", resultados.joinToString(",")).apply()
             rodadaRegistrada = true
             status.text = "Registrado: " + String.format(Locale.US, "%.2fx", valor)
@@ -261,7 +261,7 @@ class MainActivity : Activity() {
     }
 
     private fun carregarReacoes() {
-        val bruto = getSharedPreferences("aviator", MODE_PRIVATE).getString("reacoes_3x", "[]") ?: "[]"
+        val bruto = getSharedPreferences("topgun", MODE_PRIVATE).getString("reacoes_3x", "[]") ?: "[]"
         try {
             val array = JSONArray(bruto)
             for (i in 0 until array.length()) {
@@ -284,7 +284,7 @@ class MainActivity : Activity() {
             obj.put("depois", JSONArray(reacao.depois))
             array.put(obj)
         }
-        getSharedPreferences("aviator", MODE_PRIVATE).edit().putString("reacoes_3x", array.toString()).apply()
+        getSharedPreferences("topgun", MODE_PRIVATE).edit().putString("reacoes_3x", array.toString()).apply()
     }
 
     private fun registrarReacao(valor: Double) {
