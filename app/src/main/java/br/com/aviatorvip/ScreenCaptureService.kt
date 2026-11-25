@@ -122,55 +122,62 @@ class ScreenCaptureService : Service() {
        
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
-            reconhecedor.process(InputImage.fromBitmap(recorte, 0))
-                
-                  
-              .addOnSuccessListener { resultado ->
-    val blocos = resultado.textBlocks
+            // O resultado final fica no painel central do jogo. Recorta essa região,
+            // amplia a imagem e evita que o OCR leia números do histórico ou do app.
+            val topoJogo = (altura * 0.21f).toInt().coerceIn(0, altura - 1)
+            val fimJogo = (altura * 0.40f).toInt().coerceIn(topoJogo + 1, altura)
+            val esquerda = (largura * 0.03f).toInt().coerceIn(0, largura - 1)
+            val direita = (largura * 0.97f).toInt().coerceIn(esquerda + 1, largura)
+            val regiao = Bitmap.createBitmap(recorte, esquerda, topoJogo,
+                direita - esquerda, fimJogo - topoJogo)
+            val ampliada = Bitmap.createScaledBitmap(regiao,
+                regiao.width * 2, regiao.height * 2, true)
+            regiao.recycle()
+            recorte.recycle()
 
-    val marcador = blocos.firstOrNull {
-        it.text.contains("VOOU", ignoreCase = true) ||
-        it.text.contains("PARA LONGE", ignoreCase = true)
-    }
+            reconhecedor.process(InputImage.fromBitmap(ampliada, 0))
+                .addOnSuccessListener { resultado ->
+                    val blocos = resultado.textBlocks
+                    val marcador = blocos.firstOrNull {
+                        it.text.contains("VOOU", ignoreCase = true) ||
+                        it.text.contains("PARA LONGE", ignoreCase = true)
+                    }
+                    if (marcador == null) {
+                        enviar("NO_ROUND_END")
+                    } else {
+                        val limite = marcador.boundingBox?.bottom ?: 0
+                        val textoAbaixo = blocos
+                            .filter { bloco ->
+                                val caixa = bloco.boundingBox
+                                caixa != null && caixa.top >= limite &&
+                                    caixa.top - limite < ampliada.height * 0.65
+                            }
+                            .sortedBy { it.boundingBox!!.top }
+                            .joinToString(" ") { it.text }
 
-    if (marcador == null) {
-        enviar("NO_ROUND_END")
-    } else {
-        val limite = marcador.boundingBox?.bottom ?: 0
-
-        // Usa somente o primeiro texto imediatamente abaixo do marcador
-        // para não capturar saldo, apostas ou contagem de jogadores da interface.
-        val abaixo = blocos
-            .filter { bloco ->
-                val caixa = bloco.boundingBox
-                caixa != null && caixa.top >= limite
-            }
-            .sortedBy { it.boundingBox!!.top }
-
-        val primeiro = abaixo.firstOrNull()
-        val texto = primeiro?.text.orEmpty()
-
-        // O "x" é obrigatório: não aceitar números soltos da tela como multiplicadores.
-        val regex = Regex(
-            """(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*x\b""",
-            RegexOption.IGNORE_CASE
-        )
-        val numero = regex.find(texto)?.groupValues?.get(1)
-
-        if (numero != null) {
-            val valor = numero.replace(",", ".").toDoubleOrNull()
-            if (valor != null && valor >= 1.0 && valor <= 10000.0) {
-                enviar("ROUND_RESULT:$numero")
-            } else {
-                enviar("ROUND_WAIT")
-            }
-        } else {
-            enviar("ROUND_WAIT")
-        }
-    }
-}
+                        val regex = Regex(
+                            """(?<!\\d)(\\d{1,4}(?:[.,]\\d{1,2})?)\\s*x\\b""",
+                            RegexOption.IGNORE_CASE
+                        )
+                        val numero = regex.find(textoAbaixo)?.groupValues?.get(1)
+                        if (numero != null) {
+                            val normalizado = numero.replace(",", ".")
+                            val valor = normalizado.toDoubleOrNull()
+                            // Não adivinha separador decimal ausente em valores ambíguos.
+                            val ambiguo = !numero.contains(Regex("[.,]")) &&
+                                numero.length == 3 && numero.startsWith("1")
+                            if (valor != null && valor >= 1.0 && valor <= 10000.0 && !ambiguo) {
+                                enviar("ROUND_RESULT:$normalizado")
+                            } else {
+                                enviar("ROUND_WAIT")
+                            }
+                        } else {
+                            enviar("ROUND_WAIT")
+                        }
+                    }
+                }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener { recorte.recycle() }
+                .addOnCompleteListener { ampliada.recycle() }
 
         }, handler)
 
