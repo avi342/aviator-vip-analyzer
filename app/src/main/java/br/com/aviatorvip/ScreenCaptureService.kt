@@ -138,26 +138,32 @@ bitmap.recycle()
     } else {
         val limite = marcador.boundingBox?.bottom ?: 0
 
+        // Usa somente o primeiro texto imediatamente abaixo do marcador
+        // para não capturar saldo, apostas ou contagem de jogadores da interface.
         val abaixo = blocos
-            .filter {
-                it.boundingBox != null &&
-               it.boundingBox!!.top >= limite
+            .filter { bloco ->
+                val caixa = bloco.boundingBox
+                caixa != null && caixa.top >= limite
             }
             .sortedBy { it.boundingBox!!.top }
 
-        val texto = abaixo.take(3).joinToString(" ") {
-            it.text
-        }
+        val primeiro = abaixo.firstOrNull()
+        val texto = primeiro?.text.orEmpty()
 
+        // O "x" é obrigatório: não aceitar números soltos da tela como multiplicadores.
         val regex = Regex(
-            """(\d{1,5}(?:[.,]\d{1,2})?)\s*x?""",
+            """(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*x\b""",
             RegexOption.IGNORE_CASE
         )
-
         val numero = regex.find(texto)?.groupValues?.get(1)
 
         if (numero != null) {
-            enviar("ROUND_RESULT:$numero")
+            val valor = numero.replace(",", ".").toDoubleOrNull()
+            if (valor != null && valor >= 1.0 && valor <= 10000.0) {
+                enviar("ROUND_RESULT:$numero")
+            } else {
+                enviar("ROUND_WAIT")
+            }
         } else {
             enviar("ROUND_WAIT")
         }
