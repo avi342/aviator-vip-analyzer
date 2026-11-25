@@ -155,28 +155,39 @@ bitmap.recycle()
                         // TOP GUN: não depende do texto "VOOU PRA LONGE".
                         // Procura apenas o multiplicador grande no centro do jogo.
                         // A faixa superior com o histórico fica fora da região vertical.
-                        val candidatos = blocos.mapNotNull { bloco ->
-                            val caixa = bloco.boundingBox ?: return@mapNotNull null
-                            val centroX = (caixa.left + caixa.right) / 2f
-                            val centroY = (caixa.top + caixa.bottom) / 2f
-                            val textoAlto = caixa.height().toFloat()
-                            val noCentroHorizontal =
-                                centroX >= largura * 0.28f && centroX <= largura * 0.72f
-                            val noCentroVertical =
-                                centroY >= altura * 0.28f && centroY <= altura * 0.60f
-                            val fonteGrande = textoAlto >= altura * 0.018f
-                            if (!noCentroHorizontal || !noCentroVertical || !fonteGrande) {
-                                return@mapNotNull null
-                            }
+                        // Usa linhas individuais do ML Kit, não o bloco inteiro:
+                        // a faixa superior de histórico pode vir como um único bloco alto.
+                        // O multiplicador final do Top Gun é grande e fica no centro do painel.
+                        val candidatos = resultado.textBlocks
+                            .flatMap { it.lines }
+                            .mapNotNull { linha ->
+                                val caixa = linha.boundingBox ?: return@mapNotNull null
+                                val centroX = (caixa.left + caixa.right) / 2f
+                                val centroY = (caixa.top + caixa.bottom) / 2f
+                                val larguraLinha = caixa.width().toFloat()
+                                val alturaLinha = caixa.height().toFloat()
 
-                            val regexCentral = Regex(
-                                """(\d{1,4}[.,]\d{1,2})\s*x""",
-                                RegexOption.IGNORE_CASE
-                            )
-                            val numero = regexCentral.find(bloco.text)?.groupValues?.get(1)
-                                ?: return@mapNotNull null
-                            Triple(numero, textoAlto, centroY)
-                        }.maxByOrNull { it.second }
+                                val noCentroHorizontal =
+                                    centroX >= largura * 0.30f && centroX <= largura * 0.70f
+                                // Exclui a faixa de histórico e os controles abaixo do jogo.
+                                val noPainelDoJogo =
+                                    centroY >= altura * 0.25f && centroY <= altura * 0.43f
+                                val linhaIsolada =
+                                    larguraLinha <= largura * 0.45f &&
+                                    alturaLinha >= altura * 0.022f
+
+                                if (!noCentroHorizontal || !noPainelDoJogo || !linhaIsolada) {
+                                    return@mapNotNull null
+                                }
+
+                                val regexCentral = Regex(
+                                    """(\\d{1,4}[.,]\\d{1,2})\\s*x""",
+                                    RegexOption.IGNORE_CASE
+                                )
+                                val numero = regexCentral.find(linha.text)?.groupValues?.get(1)
+                                    ?: return@mapNotNull null
+                                Triple(numero, alturaLinha, centroY)
+                            }.maxByOrNull { it.second }
 
                         if (candidatos != null) {
                             enviar("ROUND_RESULT:" + candidatos.first)
