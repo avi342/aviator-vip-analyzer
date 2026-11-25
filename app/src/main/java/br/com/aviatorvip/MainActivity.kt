@@ -307,8 +307,7 @@ class MainActivity : Activity() {
         linhas += if (semelhantes == 0) {
             "Ainda não encontrei janelas históricas parecidas."
         } else {
-            "REAÇÕES SEMELHANTES: $semelhantes"
-            "SEGUIDAS DE 3x+: $acertos ($percentual%)"
+            "REAÇÕES SEMELHANTES: $semelhantes • SEGUIDAS DE 3x+: $acertos ($percentual%)"
         }
         linhas += when {
             semelhantes < 10 -> "AMOSTRA INSUFICIENTE • aguardando mais casos"
