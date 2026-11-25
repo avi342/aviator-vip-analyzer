@@ -229,13 +229,17 @@ class MainActivity : Activity() {
                     if (seguinte >= 10.0) acertos[3]++
                 }
             }
-            fun pct(n: Int): String = if (total == 0) "--" else "\${(n * 100.0 / total).toInt()}%"
-            linhas += "\${nome.padEnd(12).take(12)} \${quantidade.toString().padStart(4)}  \${pct(acertos[0]).padStart(3)} \${pct(acertos[1]).padStart(3)} \${pct(acertos[2]).padStart(3)} \${pct(acertos[3]).padStart(3)}"
+            fun pct(n: Int): String =
+                if (total == 0) "--" else "${(n * 100.0 / total).toInt()}%"
+            linhas += "${nome.padEnd(12).take(12)} ${quantidade.toString().padStart(4)}  " +
+                "${pct(acertos[0]).padStart(3)} ${pct(acertos[1]).padStart(3)} " +
+                "${pct(acertos[2]).padStart(3)} ${pct(acertos[3]).padStart(3)}"
         }
-        painelFrequencia.text = "ÚLTIMAS \$janelaFrequencia RODADAS • \${amostra.size} registradas\\n" +
-            "Frequência por faixa e resultado da rodada seguinte\\n" +
-            linhas.joinToString("\\n") +
-            "\\n\\nPercentuais históricos; não são previsão garantida."
+        painelFrequencia.text =
+            "ÚLTIMAS $janelaFrequencia RODADAS • ${amostra.size} registradas\n" +
+            "Frequência por faixa e resultado da rodada seguinte\n" +
+            linhas.joinToString("\n") +
+            "\n\nPercentuais históricos; não são previsão garantida."
     }
 
     private fun atualizarContador() {
