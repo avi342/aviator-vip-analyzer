@@ -212,38 +212,63 @@ class MainActivity : Activity() {
         if (!::painelFrequencia.isInitialized) return
         val amostra = resultados.take(janelaFrequencia)
         val faixas = listOf(
-            "1–1,99x" to { v: Double -> v >= 1.0 && v < 2.0 },
-            "2–2,99x" to { v: Double -> v >= 2.0 && v < 3.0 },
-            "3–4,99x" to { v: Double -> v >= 3.0 && v < 5.0 },
-            "5–9,99x" to { v: Double -> v >= 5.0 && v < 10.0 },
-            "10x+" to { v: Double -> v >= 10.0 }
+            "1,00–1,99x" to { v: Double -> v >= 1.0 && v < 2.0 },
+            "2,00–2,99x" to { v: Double -> v >= 2.0 && v < 3.0 },
+            "3,00–4,99x" to { v: Double -> v >= 3.0 && v < 5.0 },
+            "5,00–9,99x" to { v: Double -> v >= 5.0 && v < 10.0 },
+            "10x ou mais" to { v: Double -> v >= 10.0 }
         )
         val cronologico = amostra.asReversed()
         val totalGeral = (cronologico.size - 1).coerceAtLeast(0)
-        val metas = doubleArrayOf(2.0, 3.0, 5.0, 10.0)
-        val geral = IntArray(4)
-        for (i in 0 until totalGeral) metas.forEachIndexed { j, meta ->
-            if (cronologico[i + 1] >= meta) geral[j]++
+        var acertosGerais = 0
+        for (i in 0 until totalGeral) if (cronologico[i + 1] >= 2.0) acertosGerais++
+        val mediaGeral = if (totalGeral == 0) 0.0 else acertosGerais * 100.0 / totalGeral
+
+        data class ResultadoFaixa(val nome: String, val casos: Int, val acertos: Int) {
+            val percentual: Double get() = if (casos == 0) 0.0 else acertos * 100.0 / casos
         }
-        fun pct(n: Int, total: Int): String =
-            if (total == 0) "—" else String.format(Locale.US, "%.0f", n * 100.0 / total)
-        val linhas = mutableListOf<String>()
-        linhas += "FAIXA       QTD   2x   3x   5x  10x"
-        linhas += "MÉDIA GERAL       ${pct(geral[0], totalGeral)}%  ${pct(geral[1], totalGeral)}%  ${pct(geral[2], totalGeral)}%  ${pct(geral[3], totalGeral)}%"
-        faixas.forEach { (nome, pertence) ->
-            var total = 0
-            val acertos = IntArray(4)
-            for (i in 0 until totalGeral) if (pertence(cronologico[i])) {
-                total++
-                metas.forEachIndexed { j, meta -> if (cronologico[i + 1] >= meta) acertos[j]++ }
+        val dados = faixas.map { (nome, pertence) ->
+            var casos = 0
+            var acertos = 0
+            for (i in 0 until totalGeral) {
+                if (pertence(cronologico[i])) {
+                    casos++
+                    if (cronologico[i + 1] >= 2.0) acertos++
+                }
             }
-            linhas += "${nome.padEnd(10)} ${total.toString().padStart(3)}   " +
-                metas.indices.joinToString("   ") { j -> if (total == 0) "—" else "${pct(acertos[j], total)}%" }
+            ResultadoFaixa(nome, casos, acertos)
+        }
+        val melhor = dados.filter { it.casos > 0 }.maxByOrNull { it.percentual }
+        fun percentual(valor: Double): String = String.format(Locale.US, "%.0f%%", valor)
+        val linhas = mutableListOf<String>()
+        linhas += "ANÁLISE: QUAL FAIXA MAIS ANTECEDE 2x+?"
+        linhas += "MÉDIA GERAL: ${percentual(mediaGeral)} em $totalGeral transições"
+        linhas += "--------------------------------------"
+        if (melhor == null) {
+            linhas += "Aguardando rodadas suficientes para analisar."
+        } else {
+            linhas += "MAIOR FREQUÊNCIA: ${melhor.nome}"
+            linhas += "${percentual(melhor.percentual)}  •  ${melhor.acertos} de ${melhor.casos} casos"
+            val diferenca = melhor.percentual - mediaGeral
+            val comparacao = when {
+                melhor.casos < 20 -> "AMOSTRA PEQUENA: ainda não é confiável"
+                diferenca >= 5.0 -> "${String.format(Locale.US, "+%.0f", diferenca)} pontos vs. média geral"
+                diferenca <= -5.0 -> "${String.format(Locale.US, "%.0f", diferenca)} pontos vs. média geral"
+                else -> "Próxima da média geral"
+            }
+            linhas += comparacao
+        }
+        linhas += "--------------------------------------"
+        linhas += "FAIXA             CASOS   PRÓXIMA 2x+"
+        dados.forEach { item ->
+            val marca = if (melhor?.nome == item.nome) "★ " else "  "
+            val freq = if (item.casos == 0) "—" else percentual(item.percentual)
+            linhas += "$marca${item.nome.padEnd(14)} ${item.casos.toString().padStart(3)}       $freq"
         }
         painelFrequencia.text =
             "ÚLTIMAS $janelaFrequencia • ${amostra.size} resultados\n" +
             linhas.joinToString("\n") +
-            "\n\nPercentuais históricos; não são previsões."
+            "\n\nCompara cada faixa com a rodada seguinte. Histórico, não previsão."
     }
 
     private fun atualizarContador() {
