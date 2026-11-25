@@ -218,24 +218,29 @@ class MainActivity : Activity() {
 
     private fun processarOCR(texto: String) {
         when (texto) {
-            "NO_ROUND_END" -> {
+            "NO_ROUND_END", "ROUND_WAIT" -> {
                 candidatoOCR = null
                 leiturasDoCandidato = 0
                 rodadaRegistrada = false
                 status.text = "Aguardando fim da rodada..."
                 return
             }
-            "ROUND_WAIT" -> { status.text = "Lendo multiplicador..."; return }
         }
         if (!texto.startsWith("ROUND_RESULT:") || rodadaRegistrada) return
         val valor = texto.substringAfter("ROUND_RESULT:").replace(",", ".").toDoubleOrNull() ?: return
         if (valor < 1.0 || valor > 100000.0) return
-        if (candidatoOCR == valor) leiturasDoCandidato++ else {
+
+        // Não mostra candidatos instáveis na tela. Só aceita o mesmo valor
+        // em três leituras consecutivas, separadas pelo intervalo do OCR.
+        if (candidatoOCR == valor) {
+            leiturasDoCandidato++
+        } else {
             candidatoOCR = valor
             leiturasDoCandidato = 1
         }
-        status.text = "Confirmando: " + String.format(Locale.US, "%.2fx", valor)
-        if (leiturasDoCandidato >= 2) {
+        status.text = "Aguardando resultado estável..."
+
+        if (leiturasDoCandidato >= 3) {
             registrarReacao(valor)
             resultados.add(0, valor)
             if (resultados.size > 2000) resultados.removeAt(resultados.lastIndex)
