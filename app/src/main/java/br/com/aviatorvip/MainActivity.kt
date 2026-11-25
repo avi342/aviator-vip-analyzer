@@ -30,6 +30,9 @@ class MainActivity : Activity() {
     private lateinit var contadorCasas: TextView
     private lateinit var relogio: TextClock
     private lateinit var painelFrequencia: TextView
+    private lateinit var painelGrafico: LinearLayout
+    private lateinit var botaoGrafico: Button
+    private var graficoExpandido = false
     private lateinit var painelReacoes: TextView
     private var reacoesExpandida = false
     private data class Reacao(val alvo: Double, val antes: List<Double>, val depois: MutableList<Double>)
@@ -110,6 +113,28 @@ class MainActivity : Activity() {
         }
         tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(20)).apply { topMargin = dp(1) })
 
+        botaoGrafico = botao("MOSTRAR GRÁFICO ▼", Color.rgb(35, 65, 75)) {
+            graficoExpandido = !graficoExpandido
+            painelGrafico.visibility = if (graficoExpandido) android.view.View.VISIBLE else android.view.View.GONE
+            botaoGrafico.text = if (graficoExpandido) "RECOLHER GRÁFICO ▲" else "MOSTRAR GRÁFICO ▼"
+        }
+        tela.addView(botaoGrafico, LinearLayout.LayoutParams(-1, dp(22)).apply { topMargin = dp(2) })
+        painelGrafico = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            visibility = android.view.View.GONE
+            setPadding(0, dp(2), 0, dp(2))
+        }
+        repeat(8) {
+            val celula = TextView(this).apply {
+                text = "--"; textSize = 8f; setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
+                background = GradientDrawable().apply { setColor(Color.rgb(35, 42, 58)); cornerRadius = dp(3).toFloat() }
+            }
+            painelGrafico.addView(celula, LinearLayout.LayoutParams(0, dp(21), 1f).apply { marginStart = dp(1); marginEnd = dp(1) })
+        }
+        tela.addView(painelGrafico, LinearLayout.LayoutParams(-1, dp(25)))
+
         painelFrequencia = TextView(this).apply {
             textSize = 9f
             setTextColor(Color.WHITE)
@@ -134,6 +159,7 @@ class MainActivity : Activity() {
         tela.addView(painelReacoes, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
         setContentView(tela)
         atualizarContador()
+        atualizarGrafico()
         atualizarFrequencia()
         atualizarReacoes()
     }
@@ -218,6 +244,7 @@ class MainActivity : Activity() {
             rodadaRegistrada = true
             status.text = "Registrado: " + String.format(Locale.US, "%.2fx", valor)
             atualizarContador()
+            atualizarGrafico()
             atualizarFrequencia()
             atualizarReacoes()
         }
@@ -372,6 +399,25 @@ class MainActivity : Activity() {
             destaque.setSpan(StyleSpan(Typeface.BOLD), 0, tituloFim, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         painelFrequencia.text = destaque
+    }
+
+
+    private fun atualizarGrafico() {
+        if (!::painelGrafico.isInitialized) return
+        val recentes = resultados.take(8)
+        for (i in 0 until painelGrafico.childCount) {
+            val celula = painelGrafico.getChildAt(i) as TextView
+            if (i >= recentes.size) {
+                celula.text = "--"; celula.setTextColor(Color.LTGRAY)
+                celula.background = GradientDrawable().apply { setColor(Color.rgb(35, 42, 58)); cornerRadius = dp(3).toFloat() }
+            } else {
+                val valor = recentes[i]
+                celula.text = String.format(Locale.US, "%.2fx", valor)
+                val cor = when { valor < 2.0 -> Color.rgb(35, 95, 155); valor < 10.0 -> Color.rgb(105, 55, 155); else -> Color.rgb(190, 55, 125) }
+                celula.setTextColor(Color.WHITE)
+                celula.background = GradientDrawable().apply { setColor(cor); cornerRadius = dp(3).toFloat() }
+            }
+        }
     }
 
     private fun atualizarContador() {
