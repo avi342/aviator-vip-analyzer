@@ -151,40 +151,53 @@ bitmap.recycle()
             reconhecedor.process(InputImage.fromBitmap(ampliada, 0))
                 .addOnSuccessListener { resultado ->
                     val blocos = resultado.textBlocks.sortedBy { it.boundingBox?.top ?: Int.MAX_VALUE }
-                    val indiceMarcador = blocos.indexOfFirst {
+                    val marcador = blocos.firstOrNull {
                         it.text.contains("VOOU", ignoreCase = true) ||
                         it.text.contains("PARA LONGE", ignoreCase = true)
                     }
-                    if (indiceMarcador < 0) {
-                        enviar("NO_ROUND_END")
-                    } else {
-                        val marcador = blocos[indiceMarcador]
-                        val topoMarcador = marcador.boundingBox?.top ?: 0
-                        val textoResultado = blocos
-                            .drop(indiceMarcador)
-                            .filter { bloco ->
-                                val topo = bloco.boundingBox?.top ?: topoMarcador
-                                topo - topoMarcador <= (altura * 0.30f).toInt()
-                            }
-                            .joinToString(" ") { it.text }
 
-                        // Kotlin raw strings usam barra simples para \d.
-                        // Aceita ponto ou vírgula decimal, sem inventar casas decimais.
-                        val regex = Regex(
-                            """(?<!\d)(\d{1,4}(?:[.,]\d{1,2})?)\s*x\b""",
-                            RegexOption.IGNORE_CASE
-                        )
-                        val numero = regex.find(textoResultado)?.groupValues?.get(1)
-                        if (numero != null) {
-                            val normalizado = numero.replace(",", ".")
-                            val valor = normalizado.toDoubleOrNull()
-                            if (valor != null && valor >= 1.0 && valor <= 10000.0) {
-                                enviar("ROUND_RESULT:$normalizado")
-                            } else {
-                                enviar("ROUND_WAIT")
-                            }
+                    val regexMultiplicador = Regex(
+                        """(?<!\\d)(\\d{1,4}[.,]\\d{1,2})\\s*x\\b""",
+                        RegexOption.IGNORE_CASE
+                    )
+
+                    // AVIATOR: usa o aviso de fim de rodada e lê o resultado junto
+                    // dele ou nos blocos logo abaixo.
+                    val textoAviator = if (marcador != null) {
+                        val topoMarcador = marcador.boundingBox?.top ?: 0
+                        blocos.filter { bloco ->
+                            val topo = bloco.boundingBox?.top ?: topoMarcador
+                            topo >= topoMarcador - 10 &&
+                                topo - topoMarcador <= (ampliada.height * 0.30f).toInt()
+                        }.joinToString(" ") { it.text }
+                    } else ""
+
+                    val numeroAviator = regexMultiplicador.find(textoAviator)?.groupValues?.get(1)
+
+                    if (numeroAviator != null) {
+                        enviar("ROUND_RESULT:" + numeroAviator.replace(",", "."))
+                    } else {
+                        // TOP GUN (e jogos sem a frase do Aviator): procura somente
+                        // um multiplicador decimal grande no centro da área do jogo.
+                        // Os pequenos resultados do histórico ficam fora desses limites.
+                        val candidatoCentral = blocos.mapNotNull { bloco ->
+                            val caixa = bloco.boundingBox ?: return@mapNotNull null
+                            val centroX = (caixa.left + caixa.right) / 2f
+                            val centroY = (caixa.top + caixa.bottom) / 2f
+                            val alturaTexto = caixa.height().toFloat()
+                            val centralizado = centroX in (ampliada.width * 0.28f)..(ampliada.width * 0.72f)
+                            val faixaVertical = centroY in (ampliada.height * 0.18f)..(ampliada.height * 0.58f)
+                            val textoGrande = alturaTexto >= ampliada.height * 0.018f
+                            if (!centralizado || !faixaVertical || !textoGrande) return@mapNotNull null
+                            val numero = regexMultiplicador.find(bloco.text)?.groupValues?.get(1)
+                                ?: return@mapNotNull null
+                            Triple(numero, alturaTexto, centroY)
+                        }.maxByOrNull { it.second }
+
+                        if (candidatoCentral != null) {
+                            enviar("ROUND_RESULT:" + candidatoCentral.first.replace(",", "."))
                         } else {
-                            enviar("ROUND_WAIT")
+                            enviar("NO_ROUND_END")
                         }
                     }
                 }
