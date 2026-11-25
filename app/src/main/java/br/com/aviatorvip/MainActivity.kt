@@ -48,48 +48,54 @@ class MainActivity : Activity() {
             setPadding(8, 8, 8, 8)
             setBackgroundColor(Color.BLACK)
         }
+        val topo = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
         val controles = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
         controles.addView(botao("▶ OCR", Color.rgb(15, 125, 115)) { solicitarCaptura() },
-            LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginEnd = dp(4) })
+            LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginEnd = dp(3) })
         controles.addView(botao("■ PARAR", Color.rgb(95, 35, 55)) {
             stopService(Intent(this@MainActivity, ScreenCaptureService::class.java))
             status.text = "Captura parada"
-        }, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginStart = dp(4) })
-        tela.addView(controles)
-
-        status = TextView(this).apply {
-            text = "Aguardando captura OCR..."
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setTextColor(Color.LTGRAY)
-            setPadding(2, dp(8), 2, dp(8))
-        }
-        tela.addView(status, LinearLayout.LayoutParams(-1, -2))
+        }, LinearLayout.LayoutParams(0, dp(32), 1f).apply { marginStart = dp(3) })
+        topo.addView(controles, LinearLayout.LayoutParams(0, dp(29), 1f))
 
         relogio = TextClock(this).apply {
             format12Hour = "HH:mm:ss"
             format24Hour = "HH:mm:ss"
             timeZone = java.util.TimeZone.getDefault().id
-            textSize = 30f
-            gravity = Gravity.CENTER
+            textSize = 14f
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
             setTextColor(Color.WHITE)
             setTypeface(null, Typeface.BOLD)
         }
-        tela.addView(relogio, LinearLayout.LayoutParams(-1, dp(58)))
+        topo.addView(relogio, LinearLayout.LayoutParams(dp(72), dp(32)).apply { marginStart = dp(5) })
+        tela.addView(topo)
+
+        status = TextView(this).apply {
+            text = "Aguardando captura OCR..."
+            textSize = 11f
+            gravity = Gravity.CENTER_VERTICAL
+            setTextColor(Color.LTGRAY)
+            setPadding(2, dp(2), 2, dp(2))
+            maxLines = 1
+        }
+        tela.addView(status, LinearLayout.LayoutParams(-1, dp(22)))
 
         contadorCasas = TextView(this).apply {
-            text = "CASAS APÓS 10x: --"
-            textSize = 23f
+            text = "Casas após 10x: --"
+            textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(255, 105, 190))
             setTypeface(null, Typeface.BOLD)
-            setPadding(4, dp(14), 4, dp(14))
+            setPadding(2, dp(3), 2, dp(3))
             background = cartao()
         }
-        tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(8) })
+        tela.addView(contadorCasas, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(3) })
 
         val seletorJanela = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         listOf(100, 300, 500, 2000).forEach { quantidade ->
@@ -101,18 +107,18 @@ class MainActivity : Activity() {
                 marginStart = dp(2); marginEnd = dp(2)
             })
         }
-        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(10) })
+        tela.addView(seletorJanela, LinearLayout.LayoutParams(-1, dp(31)).apply { topMargin = dp(4) })
 
         val botaoFrequencia = botao("LEITOR DE FREQUÊNCIA  ▼", Color.rgb(35, 45, 70)) {
             frequenciaExpandida = !frequenciaExpandida
             painelFrequencia.visibility = if (frequenciaExpandida) android.view.View.VISIBLE else android.view.View.GONE
         }
-        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(4) })
+        tela.addView(botaoFrequencia, LinearLayout.LayoutParams(-1, dp(30)).apply { topMargin = dp(3) })
 
         painelFrequencia = TextView(this).apply {
-            textSize = 11f
+            textSize = 10f
             setTextColor(Color.WHITE)
-            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setPadding(dp(6), dp(5), dp(6), dp(5))
             typeface = Typeface.MONOSPACE
             background = cartao()
         }
@@ -213,33 +219,37 @@ class MainActivity : Activity() {
             "10x ou mais" to { v: Double -> v >= 10.0 }
         )
         val cronologico = amostra.asReversed()
+        val totalGeral = (cronologico.size - 1).coerceAtLeast(0)
+        val metas = doubleArrayOf(2.0, 3.0, 5.0, 10.0)
+        val geral = IntArray(4)
+        for (i in 0 until totalGeral) metas.forEachIndexed { j, meta ->
+            if (cronologico[i + 1] >= meta) geral[j]++
+        }
+        fun pct(n: Int, total: Int): String =
+            if (total == 0) "--" else String.format(Locale.US, "%.0f%%", n * 100.0 / total)
         val linhas = mutableListOf<String>()
-        linhas += "FAIXA        QTD   ≥2x  ≥3x  ≥5x ≥10x"
+        linhas += "AMOSTRA: $totalGeral transições • MÉDIA GERAL"
+        linhas += "≥2x ${pct(geral[0], totalGeral)}  ≥3x ${pct(geral[1], totalGeral)}  ≥5x ${pct(geral[2], totalGeral)}  ≥10x ${pct(geral[3], totalGeral)}"
+        linhas += "----------------------------------------"
         faixas.forEach { (nome, pertence) ->
-            val quantidade = amostra.count { pertence(it) }
             var total = 0
             val acertos = IntArray(4)
-            for (i in 0 until (cronologico.size - 1).coerceAtLeast(0)) {
+            for (i in 0 until totalGeral) {
                 if (pertence(cronologico[i])) {
                     total++
-                    val seguinte = cronologico[i + 1]
-                    if (seguinte >= 2.0) acertos[0]++
-                    if (seguinte >= 3.0) acertos[1]++
-                    if (seguinte >= 5.0) acertos[2]++
-                    if (seguinte >= 10.0) acertos[3]++
+                    metas.forEachIndexed { j, meta -> if (cronologico[i + 1] >= meta) acertos[j]++ }
                 }
             }
-            fun pct(n: Int): String =
-                if (total == 0) "--" else "${(n * 100.0 / total).toInt()}%"
-            linhas += "${nome.padEnd(12).take(12)} ${quantidade.toString().padStart(4)}  " +
-                "${pct(acertos[0]).padStart(3)} ${pct(acertos[1]).padStart(3)} " +
-                "${pct(acertos[2]).padStart(3)} ${pct(acertos[3]).padStart(3)}"
+            val resumo = metas.indices.joinToString("  ") { j ->
+                "${j.let { listOf("2x", "3x", "5x", "10x")[it] }} ${pct(acertos[j], total)} (${acertos[j]}/$total)"
+            }
+            linhas += "$nome  •  n=$total"
+            linhas += resumo
         }
         painelFrequencia.text =
-            "ÚLTIMAS $janelaFrequencia RODADAS • ${amostra.size} registradas\n" +
-            "Frequência por faixa e resultado da rodada seguinte\n" +
+            "ÚLTIMAS $janelaFrequencia RODADAS • ${amostra.size} resultados\n" +
             linhas.joinToString("\n") +
-            "\n\nPercentuais históricos; não são previsão garantida."
+            "\n\nPercentuais históricos; comparação descritiva, não previsão."
     }
 
     private fun atualizarContador() {
