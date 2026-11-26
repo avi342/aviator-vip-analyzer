@@ -122,56 +122,60 @@ class ScreenCaptureService : Service() {
        
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
-            reconhecedor.process(InputImage.fromBitmap(recorte, 0))
+            // Recorta apenas a área central do Top Gun e amplia 3x.
+            // Isso dá mais pixels ao separador decimal e exclui a faixa de histórico.
+            val roiLeft = (largura * 0.20f).toInt()
+            val roiTop = (altura * 0.28f).toInt()
+            val roiWidth = (largura * 0.60f).toInt().coerceAtLeast(1)
+            val roiHeight = (altura * 0.20f).toInt().coerceAtLeast(1)
+            val roi = Bitmap.createBitmap(recorte, roiLeft, roiTop, roiWidth, roiHeight)
+            val ampliado = Bitmap.createScaledBitmap(roi, roi.width * 3, roi.height * 3, true)
+            roi.recycle()
+
+            reconhecedor.process(InputImage.fromBitmap(ampliado, 0))
                 .addOnSuccessListener { resultado ->
-                    val blocos = resultado.textBlocks
-                    // Leitura exclusiva do resultado central do Top Gun.
-                        // TOP GUN: não depende do texto "VOOU PRA LONGE".
-                        // Procura apenas o multiplicador grande no centro do jogo.
-                        // A faixa superior com o histórico fica fora da região vertical.
-                        // Usa linhas individuais do ML Kit, não o bloco inteiro:
-                        // a faixa superior de histórico pode vir como um único bloco alto.
-                        // O multiplicador final do Top Gun é grande e fica no centro do painel.
-                        val candidatos = resultado.textBlocks
-                            .flatMap { it.lines }
-                            .mapNotNull { linha ->
-                                val caixa = linha.boundingBox ?: return@mapNotNull null
-                                val centroX = (caixa.left + caixa.right) / 2f
-                                val centroY = (caixa.top + caixa.bottom) / 2f
-                                val larguraLinha = caixa.width().toFloat()
-                                val alturaLinha = caixa.height().toFloat()
+                    val candidatos = resultado.textBlocks
+                        .flatMap { it.lines }
+                        .mapNotNull { linha ->
+                            val caixa = linha.boundingBox ?: return@mapNotNull null
+                            val centroX = (caixa.left + caixa.right) / 2f
+                            val centroY = (caixa.top + caixa.bottom) / 2f
+                            val larguraLinha = caixa.width().toFloat()
+                            val alturaLinha = caixa.height().toFloat()
 
-                                val noCentroHorizontal =
-                                    centroX >= largura * 0.30f && centroX <= largura * 0.70f
-                                // Exclui a faixa de histórico e os controles abaixo do jogo.
-                                val noPainelDoJogo =
-                                    centroY >= altura * 0.25f && centroY <= altura * 0.43f
-                                val linhaIsolada =
-                                    larguraLinha <= largura * 0.45f &&
-                                    alturaLinha >= altura * 0.022f
+                            val noCentroHorizontal =
+                                centroX >= ampliado.width * 0.10f && centroX <= ampliado.width * 0.90f
+                            val noPainelDoJogo =
+                                centroY >= ampliado.height * 0.10f && centroY <= ampliado.height * 0.90f
+                            val linhaIsolada =
+                                larguraLinha <= ampliado.width * 0.90f &&
+                                alturaLinha >= ampliado.height * 0.06f
 
-                                if (!noCentroHorizontal || !noPainelDoJogo || !linhaIsolada) {
-                                    return@mapNotNull null
-                                }
+                            if (!noCentroHorizontal || !noPainelDoJogo || !linhaIsolada) {
+                                return@mapNotNull null
+                            }
 
-                                val regexCentral = Regex(
-                                    """(\d{1,4}[.,]\d{1,2})\s*x""",
-                                    RegexOption.IGNORE_CASE
-                                )
-                                val numero = regexCentral.find(linha.text)?.groupValues?.get(1)
-                                    ?: return@mapNotNull null
-                                Triple(numero, alturaLinha, centroY)
-                            }.maxByOrNull { it.second }
+                            // Exige separador decimal: não converte "178x" em 178.00x.
+                            val regexCentral = Regex(
+                                """(\d{1,4}[.,]\d{1,2})\s*x""",
+                                RegexOption.IGNORE_CASE
+                            )
+                            val numero = regexCentral.find(linha.text)?.groupValues?.get(1)
+                                ?: return@mapNotNull null
+                            Triple(numero, alturaLinha, centroY)
+                        }.maxByOrNull { it.second }
 
-                        if (candidatos != null) {
-                            enviar("ROUND_RESULT:" + candidatos.first)
-                        } else {
-                            enviar("NO_ROUND_END")
-                        }
+                    if (candidatos != null) {
+                        enviar("ROUND_RESULT:" + candidatos.first)
+                    } else {
+                        enviar("NO_ROUND_END")
                     }
                 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener { recorte.recycle() }
+                .addOnCompleteListener {
+                    ampliado.recycle()
+                    recorte.recycle()
+                }
 
         }, handler)
 
