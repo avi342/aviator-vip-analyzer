@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - universal-frequency-analyzer
+      - top-gun-only
 
 jobs:
   build:
