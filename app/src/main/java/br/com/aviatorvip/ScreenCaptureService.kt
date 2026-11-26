@@ -127,7 +127,7 @@ bitmap.recycle()
             reconhecedor.process(InputImage.fromBitmap(recorte, 0))
                 .addOnSuccessListener { resultado ->
                     val regexCentral = Regex(
-                        """(?<!\\d)(\\d{1,4}[.,]\\d{1,2})\\s*[xX](?![a-zA-Z])"""
+                        """(?<!\d)(\d{1,4}[.,]\d{1,2})\s*[xX](?![a-zA-Z])"""
                     )
                     val candidatos = resultado.textBlocks
                         .flatMap { it.lines }
