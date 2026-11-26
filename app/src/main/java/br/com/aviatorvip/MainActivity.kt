@@ -139,7 +139,7 @@ class MainActivity : Activity() {
         val rolagemGrafico = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = true
             overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
-            addView(painelGrafico, HorizontalScrollView.LayoutParams(-2, -1))
+            addView(painelGrafico, android.view.ViewGroup.LayoutParams(-2, -1))
         }
         tela.addView(rolagemGrafico, LinearLayout.LayoutParams(-1, dp(25)))
 
