@@ -122,48 +122,32 @@ class ScreenCaptureService : Service() {
        
 val recorte = Bitmap.createBitmap(bitmap, 0, 0, largura, altura)
 bitmap.recycle()
-            // Recorta apenas a área central do Top Gun e amplia 3x.
-            // Isso dá mais pixels ao separador decimal e exclui a faixa de histórico.
-            val roiLeft = (largura * 0.20f).toInt()
-            val roiTop = (altura * 0.28f).toInt()
-            val roiWidth = (largura * 0.60f).toInt().coerceAtLeast(1)
-            val roiHeight = (altura * 0.20f).toInt().coerceAtLeast(1)
-            val roi = Bitmap.createBitmap(recorte, roiLeft, roiTop, roiWidth, roiHeight)
-            val ampliado = Bitmap.createScaledBitmap(roi, roi.width * 3, roi.height * 3, true)
-            roi.recycle()
-
-            reconhecedor.process(InputImage.fromBitmap(ampliado, 0))
+            // Analisa a tela inteira: o recorte fixo anterior podia deslocar-se
+            // conforme a altura da barra do navegador e a escala do jogo.
+            reconhecedor.process(InputImage.fromBitmap(recorte, 0))
                 .addOnSuccessListener { resultado ->
+                    val regexCentral = Regex(
+                        """(?<!\\d)(\\d{1,4}[.,]\\d{1,2})\\s*[xX](?![a-zA-Z])"""
+                    )
                     val candidatos = resultado.textBlocks
                         .flatMap { it.lines }
                         .mapNotNull { linha ->
                             val caixa = linha.boundingBox ?: return@mapNotNull null
                             val centroX = (caixa.left + caixa.right) / 2f
                             val centroY = (caixa.top + caixa.bottom) / 2f
-                            val larguraLinha = caixa.width().toFloat()
-                            val alturaLinha = caixa.height().toFloat()
-
-                            val noCentroHorizontal =
-                                centroX >= ampliado.width * 0.10f && centroX <= ampliado.width * 0.90f
-                            val noPainelDoJogo =
-                                centroY >= ampliado.height * 0.10f && centroY <= ampliado.height * 0.90f
-                            val linhaIsolada =
-                                larguraLinha <= ampliado.width * 0.90f &&
-                                alturaLinha >= ampliado.height * 0.06f
-
-                            if (!noCentroHorizontal || !noPainelDoJogo || !linhaIsolada) {
+                            // A faixa de histórico fica acima; os controles ficam abaixo.
+                            if (centroX < largura * 0.15f || centroX > largura * 0.85f) {
                                 return@mapNotNull null
                             }
-
-                            // Exige separador decimal: não converte "178x" em 178.00x.
-                            val regexCentral = Regex(
-                                """(\d{1,4}[.,]\d{1,2})\s*x""",
-                                RegexOption.IGNORE_CASE
-                            )
+                            if (centroY < altura * 0.20f || centroY > altura * 0.52f) {
+                                return@mapNotNull null
+                            }
                             val numero = regexCentral.find(linha.text)?.groupValues?.get(1)
                                 ?: return@mapNotNull null
-                            Triple(numero, alturaLinha, centroY)
-                        }.maxByOrNull { it.second }
+                            Triple(numero, caixa.height(), centroY)
+                        }
+                        // O resultado grande no centro deve ter a maior altura de texto.
+                        .maxByOrNull { it.second }
 
                     if (candidatos != null) {
                         enviar("ROUND_RESULT:" + candidatos.first)
@@ -172,10 +156,7 @@ bitmap.recycle()
                     }
                 }
                 .addOnFailureListener { enviar("Erro na leitura OCR.") }
-                .addOnCompleteListener {
-                    ampliado.recycle()
-                    recorte.recycle()
-                }
+                .addOnCompleteListener { recorte.recycle() }
 
         }, handler)
 
