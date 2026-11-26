@@ -19,6 +19,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import android.widget.TextClock
 import java.util.Locale
@@ -125,15 +126,22 @@ class MainActivity : Activity() {
             visibility = android.view.View.GONE
             setPadding(0, dp(2), 0, dp(2))
         }
-        repeat(8) {
+        repeat(200) {
             val celula = TextView(this).apply {
                 text = "--"; textSize = 8f; setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER; setTypeface(null, Typeface.BOLD)
                 background = GradientDrawable().apply { setColor(Color.rgb(35, 42, 58)); cornerRadius = dp(3).toFloat() }
             }
-            painelGrafico.addView(celula, LinearLayout.LayoutParams(0, dp(21), 1f).apply { marginStart = dp(1); marginEnd = dp(1) })
+            painelGrafico.addView(celula, LinearLayout.LayoutParams(dp(48), dp(21)).apply {
+                marginStart = dp(1); marginEnd = dp(1)
+            })
         }
-        tela.addView(painelGrafico, LinearLayout.LayoutParams(-1, dp(25)))
+        val rolagemGrafico = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = true
+            overScrollMode = android.view.View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            addView(painelGrafico, HorizontalScrollView.LayoutParams(-2, -1))
+        }
+        tela.addView(rolagemGrafico, LinearLayout.LayoutParams(-1, dp(25)))
 
         painelFrequencia = TextView(this).apply {
             textSize = 9f
@@ -414,7 +422,7 @@ class MainActivity : Activity() {
 
     private fun atualizarGrafico() {
         if (!::painelGrafico.isInitialized) return
-        val recentes = resultados.take(8)
+        val recentes = resultados.take(200)
         for (i in 0 until painelGrafico.childCount) {
             val celula = painelGrafico.getChildAt(i) as TextView
             if (i >= recentes.size) {
