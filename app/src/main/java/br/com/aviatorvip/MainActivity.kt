@@ -982,14 +982,14 @@ private fun atualizarPainelVisual() {
         var acima10 = 0
         for (i in 7 until cronologico.size) {
             val m = metricasConfluencia(cronologico.subList(0, i)) ?: continue
-            if (m.radar3 in 30..35 && m.casas2 in 50..70) {
+            if (m.casos2 >= 10 && m.casos3 >= 10 && m.radar3 in 30..35 && m.casas2 in 50..70) {
                 sinais++
                 if (cronologico[i] >= 2.0) acima2++
                 if (cronologico[i] >= 10.0) acima10++
             }
         }
         val pct2 = if (sinais == 0) 0 else acima2 * 100 / sinais
-        val ativa = atual.radar3 in 30..35 && atual.casas2 in 50..70
+        val ativa = atual.casos2 >= 10 && atual.casos3 >= 10 && atual.radar3 in 30..35 && atual.casas2 in 50..70
         val texto = "CONFLUÊNCIA • " + (if (ativa) "CRITÉRIOS JUNTOS" else "AGUARDANDO") +
             "\n2 CASAS \${atual.casas2}%  |  RADAR 3x+ \${atual.radar3}%" +
             "\nHIST. \$sinais SINAIS • 2x+ \$acima2 (\$pct2%) • 10x+ \$acima10"
