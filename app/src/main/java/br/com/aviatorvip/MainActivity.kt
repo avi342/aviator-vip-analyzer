@@ -143,12 +143,15 @@ private var primeiraLeituraOCR = true
                     .setNegativeButton("Cancelar", null)
                     .setPositiveButton("ZERAR GRÁFICO") { _, _ ->
                         inicioGraficoTempoReal = System.currentTimeMillis()
+                        iniciarNovaSessaoAnalise()
                         getSharedPreferences("aviator", MODE_PRIVATE).edit()
                             .putLong("grafico_inicio_tempo_real", inicioGraficoTempoReal)
                             .apply()
                         historicoExpandido = false
                         atualizarGrade()
-                        status.text = "Gráfico zerado. Histórico e análises preservados."
+                        atualizarFrequencia()
+                        atualizarContadorDezX()
+                        status.text = "Nova sessão iniciada. Histórico geral preservado."
                     }.show()
             }
             estilizarBotao(this, Color.rgb(85, 35, 45), Color.rgb(245, 90, 130))
@@ -892,17 +895,26 @@ private fun atualizarPainelVisual() {
                 " | depois: ${r.depois.size}/5"
         }
         linhas += "Comparação por quantidade em cada faixa; histórico não prevê a próxima rodada."
-        painelReacoes.text = textoComDestaque(linhas.joinToString("\n"), listOf("REAÇÕES SEMELHANTES:", "AMOSTRA INSUFICIENTE", "FREQUÊNCIA HISTÓRICA"))
-    }
-
-    private fun atualizarFrequencia() {
+        painelR    private fun atualizarFrequencia() {
         if (!::painelFrequencia.isInitialized) return
-        val cronologico = resultados.asReversed()
-        fun analisar(casas: Int, alvo: Double): String {
-            if (cronologico.size <= casas) return "${casas} CASAS: aguardando histórico"
+        // As análises curtas usam somente as rodadas da sessão atual.
+        // O histórico completo permanece salvo para o gráfico e demais painéis.
+        val cronologicoCompleto = resultados.asReversed()
+        val temposCronologicos = marcasTempo.asReversed()
+        val cronologico = cronologicoCompleto.indices.filter { idx ->
+            val instante = temposCronologicos.getOrNull(idx) ?: 0L
+            instante >= inicioAnaliseSessao && instante > 0L
+        }.map { cronologicoCompleto[it] }
+
+        data class Leitura(val texto: String, val casos: Int, val acertos: Int, val baixos: Int)
+        fun analisar(casas: Int, alvo: Double): Leitura {
+            if (cronologico.size <= casas) {
+                return Leitura("${casas} CASA${if (casas == 1) "" else "S"} • aguardando rodadas", 0, 0, 0)
+            }
             val padraoAtual = cronologico.takeLast(casas)
             var casos = 0
             var acertos = 0
+            var baixos = 0
             for (i in 0 until cronologico.size - casas) {
                 val janela = cronologico.subList(i, i + casas)
                 val semelhante = janela.indices.all { k ->
@@ -911,16 +923,39 @@ private fun atualizarPainelVisual() {
                 }
                 if (semelhante) {
                     casos++
-                    if (cronologico[i + casas] >= alvo) acertos++
+                    val proximo = cronologico[i + casas]
+                    if (proximo >= alvo) acertos++
+                    if (proximo < 2.0) baixos++
                 }
             }
             val percentual = if (casos == 0) 0 else acertos * 100 / casos
-            val estado = if (casos < 10) "poucos casos" else "amostra"
+            val percentualBaixos = if (casos == 0) 0 else baixos * 100 / casos
             val alvoTexto = if (alvo >= 10.0) "10x+" else "2x+"
-            return "${casas} CASA${if (casas == 1) "" else "S"} • ${acertos}/${casos} após ${alvoTexto} • ${percentual}% • ${estado}"
+            val estado = if (casos < 10) "poucos casos" else "casos"
+            val linha = "${casas} CASA${if (casas == 1) "" else "S"} • ${percentual}% ${alvoTexto} • ${percentualBaixos}% abaixo 2x • ${casos} ${estado}"
+            return Leitura(linha, casos, acertos, baixos)
+        }
+
+        val um = analisar(1, 10.0)
+        val dois = analisar(2, 2.0)
+        val tres = analisar(3, 2.0)
+        val statusSessao = when {
+            um.casos < 10 -> "INDEFINIDO • AMOSTRA PEQUENA"
+            um.baixos > um.acertos -> "BAIXOS PREDOMINAM NO HISTÓRICO"
+            um.acertos > um.baixos -> "10X+ PREDOMINAM NO HISTÓRICO"
+            else -> "COMPORTAMENTO MISTO"
         }
         painelFrequencia.text = textoComDestaque(
-            "ANÁLISE CURTA • PRÓXIMO RESULTADO\n" + analisar(1, 10.0) + "\n" + analisar(2, 2.0) + "\n" + analisar(3, 2.0),
+            "ANÁLISE DA SESSÃO • ${cronologico.size} RODADAS\n" +
+                "1 CASA: ${um.texto}\n" +
+                "2 CASAS: ${dois.texto}\n" +
+                "3 CASAS: ${tres.texto}\n" +
+                statusSessao + "\n" +
+                "Frequências históricas; não são previsão da próxima rodada.",
+            listOf("1 CASA", "2 CASAS", "3 CASAS", "BAIXOS PREDOMINAM", "10X+ PREDOMINAM", "INDEFINIDO")
+        )
+    }
+, 10.0) + "\n" + analisar(2, 2.0) + "\n" + analisar(3, 2.0),
             listOf("CASA", "após 10x+", "após 2x+", "poucos casos")
         )
     }
