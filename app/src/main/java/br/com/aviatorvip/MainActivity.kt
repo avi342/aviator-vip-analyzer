@@ -42,7 +42,6 @@ private lateinit var historico: LinearLayout
     private lateinit var painelCompleto: LinearLayout
     private lateinit var painelFrequencia: TextView
     private lateinit var painelReacoes: TextView
-    private lateinit var painelConfluencia: TextView
     private data class Reacao(val alvo: Double, val antes: List<Double>, val depois: MutableList<Double>)
     private val reacoes = mutableListOf<Reacao>()
     private var historicoExpandido = false
@@ -259,20 +258,12 @@ private var primeiraLeituraOCR = true
             typeface = android.graphics.Typeface.MONOSPACE
             background = cartao(Color.rgb(22, 25, 38))
         }
-        painelConfluencia = TextView(this).apply {
-            textSize = 9f
-            setTextColor(Color.WHITE)
-            setPadding(5, 3, 5, 3)
-            typeface = android.graphics.Typeface.MONOSPACE
-            background = cartao(Color.rgb(22, 25, 38))
-        }
         painelCompleto = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             addView(quadroPadroes, margem())
             addView(quadroDezX, margem())
             addView(painelFrequencia, margem())
-            addView(painelConfluencia, margem())
             addView(painelReacoes, margem())
         }
         tela.addView(painelCompleto, margem())
@@ -293,7 +284,6 @@ private var primeiraLeituraOCR = true
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
         atualizarFrequencia()
-        atualizarConfluencia()
         atualizarReacoes()
         atualizadorMinutos.post(atualizarMinutosRunnable)
 
@@ -926,76 +916,12 @@ private fun atualizarPainelVisual() {
             }
             val percentual = if (casos == 0) 0 else acertos * 100 / casos
             val estado = if (casos < 10) "poucos casos" else "amostra"
-            return "${casas} CASAS • ${acertos}/${casos} após 2x+ • ${percentual}% • ${estado}"
+            return "${casas} CASA${if (casas == 1) "" else "S"} • ${acertos}/${casos} após 2x+ • ${percentual}% • ${estado}"
         }
         painelFrequencia.text = textoComDestaque(
-            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(2) + "\n" + analisar(3),
-            listOf("CASAS •", "CASAS:", "após 2x+", "poucos casos")
+            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(1) + "\n" + analisar(2) + "\n" + analisar(3),
+            listOf("CASA", "após 2x+", "poucos casos")
         )
-        atualizarConfluencia()
-    }
-
-    private data class MetricasConfluencia(val casas2: Int, val radar3: Int, val casos2: Int, val casos3: Int)
-
-    private fun metricasConfluencia(historico: List<Double>): MetricasConfluencia? {
-        if (historico.size < 7) return null
-        val padrao2 = historico.takeLast(2)
-        var casos2 = 0
-        var acertos2 = 0
-        for (i in 0 until historico.size - 2) {
-            val semelhante = (0..1).all { k ->
-                kotlin.math.abs(historico[i + k] - padrao2[k]) <= maxOf(0.75, padrao2[k] * 0.35)
-            }
-            if (semelhante) {
-                casos2++
-                if (historico[i + 2] >= 2.0) acertos2++
-            }
-        }
-        val assinaturaAtual = assinatura(historico.takeLast(5))
-        var casos3 = 0
-        var acertos3 = 0
-        for (i in 0 until historico.size - 5) {
-            val assinaturaHistorica = assinatura(historico.subList(i, i + 5))
-            val distancia = assinaturaAtual.indices.sumOf { k ->
-                kotlin.math.abs(assinaturaAtual[k] - assinaturaHistorica[k])
-            }
-            if (distancia <= 2) {
-                casos3++
-                if (historico[i + 5] >= 3.0) acertos3++
-            }
-        }
-        val pct2 = if (casos2 == 0) 0 else acertos2 * 100 / casos2
-        val pct3 = if (casos3 == 0) 0 else acertos3 * 100 / casos3
-        return MetricasConfluencia(pct2, pct3, casos2, casos3)
-    }
-
-    private fun atualizarConfluencia() {
-        if (!::painelConfluencia.isInitialized) return
-        val cronologico = resultados.asReversed()
-        val atual = metricasConfluencia(cronologico)
-        if (atual == null) {
-            painelConfluencia.text = "CONFLUÊNCIA • AGUARDANDO HISTÓRICO"
-            return
-        }
-        var semelhantes = 0
-        var acima2 = 0
-        var acima10 = 0
-        for (i in 7 until cronologico.size) {
-            val m = metricasConfluencia(cronologico.subList(0, i)) ?: continue
-            val proximo = cronologico[i]
-            if (kotlin.math.abs(m.casas2 - atual.casas2) <= 10 &&
-                kotlin.math.abs(m.radar3 - atual.radar3) <= 10) {
-                semelhantes++
-                if (proximo >= 2.0) acima2++
-                if (proximo >= 10.0) acima10++
-            }
-        }
-        val pct2 = if (semelhantes == 0) 0 else acima2 * 100 / semelhantes
-        val pct10 = if (semelhantes == 0) 0 else acima10 * 100 / semelhantes
-        val texto = "CONFLUÊNCIA • PARES SEMELHANTES: $semelhantes" +
-            "\n2 CASAS ${atual.casas2}% | RADAR 3x+ ${atual.radar3}%" +
-            "\n2x+ $acima2 ($pct2%) • 10x+ $acima10 ($pct10%)"
-        painelConfluencia.text = textoComDestaque(texto, listOf("PARES SEMELHANTES", "2x+", "10x+"))
     }
 
     private fun textoComDestaque(conteudo: String, marcadores: List<String>): CharSequence {
