@@ -53,3 +53,5 @@ jobs:
 # Build analysis de 1 casa sem painel de confluencia
 
 # Build radar compacto com análises por sessão
+
+# Rebuild após corrigir reset sincronizado e sintaxe Kotlin
