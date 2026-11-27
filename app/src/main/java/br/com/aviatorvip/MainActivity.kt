@@ -20,6 +20,8 @@ import android.widget.*
 import java.util.Locale
 import java.text.SimpleDateFormat
 import java.util.Date
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : Activity() {
 
@@ -38,6 +40,10 @@ private lateinit var historico: LinearLayout
     private lateinit var botaoHistorico: Button
     private lateinit var botaoPainelCompleto: Button
     private lateinit var painelCompleto: LinearLayout
+    private lateinit var painelFrequencia: TextView
+    private lateinit var painelReacoes: TextView
+    private data class Reacao(val alvo: Double, val antes: List<Double>, val depois: MutableList<Double>)
+    private val reacoes = mutableListOf<Reacao>()
     private var historicoExpandido = false
     private var inicioGraficoTempoReal = 0L
     private var painelExpandido = false
@@ -87,6 +93,8 @@ private var primeiraLeituraOCR = true
         inicioGraficoTempoReal = getSharedPreferences("aviator", MODE_PRIVATE)
             .getLong("grafico_inicio_tempo_real", 0L)
         iniciarNovaSessaoAnalise()
+        carregarReacoes()
+        if (reacoes.isEmpty()) reconstruirReacoesDoHistorico()
 
         val tela = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -236,11 +244,27 @@ private var primeiraLeituraOCR = true
             }
         }
         tela.addView(botaoPainelCompleto, margem())
+        painelFrequencia = TextView(this).apply {
+            textSize = 9f
+            setTextColor(Color.WHITE)
+            setPadding(5, 4, 5, 4)
+            typeface = android.graphics.Typeface.MONOSPACE
+            background = cartao(Color.rgb(22, 25, 38))
+        }
+        painelReacoes = TextView(this).apply {
+            textSize = 9f
+            setTextColor(Color.WHITE)
+            setPadding(5, 4, 5, 4)
+            typeface = android.graphics.Typeface.MONOSPACE
+            background = cartao(Color.rgb(22, 25, 38))
+        }
         painelCompleto = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             addView(quadroPadroes, margem())
             addView(quadroDezX, margem())
+            addView(painelFrequencia, margem())
+            addView(painelReacoes, margem())
         }
         tela.addView(painelCompleto, margem())
 
@@ -259,6 +283,8 @@ private var primeiraLeituraOCR = true
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
+        atualizarFrequencia()
+        atualizarReacoes()
         atualizadorMinutos.post(atualizarMinutosRunnable)
 
     }
@@ -305,6 +331,7 @@ private var primeiraLeituraOCR = true
                                 runOnUiThread {
                                     jogoAtivo = nomeJogo
                                     carregarHistoricoJogo(nomeJogo)
+                                    carregarReacoes()
                                     val preferencias = getSharedPreferences("aviator", MODE_PRIVATE)
                                     val chaveIds = "${nomeJogo.lowercase(Locale.ROOT)}_round_ids"
                                     val idsSalvos = preferencias.getStringSet(chaveIds, emptySet())
@@ -324,12 +351,15 @@ private var primeiraLeituraOCR = true
                                         if (marcasTempo.isNotEmpty()) marcasTempo.removeAt(marcasTempo.lastIndex)
                                     }
                                     preferencias.edit().putStringSet(chaveIds, idsSalvos).apply()
+                                    reconstruirReacoesDoHistorico()
                                     salvar()
                                     atualizarHistorico()
                                     atualizarContadorDezX()
                                     atualizarGrade()
                                     avaliarEstrategia()
                                     atualizarBibliotecaPadroes()
+                                    atualizarFrequencia()
+                                    atualizarReacoes()
                                     status.text = "$nomeJogo: $adicionados rodadas importadas."
                                     Toast.makeText(this@MainActivity, "$adicionados resultados importados do $nomeJogo.", Toast.LENGTH_LONG).show()
                                 }
@@ -457,11 +487,15 @@ private fun processarOCR(texto: String) {
             leiturasDoCandidato = 0
             rodadaRegistrada = false
             carregarHistoricoJogo(novoJogo)
+            carregarReacoes()
+            if (reacoes.isEmpty()) reconstruirReacoesDoHistorico()
             atualizarHistorico()
             atualizarContadorDezX()
             atualizarGrade()
             avaliarEstrategia()
             atualizarBibliotecaPadroes()
+            atualizarFrequencia()
+            atualizarReacoes()
         }
         status.text = "$novoJogo reconhecido • ${texto.substringAfterLast(":")}"
         return
@@ -499,6 +533,7 @@ private fun processarOCR(texto: String) {
     status.text = "Confirmando resultado: $valor x"
 
     if (leiturasDoCandidato >= 2) {
+        registrarReacao(valor)
         resultados.add(0, valor)
         horarios.add(0, horarioAtual())
         marcasTempo.add(0, System.currentTimeMillis())
@@ -509,6 +544,8 @@ private fun processarOCR(texto: String) {
         atualizarGrade()
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
+        atualizarFrequencia()
+        atualizarReacoes()
 
         rodadaRegistrada = true
         status.text = "Resultado registrado: $valor x"
@@ -731,6 +768,158 @@ private fun atualizarPainelVisual() {
             )
         }
         contadorDezX.text = textoColorido
+    }
+
+
+    private fun chaveReacoes(): String =
+        "reacoes_3x_" + jogoAtivo.lowercase(Locale.ROOT)
+
+    private fun carregarReacoes() {
+        reacoes.clear()
+        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
+        val bruto = prefs.getString(chaveReacoes(), null)
+            ?: if (jogoAtivo == "Aviator") prefs.getString("reacoes_3x", "[]") else "[]"
+            ?: "[]"
+        try {
+            val array = JSONArray(bruto)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val antesJson = obj.getJSONArray("antes")
+                val depoisJson = obj.getJSONArray("depois")
+                val antes = (0 until antesJson.length()).map { antesJson.getDouble(it) }
+                val depois = (0 until depoisJson.length()).map { depoisJson.getDouble(it) }.toMutableList()
+                reacoes.add(Reacao(obj.getDouble("alvo"), antes, depois))
+            }
+        } catch (_: Exception) {
+            reacoes.clear()
+        }
+    }
+
+    private fun salvarReacoes() {
+        val array = JSONArray()
+        reacoes.forEach { reacao ->
+            val obj = JSONObject()
+            obj.put("alvo", reacao.alvo)
+            obj.put("antes", JSONArray(reacao.antes))
+            obj.put("depois", JSONArray(reacao.depois))
+            array.put(obj)
+        }
+        getSharedPreferences("aviator", MODE_PRIVATE).edit()
+            .putString(chaveReacoes(), array.toString())
+            .apply()
+    }
+
+    private fun reconstruirReacoesDoHistorico() {
+        reacoes.clear()
+        val cronologico = resultados.asReversed()
+        cronologico.forEachIndexed { indice, valor ->
+            if (valor >= 3.0) {
+                val inicioAntes = (indice - 5).coerceAtLeast(0)
+                val antes = (inicioAntes until indice).map { cronologico[it] }.asReversed()
+                val fimDepois = (indice + 5).coerceAtMost(cronologico.lastIndex)
+                val depois = if (indice < fimDepois) {
+                    ((indice + 1)..fimDepois).map { cronologico[it] }.toMutableList()
+                } else mutableListOf()
+                reacoes.add(Reacao(valor, antes, depois))
+            }
+        }
+        while (reacoes.size > 100) reacoes.removeAt(0)
+        salvarReacoes()
+    }
+
+    private fun registrarReacao(valor: Double) {
+        reacoes.forEach { if (it.depois.size < 5) it.depois.add(valor) }
+        if (valor >= 3.0) {
+            reacoes.add(Reacao(valor, resultados.take(5), mutableListOf()))
+            if (reacoes.size > 100) reacoes.removeAt(0)
+        }
+        salvarReacoes()
+    }
+
+    private fun assinatura(janela: List<Double>): IntArray = intArrayOf(
+        janela.count { it < 2.0 },
+        janela.count { it >= 2.0 && it < 3.0 },
+        janela.count { it >= 3.0 }
+    )
+
+    private fun atualizarReacoes() {
+        if (!::painelReacoes.isInitialized) return
+        val historicoCronologico = resultados.asReversed()
+        if (historicoCronologico.size < 6) {
+            painelReacoes.text = "RADAR 3x+ • aguardando pelo menos 6 rodadas."
+            return
+        }
+        val atual = historicoCronologico.takeLast(5)
+        val assinaturaAtual = assinatura(atual)
+        var semelhantes = 0
+        var acertos = 0
+        val tolerancia = 2
+        for (i in 0 until historicoCronologico.size - 5) {
+            val janela = historicoCronologico.subList(i, i + 5)
+            val assinaturaHistorica = assinatura(janela)
+            val distancia = assinaturaAtual.indices.sumOf { k ->
+                kotlin.math.abs(assinaturaAtual[k] - assinaturaHistorica[k])
+            }
+            if (distancia <= tolerancia) {
+                semelhantes++
+                if (historicoCronologico[i + 5] >= 3.0) acertos++
+            }
+        }
+        val percentual = if (semelhantes == 0) 0 else acertos * 100 / semelhantes
+        val linhas = mutableListOf<String>()
+        linhas += "RADAR ANTECIPADO • ALVO 3x+"
+        linhas += "ÚLTIMAS 5 CASAS: " + atual.joinToString("  ") {
+            String.format(Locale.US, "%.2f", it) + "x"
+        }
+        linhas += "PERFIL: <2x ${assinaturaAtual[0]}  |  2–2,99x ${assinaturaAtual[1]}  |  3x+ ${assinaturaAtual[2]}"
+        linhas += "--------------------------------------"
+        linhas += if (semelhantes == 0) {
+            "Ainda não encontrei janelas históricas parecidas."
+        } else {
+            "REAÇÕES SEMELHANTES: $semelhantes • SEGUIDAS DE 3x+: $acertos ($percentual%)"
+        }
+        linhas += when {
+            semelhantes < 10 -> "AMOSTRA INSUFICIENTE • aguardando mais casos"
+            percentual >= 60 -> "FREQUÊNCIA HISTÓRICA MAIS ALTA nesta amostra"
+            percentual >= 40 -> "FREQUÊNCIA HISTÓRICA INTERMEDIÁRIA"
+            else -> "FREQUÊNCIA HISTÓRICA MAIS BAIXA nesta amostra"
+        }
+        linhas += "--------------------------------------"
+        linhas += "REGISTROS DE 3x+: ${reacoes.size}"
+        reacoes.takeLast(3).asReversed().forEach { r ->
+            linhas += "${String.format(Locale.US, "%.2f", r.alvo)}x | antes: " +
+                r.antes.asReversed().joinToString(" ") { String.format(Locale.US, "%.2f", it) + "x" } +
+                " | depois: ${r.depois.size}/5"
+        }
+        linhas += "Comparação por quantidade em cada faixa; histórico não prevê a próxima rodada."
+        painelReacoes.text = linhas.joinToString("\n")
+    }
+
+    private fun atualizarFrequencia() {
+        if (!::painelFrequencia.isInitialized) return
+        val cronologico = resultados.asReversed()
+        fun analisar(casas: Int): String {
+            if (cronologico.size <= casas) return "${casas} CASAS: aguardando histórico"
+            val padraoAtual = cronologico.takeLast(casas)
+            var casos = 0
+            var acertos = 0
+            for (i in 0 until cronologico.size - casas) {
+                val janela = cronologico.subList(i, i + casas)
+                val semelhante = janela.indices.all { k ->
+                    kotlin.math.abs(janela[k] - padraoAtual[k]) <=
+                        maxOf(0.75, padraoAtual[k] * 0.35)
+                }
+                if (semelhante) {
+                    casos++
+                    if (cronologico[i + casas] >= 2.0) acertos++
+                }
+            }
+            val percentual = if (casos == 0) 0 else acertos * 100 / casos
+            val estado = if (casos < 10) "poucos casos" else "amostra"
+            return "${casas} CASAS • ${acertos}/${casos} após 2x+ • ${percentual}% • ${estado}"
+        }
+        painelFrequencia.text =
+            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(2) + "\n" + analisar(3)
     }
 
     private fun horarioAtual(): String {
