@@ -42,6 +42,7 @@ private lateinit var historico: LinearLayout
     private lateinit var painelCompleto: LinearLayout
     private lateinit var painelFrequencia: TextView
     private lateinit var painelReacoes: TextView
+    private lateinit var painelConfluencia: TextView
     private data class Reacao(val alvo: Double, val antes: List<Double>, val depois: MutableList<Double>)
     private val reacoes = mutableListOf<Reacao>()
     private var historicoExpandido = false
@@ -258,12 +259,20 @@ private var primeiraLeituraOCR = true
             typeface = android.graphics.Typeface.MONOSPACE
             background = cartao(Color.rgb(22, 25, 38))
         }
+        painelConfluencia = TextView(this).apply {
+            textSize = 9f
+            setTextColor(Color.WHITE)
+            setPadding(5, 3, 5, 3)
+            typeface = android.graphics.Typeface.MONOSPACE
+            background = cartao(Color.rgb(22, 25, 38))
+        }
         painelCompleto = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             addView(quadroPadroes, margem())
             addView(quadroDezX, margem())
             addView(painelFrequencia, margem())
+            addView(painelConfluencia, margem())
             addView(painelReacoes, margem())
         }
         tela.addView(painelCompleto, margem())
@@ -284,6 +293,7 @@ private var primeiraLeituraOCR = true
         avaliarEstrategia()
         atualizarBibliotecaPadroes()
         atualizarFrequencia()
+        atualizarConfluencia()
         atualizarReacoes()
         atualizadorMinutos.post(atualizarMinutosRunnable)
 
@@ -922,6 +932,68 @@ private fun atualizarPainelVisual() {
             "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(2) + "\n" + analisar(3),
             listOf("CASAS •", "CASAS:", "após 2x+", "poucos casos")
         )
+        atualizarConfluencia()
+    }
+
+    private data class MetricasConfluencia(val casas2: Int, val radar3: Int, val casos2: Int, val casos3: Int)
+
+    private fun metricasConfluencia(historico: List<Double>): MetricasConfluencia? {
+        if (historico.size < 7) return null
+        val padrao2 = historico.takeLast(2)
+        var casos2 = 0
+        var acertos2 = 0
+        for (i in 0 until historico.size - 2) {
+            val semelhante = (0..1).all { k ->
+                kotlin.math.abs(historico[i + k] - padrao2[k]) <= maxOf(0.75, padrao2[k] * 0.35)
+            }
+            if (semelhante) {
+                casos2++
+                if (historico[i + 2] >= 2.0) acertos2++
+            }
+        }
+        val assinaturaAtual = assinatura(historico.takeLast(5))
+        var casos3 = 0
+        var acertos3 = 0
+        for (i in 0 until historico.size - 5) {
+            val assinaturaHistorica = assinatura(historico.subList(i, i + 5))
+            val distancia = assinaturaAtual.indices.sumOf { k ->
+                kotlin.math.abs(assinaturaAtual[k] - assinaturaHistorica[k])
+            }
+            if (distancia <= 2) {
+                casos3++
+                if (historico[i + 5] >= 3.0) acertos3++
+            }
+        }
+        val pct2 = if (casos2 == 0) 0 else acertos2 * 100 / casos2
+        val pct3 = if (casos3 == 0) 0 else acertos3 * 100 / casos3
+        return MetricasConfluencia(pct2, pct3, casos2, casos3)
+    }
+
+    private fun atualizarConfluencia() {
+        if (!::painelConfluencia.isInitialized) return
+        val cronologico = resultados.asReversed()
+        val atual = metricasConfluencia(cronologico)
+        if (atual == null) {
+            painelConfluencia.text = "CONFLUÊNCIA 2x+/3x+ • AGUARDANDO HISTÓRICO"
+            return
+        }
+        var sinais = 0
+        var acima2 = 0
+        var acima10 = 0
+        for (i in 7 until cronologico.size) {
+            val m = metricasConfluencia(cronologico.subList(0, i)) ?: continue
+            if (m.radar3 in 30..35 && m.casas2 in 50..70) {
+                sinais++
+                if (cronologico[i] >= 2.0) acima2++
+                if (cronologico[i] >= 10.0) acima10++
+            }
+        }
+        val pct2 = if (sinais == 0) 0 else acima2 * 100 / sinais
+        val ativa = atual.radar3 in 30..35 && atual.casas2 in 50..70
+        val texto = "CONFLUÊNCIA • " + (if (ativa) "CRITÉRIOS JUNTOS" else "AGUARDANDO") +
+            "\n2 CASAS \${atual.casas2}%  |  RADAR 3x+ \${atual.radar3}%" +
+            "\nHIST. \$sinais SINAIS • 2x+ \$acima2 (\$pct2%) • 10x+ \$acima10"
+        painelConfluencia.text = textoComDestaque(texto, listOf("CRITÉRIOS JUNTOS", "2x+", "10x+"))
     }
 
     private fun textoComDestaque(conteudo: String, marcadores: List<String>): CharSequence {
