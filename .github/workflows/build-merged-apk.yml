@@ -43,3 +43,5 @@ jobs:
           if-no-files-found: error
 
 # Build updated confluence analysis
+
+# Rebuild without confluence sample gate
