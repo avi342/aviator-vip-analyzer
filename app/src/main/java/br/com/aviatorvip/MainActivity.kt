@@ -898,7 +898,7 @@ private fun atualizarPainelVisual() {
     private fun atualizarFrequencia() {
         if (!::painelFrequencia.isInitialized) return
         val cronologico = resultados.asReversed()
-        fun analisar(casas: Int): String {
+        fun analisar(casas: Int, alvo: Double): String {
             if (cronologico.size <= casas) return "${casas} CASAS: aguardando histórico"
             val padraoAtual = cronologico.takeLast(casas)
             var casos = 0
@@ -911,16 +911,17 @@ private fun atualizarPainelVisual() {
                 }
                 if (semelhante) {
                     casos++
-                    if (cronologico[i + casas] >= 2.0) acertos++
+                    if (cronologico[i + casas] >= alvo) acertos++
                 }
             }
             val percentual = if (casos == 0) 0 else acertos * 100 / casos
             val estado = if (casos < 10) "poucos casos" else "amostra"
-            return "${casas} CASA${if (casas == 1) "" else "S"} • ${acertos}/${casos} após 2x+ • ${percentual}% • ${estado}"
+            val alvoTexto = if (alvo >= 10.0) "10x+" else "2x+"
+            return "${casas} CASA${if (casas == 1) "" else "S"} • ${acertos}/${casos} após ${alvoTexto} • ${percentual}% • ${estado}"
         }
         painelFrequencia.text = textoComDestaque(
-            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(1) + "\n" + analisar(2) + "\n" + analisar(3),
-            listOf("CASA", "após 2x+", "poucos casos")
+            "ANÁLISE CURTA • PRÓXIMO RESULTADO\n" + analisar(1, 10.0) + "\n" + analisar(2, 2.0) + "\n" + analisar(3, 2.0),
+            listOf("CASA", "após 10x+", "após 2x+", "poucos casos")
         )
     }
 
