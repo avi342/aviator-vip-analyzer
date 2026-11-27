@@ -993,8 +993,8 @@ private fun atualizarPainelVisual() {
         val pct2 = if (semelhantes == 0) 0 else acima2 * 100 / semelhantes
         val pct10 = if (semelhantes == 0) 0 else acima10 * 100 / semelhantes
         val texto = "CONFLUÊNCIA • PARES SEMELHANTES: $semelhantes" +
-            "\n2 CASAS \${atual.casas2}% | RADAR 3x+ \${atual.radar3}%" +
-            "\n2x+ \$acima2 (\$pct2%) • 10x+ \$acima10 (\$pct10%)"
+            "\n2 CASAS ${atual.casas2}% | RADAR 3x+ ${atual.radar3}%" +
+            "\n2x+ $acima2 ($pct2%) • 10x+ $acima10 ($pct10%)"
         painelConfluencia.text = textoComDestaque(texto, listOf("PARES SEMELHANTES", "2x+", "10x+"))
     }
 
