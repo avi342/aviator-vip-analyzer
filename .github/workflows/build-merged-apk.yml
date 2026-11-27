@@ -45,3 +45,5 @@ jobs:
 # Build updated confluence analysis
 
 # Rebuild without confluence sample gate
+
+# Build dynamic confluence comparison
