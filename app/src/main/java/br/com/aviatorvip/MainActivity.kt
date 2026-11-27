@@ -247,14 +247,14 @@ private var primeiraLeituraOCR = true
         painelFrequencia = TextView(this).apply {
             textSize = 9f
             setTextColor(Color.WHITE)
-            setPadding(5, 4, 5, 4)
+            setPadding(5, 3, 5, 3)
             typeface = android.graphics.Typeface.MONOSPACE
             background = cartao(Color.rgb(22, 25, 38))
         }
         painelReacoes = TextView(this).apply {
             textSize = 9f
             setTextColor(Color.WHITE)
-            setPadding(5, 4, 5, 4)
+            setPadding(5, 3, 5, 3)
             typeface = android.graphics.Typeface.MONOSPACE
             background = cartao(Color.rgb(22, 25, 38))
         }
@@ -892,7 +892,7 @@ private fun atualizarPainelVisual() {
                 " | depois: ${r.depois.size}/5"
         }
         linhas += "Comparação por quantidade em cada faixa; histórico não prevê a próxima rodada."
-        painelReacoes.text = linhas.joinToString("\n")
+        painelReacoes.text = textoComDestaque(linhas.joinToString("\n"), listOf("REAÇÕES SEMELHANTES:", "AMOSTRA INSUFICIENTE", "FREQUÊNCIA HISTÓRICA"))
     }
 
     private fun atualizarFrequencia() {
@@ -918,8 +918,24 @@ private fun atualizarPainelVisual() {
             val estado = if (casos < 10) "poucos casos" else "amostra"
             return "${casas} CASAS • ${acertos}/${casos} após 2x+ • ${percentual}% • ${estado}"
         }
-        painelFrequencia.text =
-            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(2) + "\n" + analisar(3)
+        painelFrequencia.text = textoComDestaque(
+            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(2) + "\n" + analisar(3),
+            listOf("CASAS •", "CASAS:", "após 2x+", "poucos casos")
+        )
+    }
+
+    private fun textoComDestaque(conteudo: String, marcadores: List<String>): CharSequence {
+        val texto = android.text.SpannableString(conteudo)
+        var inicio = 0
+        conteudo.split("\n").forEach { linha ->
+            val relevante = marcadores.any { linha.contains(it, ignoreCase = true) }
+            if (relevante && linha.isNotBlank()) {
+                texto.setSpan(android.text.style.ForegroundColorSpan(Color.rgb(255, 190, 110)), inicio, inicio + linha.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                texto.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), inicio, inicio + linha.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            inicio += linha.length + 1
+        }
+        return texto
     }
 
     private fun horarioAtual(): String {
@@ -1167,7 +1183,7 @@ private fun atualizarPainelEstrategia() {
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setTextColor(Color.WHITE)
-                setPadding(1, 5, 1, 5)
+                setPadding(1, 2, 1, 2)
                 background = cartao(Color.rgb(28, 34, 48))
             }
             gradeCasas.addView(celula, GridLayout.LayoutParams(
@@ -1175,7 +1191,7 @@ private fun atualizarPainelEstrategia() {
                 GridLayout.spec((casa - 1) % 10, 1f)
             ).apply {
                 width = 0
-                height = (38 * resources.displayMetrics.density).toInt()
+                height = (25 * resources.displayMetrics.density).toInt()
                 setMargins(2, 2, 2, 2)
             })
         }
@@ -1214,7 +1230,7 @@ private fun atualizarPainelEstrategia() {
                 gravity = Gravity.CENTER
                 textSize = 10f
                 setTextColor(Color.WHITE)
-                setPadding(1, 5, 1, 5)
+                setPadding(1, 2, 1, 2)
                 background = cartao(Color.rgb(28, 34, 48))
             }
             gradeMinutos.addView(celula, GridLayout.LayoutParams(
@@ -1222,7 +1238,7 @@ private fun atualizarPainelEstrategia() {
                 GridLayout.spec((minuto - 1) % 10, 1f)
             ).apply {
                 width = 0
-                height = (38 * resources.displayMetrics.density).toInt()
+                height = (25 * resources.displayMetrics.density).toInt()
                 setMargins(2, 2, 2, 2)
             })
         }
@@ -1269,7 +1285,7 @@ private fun atualizarPainelEstrategia() {
                     GridLayout.spec(posicao, 1f)
                 ).apply {
                     width = 0
-                    height = (40 * resources.displayMetrics.density).toInt()
+                    height = (30 * resources.displayMetrics.density).toInt()
                     setMargins(2, 2, 2, 2)
                 })
             }
