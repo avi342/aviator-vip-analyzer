@@ -55,3 +55,5 @@ jobs:
 # Build radar compacto com análises por sessão
 
 # Rebuild após corrigir reset sincronizado e sintaxe Kotlin
+
+# Build fonte restaurada com reset e análises sincronizados
