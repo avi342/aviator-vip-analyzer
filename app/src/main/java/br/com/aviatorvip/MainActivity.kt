@@ -1146,7 +1146,6 @@ private fun atualizarPainelEstrategia() {
         }
         val serie20Min = indices20Min.map { serieCronoCompleta[it] }
         val rosas20Min = serie20Min.indices.filter { serie20Min[it] >= 10.0 }
-        val rosas35Min = serie20Min.indices.filter { serie20Min[it] >= 35.0 }
         val frequenciasCasas = mutableMapOf<Int, Int>()
         for (i in 1 until rosas20Min.size) {
             val casas = rosas20Min[i] - rosas20Min[i - 1]
@@ -1232,39 +1231,6 @@ private fun atualizarPainelEstrategia() {
         } else {
             quadroPadroes.addView(gradeMinutos)
         }
-        // Análise adicional de eventos acima de 35x: casas e minutos entre ocorrências.
-        val frequenciasCasas35x = mutableMapOf<Int, Int>()
-        for (i in 1 until rosas35Min.size) {
-            val casas = rosas35Min[i] - rosas35Min[i - 1]
-            if (casas in 1..20) frequenciasCasas35x[casas] = (frequenciasCasas35x[casas] ?: 0) + 1
-        }
-        linha("CASAS REPETIDAS ENTRE 35X+  •  20 MIN", 13f, Color.rgb(255,190,110), true)
-        val casas35xRepetidas = frequenciasCasas35x.filterValues { it >= 2 }.toSortedMap()
-        if (casas35xRepetidas.isEmpty()) {
-            linha("Sem repetição de casas 35x+ nesta janela.", 11f, Color.LTGRAY)
-        } else {
-            linha(casas35xRepetidas.entries.joinToString("     ") { "${it.key}ª casa: ${it.value}x" }, 12f, Color.WHITE)
-        }
-
-        val frequenciasMinutos35x = mutableMapOf<Int, Int>()
-        for (i in 1 until rosas35Min.size) {
-            val idxAnterior = indices20Min[rosas35Min[i - 1]]
-            val idxAtual = indices20Min[rosas35Min[i]]
-            val tAnterior = temposCronoCompleta.getOrNull(idxAnterior) ?: 0L
-            val tAtual = temposCronoCompleta.getOrNull(idxAtual) ?: 0L
-            if (tAnterior > 0L && tAtual > tAnterior) {
-                val minutos = ((tAtual - tAnterior) / 60000L).toInt()
-                if (minutos in 1..20) frequenciasMinutos35x[minutos] = (frequenciasMinutos35x[minutos] ?: 0) + 1
-            }
-        }
-        linha("INTERVALOS EM MINUTOS REPETIDOS ENTRE 35X+  •  20 MIN", 13f, Color.rgb(255,190,110), true)
-        val minutos35xRepetidos = frequenciasMinutos35x.filterValues { it >= 2 }.toSortedMap()
-        if (minutos35xRepetidos.isEmpty()) {
-            linha("Sem repetição de minutos 35x+ nesta janela.", 11f, Color.LTGRAY)
-        } else {
-            linha(minutos35xRepetidos.entries.joinToString("     ") { "${it.key} min: ${it.value}x" }, 12f, Color.WHITE)
-        }
-
         // As faixas de minutagem continuam usando a janela móvel de 60 minutos.
         val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
         val registrosMinutagem10x = rosasCrono.mapIndexed { indice, idx ->
@@ -1291,10 +1257,10 @@ private fun atualizarPainelEstrategia() {
                 val celula = TextView(this).apply {
                     text = "${registro.first}\n${registro.second}\n${registro.third}"
                     gravity = Gravity.CENTER
-                    textSize = 11f
+                    textSize = 9f
                     setTypeface(null, android.graphics.Typeface.BOLD)
                     setTextColor(Color.WHITE)
-                    setPadding(2, 7, 2, 7)
+                    setPadding(1, 2, 1, 2)
                     maxLines = 3
                     background = cartao(Color.rgb(28, 34, 48))
                 }
@@ -1303,27 +1269,14 @@ private fun atualizarPainelEstrategia() {
                     GridLayout.spec(posicao, 1f)
                 ).apply {
                     width = 0
-                    height = (66 * resources.displayMetrics.density).toInt()
+                    height = (40 * resources.displayMetrics.density).toInt()
                     setMargins(2, 2, 2, 2)
                 })
             }
             quadroPadroes.addView(grade10x)
         }
 
-        val rosas42Crono = serie.indices.filter { serie[it] > 42.0 }
-        val registrosMinutagem42x = rosas42Crono.mapIndexed { indice, idx ->
-            val horario = horariosJanela.getOrNull(idx)?.take(5)?.takeIf { it.isNotBlank() } ?: "--:--"
-            val anteriorIdx = if (indice > 0) rosas42Crono[indice - 1] else -1
-            val casas = if (anteriorIdx >= 0) idx - anteriorIdx else 0
-            val t0 = if (anteriorIdx >= 0) tempos.getOrNull(anteriorIdx) ?: 0L else 0L
-            val t1 = tempos.getOrNull(idx) ?: 0L
-            val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "início da janela"
-            val casasTexto = if (anteriorIdx >= 0) "$casas casas" else "início"
-            "${serie[idx]}x  •  $casasTexto  •  $intervalo  •  $horario"
-        }.asReversed()
-        faixaHorizontal("INTERVALOS ENTRE 42X+  •  60 MIN",
-            registrosMinutagem42x.ifEmpty { listOf("Aguardando resultados acima de 42x") },
-            Color.rgb(255,190,110))
+
 
     }
 
