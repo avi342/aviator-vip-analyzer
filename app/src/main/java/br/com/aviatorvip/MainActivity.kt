@@ -149,7 +149,6 @@ private var primeiraLeituraOCR = true
                             .apply()
                         historicoExpandido = false
                         atualizarGrade()
-                        atualizarHistorico()
                         atualizarFrequencia()
                         atualizarContadorDezX()
                         status.text = "Gráfico e análises zerados. Histórico geral preservado."
@@ -901,8 +900,6 @@ private fun atualizarPainelVisual() {
 
     private fun atualizarFrequencia() {
         if (!::painelFrequencia.isInitialized) return
-        // As análises curtas usam somente as rodadas da sessão atual.
-        // O histórico completo permanece salvo para o gráfico e demais painéis.
         val cronologicoCompleto = resultados.asReversed()
         val temposCronologicos = marcasTempo.asReversed()
         val cronologico = cronologicoCompleto.indices.filter { idx ->
@@ -912,9 +909,7 @@ private fun atualizarPainelVisual() {
 
         data class Leitura(val texto: String, val casos: Int, val acertos: Int, val baixos: Int)
         fun analisar(casas: Int, alvo: Double): Leitura {
-            if (cronologico.size <= casas) {
-                return Leitura("${casas} CASA${if (casas == 1) "" else "S"} • aguardando rodadas", 0, 0, 0)
-            }
+            if (cronologico.size <= casas) return Leitura("${casas} CASA • aguardando rodadas", 0, 0, 0)
             val padraoAtual = cronologico.takeLast(casas)
             var casos = 0
             var acertos = 0
@@ -922,8 +917,7 @@ private fun atualizarPainelVisual() {
             for (i in 0 until cronologico.size - casas) {
                 val janela = cronologico.subList(i, i + casas)
                 val semelhante = janela.indices.all { k ->
-                    kotlin.math.abs(janela[k] - padraoAtual[k]) <=
-                        maxOf(0.75, padraoAtual[k] * 0.35)
+                    kotlin.math.abs(janela[k] - padraoAtual[k]) <= maxOf(0.75, padraoAtual[k] * 0.35)
                 }
                 if (semelhante) {
                     casos++
@@ -936,10 +930,9 @@ private fun atualizarPainelVisual() {
             val percentualBaixos = if (casos == 0) 0 else baixos * 100 / casos
             val alvoTexto = if (alvo >= 10.0) "10x+" else "2x+"
             val estado = if (casos < 10) "poucos casos" else "casos"
-            val linha = "${casas} CASA${if (casas == 1) "" else "S"} • ${percentual}% ${alvoTexto} • ${percentualBaixos}% abaixo 2x • ${casos} ${estado}"
+            val linha = "${casas} CASA • ${percentual}% ${alvoTexto} • ${percentualBaixos}% abaixo 2x • ${casos} ${estado}"
             return Leitura(linha, casos, acertos, baixos)
         }
-
         val um = analisar(1, 10.0)
         val dois = analisar(2, 2.0)
         val tres = analisar(3, 2.0)
@@ -951,11 +944,472 @@ private fun atualizarPainelVisual() {
         }
         painelFrequencia.text = textoComDestaque(
             "ANÁLISE DA SESSÃO • ${cronologico.size} RODADAS\n" +
-                "1 CASA: ${um.texto}\n" +
-                "2 CASAS: ${dois.texto}\n" +
-                "3 CASAS: ${tres.texto}\n" +
-                statusSessao + "\n" +
-                "Frequências históricas; não são previsão da próxima rodada.",
+                "1 CASA: ${um.texto}\n2 CASAS: ${dois.texto}\n3 CASAS: ${tres.texto}\n" +
+                statusSessao + "\nFrequências históricas; não são previsão da próxima rodada.",
             listOf("1 CASA", "2 CASAS", "3 CASAS", "BAIXOS PREDOMINAM", "10X+ PREDOMINAM", "INDEFINIDO")
         )
     }
+
+    private fun textoComDestaque(conteudo: String, marcadores: List<String>): CharSequence {
+        val texto = android.text.SpannableString(conteudo)
+        var inicio = 0
+        conteudo.split("\n").forEach { linha ->
+            val relevante = marcadores.any { linha.contains(it, ignoreCase = true) }
+            if (relevante && linha.isNotBlank()) {
+                texto.setSpan(android.text.style.ForegroundColorSpan(Color.rgb(255, 190, 110)), inicio, inicio + linha.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                texto.setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), inicio, inicio + linha.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            inicio += linha.length + 1
+        }
+        return texto
+    }
+
+    private fun horarioAtual(): String {
+        return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+    }
+
+    private fun estilizarBotao(botao: Button, corFundo: Int, corBorda: Int) {
+        botao.setTextColor(Color.WHITE)
+        botao.textSize = 8f
+        botao.setTypeface(null, android.graphics.Typeface.BOLD)
+        botao.isAllCaps = false
+        botao.elevation = 1f
+        botao.minimumHeight = (23 * resources.displayMetrics.density).toInt()
+        botao.minHeight = botao.minimumHeight
+        botao.minimumWidth = 0
+        botao.setPadding(2, 0, 2, 0)
+        botao.background = GradientDrawable().apply {
+            setColor(corFundo)
+            setStroke(1, corBorda)
+            cornerRadius = 7f
+        }
+    }
+
+    private fun cartao(cor: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(cor)
+            setStroke(1, Color.rgb(65, 80, 115))
+            cornerRadius = 18f
+        }
+    }
+
+    private fun margem(): LinearLayout.LayoutParams {
+        return LinearLayout.LayoutParams(-1, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = 5
+        }
+    }
+private fun atualizarPainelEstrategia() {
+        if (!::painelEstrategia.isInitialized) return
+        painelEstrategia.textSize = 17f
+        painelEstrategia.text =
+            "ESTRATÉGIA PRINCIPAL — DUAS RODADAS → PRÓXIMA ≥ 2x\\n" +
+            "Rodadas armazenadas: ${resultados.size}\\n" +
+            "O aplicativo acompanha somente esta combinação e atualiza a frequência quando chega uma nova rodada.\\n\\n" +
+            "O histórico serve para medir ocorrências anteriores; não é garantia de resultado futuro."
+    }
+
+    private data class ResultadoPadrao(val comparacoes: Int, val sucessos: Int, val tamanho: Int)
+
+    // Compara blocos por categoria de cor, aceitando pequenas diferenças entre multiplicadores.
+    private fun buscarPadraoAtual(serie: List<Double>, alvo: (Double) -> Boolean): ResultadoPadrao {
+        val tamanhos = listOf(6, 9, 12, 15)
+        var melhor = ResultadoPadrao(0, 0, 0)
+        for (tamanho in tamanhos) {
+            if (serie.size < tamanho + 5) continue
+            val consulta = serie.takeLast(tamanho).map { categoria(it) }
+            val limite = serie.size - tamanho - 5
+            var comparacoes = 0
+            var sucessos = 0
+            for (inicio in 0..limite) {
+                var iguais = 0
+                for (k in 0 until tamanho) {
+                    if (categoria(serie[inicio + k]) == consulta[k]) iguais++
+                }
+                if (iguais.toDouble() / tamanho >= 0.75) {
+                    comparacoes++
+                    if ((inicio + tamanho until inicio + tamanho + 5).any { alvo(serie[it]) }) sucessos++
+                }
+            }
+            if (comparacoes >= 3 && (melhor.comparacoes == 0 || sucessos.toDouble() / comparacoes > melhor.sucessos.toDouble() / melhor.comparacoes)) {
+                melhor = ResultadoPadrao(comparacoes, sucessos, tamanho)
+            }
+        }
+        return melhor
+    }
+
+    private fun atualizarMonitoramento10x(valor: Double) {
+        val prefs = getSharedPreferences("aviator", MODE_PRIVATE)
+        val cronologico = resultados.asReversed()
+        val base = cronologico.dropLast(1)
+        val objetivos = listOf(Triple("10",10.0,null as Double?),Triple("25",2.0,5.0 as Double?))
+        objetivos.forEach { (id,minimo,maximo) ->
+            val chaveAtivo = "radar" + id + "x_ativo"
+            val ativo = prefs.getBoolean(chaveAtivo,false)
+            if (ativo) {
+                val restantes=(prefs.getInt("radar" + id + "x_restantes",5)-1).coerceAtLeast(0)
+                val acertou=valor>=minimo&&(maximo==null||valor<=maximo)
+                val acertos=prefs.getInt("radar" + id + "x_acertos",0)+if(acertou)1 else 0
+                val editor=prefs.edit().putInt("radar" + id + "x_restantes",restantes).putInt("radar" + id + "x_acertos",acertos).putBoolean(chaveAtivo,restantes>0)
+                if(restantes==0){editor.putString("radar" + id + "x_resultado",if(acertos>0)"SIM" else "NÃO");editor.putInt("radar" + id + "x_ultimo_fim",resultados.size)}
+                else editor.putString("radar" + id + "x_resultado","AVALIANDO")
+                editor.apply()
+                return@forEach
+            }
+            val candidatos=descobrirPadroes(base,minimo,2,maximo)
+            val atual=cronologico.takeLast(5).map{categoriaValidador(it)}
+            val candidato=candidatos.firstOrNull{(padrao,stats)->padrao.size<=atual.size&&atual.takeLast(padrao.size)==padrao&&stats.ocorrencias>=4&&stats.percentual>=55.0}
+            val ultimoGatilho=prefs.getInt("radar" + id + "x_ultimo_gatilho",-1)
+            if(candidato!=null&&ultimoGatilho!=resultados.size){
+                val(padrao,stats)=candidato
+                prefs.edit().putBoolean(chaveAtivo,true).putInt("radar" + id + "x_restantes",5).putInt("radar" + id + "x_acertos",0)
+                    .putString("radar" + id + "x_resultado","AVALIANDO").putInt("radar" + id + "x_matches",stats.ocorrencias)
+                    .putInt("radar" + id + "x_hits",stats.vitorias).putInt("radar" + id + "x_bloco",padrao.size)
+                    .putInt("radar" + id + "x_ultimo_gatilho",resultados.size).apply()
+            }else if(ultimoGatilho!=resultados.size){
+                prefs.edit().putString("radar" + id + "x_resultado","AGUARDANDO").apply()
+            }
+        }
+    }
+
+    // Seis detectores independentes; cada sinal observa as próximas três rodadas.
+    private fun atualizarMonitoramentoVip(valor: Double) {
+        val prefs=getSharedPreferences("aviator", MODE_PRIVATE)
+        val serie=resultados.asReversed()
+        val indiceAtual=serie.size-1
+        val categorias=serie.map { categoriaValidador(it) }
+        val editor=prefs.edit()
+        for(i in 0 until 6) {
+            if(prefs.getBoolean("vip_${i}_ativo",false)) {
+                val restante=(prefs.getInt("vip_${i}_restantes",3)-1).coerceAtLeast(0)
+                if(valor>=3.0) editor.putBoolean("vip_${i}_ativo",false).putInt("vip_${i}_restantes",0).putString("vip_${i}_resultado","SIM")
+                else if(restante==0) editor.putBoolean("vip_${i}_ativo",false).putInt("vip_${i}_restantes",0).putString("vip_${i}_resultado","NÃO")
+                else editor.putInt("vip_${i}_restantes",restante)
+            }
+        }
+        editor.apply()
+        if(serie.size<2) return
+        val rosaIndices=serie.indices.filter { serie[it]>=10.0 }
+        val ultimaRosa=rosaIndices.lastOrNull()
+        val casaPos=if(ultimaRosa!=null) indiceAtual-ultimaRosa else -1
+        val alternancia=categorias.size>=4 && categorias.takeLast(4).let { it[0]==it[2] && it[1]==it[3] && it[0]!=it[1] }
+        val quebra=categorias.size>=4 && categorias.takeLast(4).let { it[0]==it[1] && it[1]==it[2] && it[2]!=it[3] }
+        val rosaQuebra=serie.size>=4 && serie.last()>=10.0 && categorias.takeLast(4).let { it[0]==it[1] && it[1]==it[2] && it[2]!=it[3] }
+        val rebote=serie.size>=3 && serie.takeLast(3).all { it<2.0 }
+        val espelho=casaPos in listOf(2,3,4,5,9,13) && serie.last()<2.0
+        val repeticao=casaPos in listOf(2,3,4,5,9,13) && rosaIndices.dropLast(1).any { antigo ->
+            val distancia=indiceAtual-antigo
+            distancia in listOf(2,3,4,5,9,13)
+        }
+        val gatilhos=listOf(rebote,espelho,alternancia,quebra,rosaQuebra,repeticao)
+        gatilhos.forEachIndexed { i, disparou ->
+            val chave="vip_${i}_"
+            if(disparou && !prefs.getBoolean(chave+"ativo",false) && prefs.getInt(chave+"ultimo_gatilho",-1)!=indiceAtual) {
+                prefs.edit().putBoolean(chave+"ativo",true).putInt(chave+"restantes",3)
+                    .putString(chave+"resultado","AVALIANDO").putInt(chave+"ultimo_gatilho",indiceAtual).apply()
+            }
+        }
+    }
+
+    private fun atualizarBibliotecaPadroes() {
+        if (!::quadroPadroes.isInitialized || !::quadroDezX.isInitialized) return
+        val posicoesAntesDaAtualizacao = mutableMapOf<String, Int>().apply { putAll(posicoesRolagemFaixas) }
+        quadroPadroes.removeAllViews()
+        quadroDezX.removeAllViews()
+
+        // A análise usa sempre a janela móvel dos últimos 60 minutos.
+        // O histórico completo continua armazenado separadamente (até 2.000 rodadas).
+        val agora = System.currentTimeMillis()
+        val corte = agora - 60L * 60L * 1000L
+        val serieCronoCompleta = resultados.asReversed()
+        val temposCronoCompleta = marcasTempo.asReversed()
+        val horariosCronoCompleta = horarios.asReversed()
+        val indicesJanela = serieCronoCompleta.indices.filter { idx ->
+            val instante = temposCronoCompleta.getOrNull(idx) ?: 0L
+            instante in corte..agora
+        }
+        val serie = indicesJanela.map { serieCronoCompleta[it] }
+        val tempos = indicesJanela.map { temposCronoCompleta[it] }
+        val horariosJanela = indicesJanela.map { horariosCronoCompleta.getOrNull(it).orEmpty() }
+
+        val cores = listOf(Color.rgb(70,165,245), Color.rgb(160,115,245), Color.rgb(245,90,175))
+        fun linha(texto: String, tamanho: Float = 13f, cor: Int = Color.WHITE, negrito: Boolean = false) {
+            quadroPadroes.addView(TextView(this).apply {
+                text = texto
+                textSize = tamanho
+                setTextColor(cor)
+                if (negrito) setTypeface(null, android.graphics.Typeface.BOLD)
+                setPadding(3, 2, 3, 2)
+            })
+        }
+        fun tempo(ms: Long): String {
+            if (ms <= 0L) return "--"
+            return "${ms / 60000L} min"
+        }
+        fun faixaHorizontal(titulo: String, itens: List<String>, cor: Int) {
+            linha(titulo, 13f, cor, true)
+            val faixa = HorizontalScrollView(this).apply {
+                isHorizontalScrollBarEnabled = true
+                setOnScrollChangeListener { _, scrollX, _, _, _ ->
+                    posicoesRolagemFaixas[titulo] = scrollX
+                }
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    itens.forEach { item ->
+                        addView(TextView(this@MainActivity).apply {
+                            text = item
+                            textSize = 13f
+                            setTextColor(Color.WHITE)
+                            setPadding(8, 5, 8, 5)
+                            background = cartao(Color.rgb(28, 34, 48))
+                        }, LinearLayout.LayoutParams(-2, -2).apply {
+                            rightMargin = (5 * resources.displayMetrics.density).toInt()
+                        })
+                    }
+                })
+            }
+            faixa.setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN,
+                    android.view.MotionEvent.ACTION_MOVE -> view.parent?.requestDisallowInterceptTouchEvent(true)
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> view.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+                false
+            }
+            quadroPadroes.addView(faixa)
+            faixa.post { faixa.scrollTo(posicoesAntesDaAtualizacao[titulo] ?: 0, 0) }
+        }
+
+        // O painel de casas usa uma janela móvel independente de 20 minutos.
+        val corteCasas = agora - 20L * 60L * 1000L
+        val indices20Min = serieCronoCompleta.indices.filter { idx ->
+            val instante = temposCronoCompleta.getOrNull(idx) ?: 0L
+            instante in corteCasas..agora
+        }
+        val serie20Min = indices20Min.map { serieCronoCompleta[it] }
+        val rosas20Min = serie20Min.indices.filter { serie20Min[it] >= 10.0 }
+        val frequenciasCasas = mutableMapOf<Int, Int>()
+        for (i in 1 until rosas20Min.size) {
+            val casas = rosas20Min[i] - rosas20Min[i - 1]
+            if (casas in 1..20) frequenciasCasas[casas] = (frequenciasCasas[casas] ?: 0) + 1
+        }
+        linha("CASAS QUE SE REPETIRAM APÓS 10X+  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(245,150,205), true)
+        val gradeCasas = GridLayout(this).apply {
+            columnCount = 10
+            rowCount = 2
+            useDefaultMargins = false
+            setPadding(1, 2, 1, 2)
+        }
+        // Só aparecem as posições com repetição observada na janela atual.
+        for (casa in 1..20) {
+            val contagem = frequenciasCasas[casa] ?: 0
+            if (contagem == 0) continue
+            val celula = TextView(this).apply {
+                text = "${casa}ª\n${contagem}x"
+                gravity = Gravity.CENTER
+                textSize = 10f
+                setTextColor(Color.WHITE)
+                setPadding(1, 2, 1, 2)
+                background = cartao(Color.rgb(28, 34, 48))
+            }
+            gradeCasas.addView(celula, GridLayout.LayoutParams(
+                GridLayout.spec((casa - 1) / 10, 1),
+                GridLayout.spec((casa - 1) % 10, 1f)
+            ).apply {
+                width = 0
+                height = (25 * resources.displayMetrics.density).toInt()
+                setMargins(2, 2, 2, 2)
+            })
+        }
+        if (frequenciasCasas.isEmpty()) {
+            linha("Nenhuma casa repetida nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        } else {
+            quadroPadroes.addView(gradeCasas)
+        }
+        // Painel paralelo: repetição dos intervalos em minutos entre eventos 10x+,
+        // calculados somente com eventos ocorridos dentro da mesma janela móvel de 20 minutos.
+        val frequenciasMinutos = mutableMapOf<Int, Int>()
+        for (i in 1 until rosas20Min.size) {
+            val indiceAnterior = indices20Min[rosas20Min[i - 1]]
+            val indiceAtual = indices20Min[rosas20Min[i]]
+            val tAnterior = temposCronoCompleta.getOrNull(indiceAnterior) ?: 0L
+            val tAtual = temposCronoCompleta.getOrNull(indiceAtual) ?: 0L
+            if (tAnterior > 0L && tAtual > tAnterior) {
+                val minutos = ((tAtual - tAnterior) / 60000L).toInt()
+                if (minutos in 1..20) {
+                    frequenciasMinutos[minutos] = (frequenciasMinutos[minutos] ?: 0) + 1
+                }
+            }
+        }
+        linha("INTERVALOS EM MINUTOS QUE SE REPETIRAM ENTRE 10X+  •  ÚLTIMOS 20 MIN", 13f, Color.rgb(100,205,255), true)
+        val gradeMinutos = GridLayout(this).apply {
+            columnCount = 10
+            rowCount = 2
+            useDefaultMargins = false
+            setPadding(1, 2, 1, 2)
+        }
+        for (minuto in 1..20) {
+            val contagem = frequenciasMinutos[minuto] ?: 0
+            if (contagem == 0) continue
+            val celula = TextView(this).apply {
+                text = "${minuto} min\n${contagem}x"
+                gravity = Gravity.CENTER
+                textSize = 10f
+                setTextColor(Color.WHITE)
+                setPadding(1, 2, 1, 2)
+                background = cartao(Color.rgb(28, 34, 48))
+            }
+            gradeMinutos.addView(celula, GridLayout.LayoutParams(
+                GridLayout.spec((minuto - 1) / 10, 1),
+                GridLayout.spec((minuto - 1) % 10, 1f)
+            ).apply {
+                width = 0
+                height = (25 * resources.displayMetrics.density).toInt()
+                setMargins(2, 2, 2, 2)
+            })
+        }
+        if (frequenciasMinutos.isEmpty()) {
+            linha("Nenhum intervalo em minutos se repetiu nesta janela de 20 minutos.", 11f, Color.LTGRAY)
+        } else {
+            quadroPadroes.addView(gradeMinutos)
+        }
+        // As faixas de minutagem continuam usando a janela móvel de 60 minutos.
+        val rosasCrono = serie.indices.filter { serie[it] >= 10.0 }
+        val registrosMinutagem10x = rosasCrono.mapIndexed { indice, idx ->
+            val anteriorIdx = if (indice > 0) rosasCrono[indice - 1] else -1
+            val casas = if (anteriorIdx >= 0) idx - anteriorIdx else 0
+            val t0 = if (anteriorIdx >= 0) tempos.getOrNull(anteriorIdx) ?: 0L else 0L
+            val t1 = tempos.getOrNull(idx) ?: 0L
+            val intervalo = if (t0 > 0L && t1 > t0) tempo(t1 - t0) else "--"
+            val casaTexto = if (anteriorIdx >= 0) "${casas}ª" else "—"
+            Triple(casaTexto, "${serie[idx]}x", intervalo)
+        }.asReversed().take(5)
+
+        linha("ÚLTIMOS 5 RESULTADOS 10X+", 13f, Color.rgb(245,150,205), true)
+        if (registrosMinutagem10x.isEmpty()) {
+            linha("Aguardando resultados 10x+", 11f, Color.LTGRAY)
+        } else {
+            val grade10x = GridLayout(this).apply {
+                columnCount = 5
+                rowCount = 1
+                useDefaultMargins = false
+                setPadding(1, 2, 1, 2)
+            }
+            registrosMinutagem10x.forEachIndexed { posicao, registro ->
+                val celula = TextView(this).apply {
+                    text = "${registro.first}\n${registro.second}\n${registro.third}"
+                    gravity = Gravity.CENTER
+                    textSize = 9f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    setPadding(1, 2, 1, 2)
+                    maxLines = 3
+                    background = cartao(Color.rgb(28, 34, 48))
+                }
+                grade10x.addView(celula, GridLayout.LayoutParams(
+                    GridLayout.spec(0, 1),
+                    GridLayout.spec(posicao, 1f)
+                ).apply {
+                    width = 0
+                    height = (30 * resources.displayMetrics.density).toInt()
+                    setMargins(2, 2, 2, 2)
+                })
+            }
+            quadroPadroes.addView(grade10x)
+        }
+
+
+
+    }
+
+    private data class EstatisticaPadrao(val ocorrencias:Int,val vitorias:Int,val derrotas:Int,val semGale:Int,val porGale:List<Int>,val maiorSequencia:Int) {
+        val percentual:Double get()=if(ocorrencias==0)0.0 else vitorias*100.0/ocorrencias
+    }
+    private fun estatisticaPadrao(serie:List<Double>,padrao:List<Int>,alvo:Double,gales:Int,alvoMax:Double?=null):EstatisticaPadrao {
+        if(padrao.isEmpty()||serie.size<padrao.size+1)return EstatisticaPadrao(0,0,0,0,List(gales+1){0},0)
+        var total=0;var vitorias=0;var semGale=0;val porGale=MutableList(gales+1){0};val sinais=mutableListOf<Boolean>()
+        for(inicio in 0..(serie.size-padrao.size-1)){
+            var igual=true
+            for(k in padrao.indices)if(categoriaValidador(serie[inicio+k])!=padrao[k]){igual=false;break}
+            if(!igual)continue
+            total++;var nivel=-1
+            for(g in 0..gales){val idx=inicio+padrao.size+g;if(idx<serie.size&&serie[idx]>=alvo&&(alvoMax==null||serie[idx]<=alvoMax)){nivel=g;break}}
+            val venceu=nivel>=0;sinais.add(venceu)
+            if(venceu){vitorias++;porGale[nivel]++;if(nivel==0)semGale++}
+        }
+        var atual=0;var maior=0
+        sinais.forEach{if(it){atual++;maior=maxOf(maior,atual)}else atual=0}
+        return EstatisticaPadrao(total,vitorias,total-vitorias,semGale,porGale,maior)
+    }
+    private fun categoriaValidador(v:Double):Int=when{v<2.0->0;v<10.0->1;else->2}
+    private fun nomeCor(id:Int)=when(id){0->"AZUL";1->"ROXO";else->"ROSA"}
+    private fun descobrirPadroes(serie:List<Double>,alvo:Double,gales:Int,alvoMax:Double?=null):List<Pair<List<Int>,EstatisticaPadrao>> {
+        if(serie.size<50)return emptyList()
+        val corte=(serie.size*0.65).toInt();val treino=serie.take(corte);val teste=serie.drop(corte)
+        val candidatos=mutableListOf<Pair<List<Int>,EstatisticaPadrao>>()
+        for(tamanho in 2..5){
+            val total=Math.pow(3.0,tamanho.toDouble()).toInt()
+            for(codigo in 0 until total){
+                var n=codigo;val padrao=MutableList(tamanho){0}
+                for(i in tamanho-1 downTo 0){padrao[i]=n%3;n/=3}
+                val hist=estatisticaPadrao(treino,padrao,alvo,gales,alvoMax)
+                val valid=estatisticaPadrao(teste,padrao,alvo,gales,alvoMax)
+                if(hist.ocorrencias>=6&&valid.ocorrencias>=4&&valid.percentual>=55.0)candidatos.add(padrao to valid)
+            }
+        }
+        return candidatos.sortedWith(compareByDescending<Pair<List<Int>,EstatisticaPadrao>>{it.second.percentual}.thenByDescending{it.second.ocorrencias}).take(5)
+    }
+    private fun medirPadrao(tamanho: Int, alvo: Double): Pair<Int, Int> {
+        if (resultados.size <= tamanho) return 0 to 0
+        val padraoAtual = (tamanho - 1 downTo 0).map { categoria(resultados[it]) }
+        var ocorrencias = 0
+        var acertos = 0
+        for (indiceSeguinte in 0 until resultados.size - tamanho) {
+            var corresponde = true
+            for (posicao in 0 until tamanho) {
+                val indiceHistorico = indiceSeguinte + tamanho - posicao
+                if (categoria(resultados[indiceHistorico]) != padraoAtual[posicao]) { corresponde = false; break }
+            }
+            if (corresponde) { ocorrencias++; if (resultados[indiceSeguinte] > alvo) acertos++ }
+        }
+        return ocorrencias to acertos
+    }
+
+private fun analisarCicloCronologico(): String {
+        return "Análise cronológica antiga desativada. O motor novo compara sequências e resultados posteriores."
+    }
+
+    private fun atualizarHistorico() {
+        // A faixa horizontal antiga foi removida; os resultados ficam na grade colorida.
+    }
+
+    private fun testarPadraoRecente(tamanho: Int, alvo: Double): Pair<Int, Int> {
+        if (resultados.size <= tamanho + 1) return Pair(0, 0)
+        fun categoria(v: Double): Int = when {
+            v < 2.0 -> 0
+            v < 5.0 -> 1
+            v < 10.0 -> 2
+            v < 20.0 -> 3
+            v < 50.0 -> 4
+            else -> 5
+        }
+        val atual = (0 until tamanho).map { categoria(resultados[tamanho - 1 - it]) }
+        var ocorrencias = 0
+        var acertos = 0
+        for (inicio in tamanho + 1 until resultados.size) {
+            var igual = true
+            for (k in 0 until tamanho) {
+                if (categoria(resultados[inicio - tamanho + k]) != atual[k]) {
+                    igual = false
+                    break
+                }
+            }
+            if (igual) {
+                ocorrencias++
+                if (resultados[inicio - tamanho - 1] > alvo) acertos++
+            }
+        }
+        return Pair(ocorrencias, acertos)
+    }
+
+}
