@@ -974,26 +974,28 @@ private fun atualizarPainelVisual() {
         val cronologico = resultados.asReversed()
         val atual = metricasConfluencia(cronologico)
         if (atual == null) {
-            painelConfluencia.text = "CONFLUÊNCIA 2x+/3x+ • AGUARDANDO HISTÓRICO"
+            painelConfluencia.text = "CONFLUÊNCIA • AGUARDANDO HISTÓRICO"
             return
         }
-        var sinais = 0
+        var semelhantes = 0
         var acima2 = 0
         var acima10 = 0
         for (i in 7 until cronologico.size) {
             val m = metricasConfluencia(cronologico.subList(0, i)) ?: continue
-            if (m.radar3 in 30..35 && m.casas2 in 50..70) {
-                sinais++
-                if (cronologico[i] >= 2.0) acima2++
-                if (cronologico[i] >= 10.0) acima10++
+            val proximo = cronologico[i]
+            if (kotlin.math.abs(m.casas2 - atual.casas2) <= 10 &&
+                kotlin.math.abs(m.radar3 - atual.radar3) <= 10) {
+                semelhantes++
+                if (proximo >= 2.0) acima2++
+                if (proximo >= 10.0) acima10++
             }
         }
-        val pct2 = if (sinais == 0) 0 else acima2 * 100 / sinais
-        val ativa = atual.radar3 in 30..35 && atual.casas2 in 50..70
-        val texto = "CONFLUÊNCIA • " + (if (ativa) "CRITÉRIOS JUNTOS" else "AGUARDANDO") +
-            "\n2 CASAS \${atual.casas2}%  |  RADAR 3x+ \${atual.radar3}%" +
-            "\nHIST. \$sinais SINAIS • 2x+ \$acima2 (\$pct2%) • 10x+ \$acima10"
-        painelConfluencia.text = textoComDestaque(texto, listOf("CRITÉRIOS JUNTOS", "2x+", "10x+"))
+        val pct2 = if (semelhantes == 0) 0 else acima2 * 100 / semelhantes
+        val pct10 = if (semelhantes == 0) 0 else acima10 * 100 / semelhantes
+        val texto = "CONFLUÊNCIA • PARES SEMELHANTES: $semelhantes" +
+            "\n2 CASAS \${atual.casas2}% | RADAR 3x+ \${atual.radar3}%" +
+            "\n2x+ \$acima2 (\$pct2%) • 10x+ \$acima10 (\$pct10%)"
+        painelConfluencia.text = textoComDestaque(texto, listOf("PARES SEMELHANTES", "2x+", "10x+"))
     }
 
     private fun textoComDestaque(conteudo: String, marcadores: List<String>): CharSequence {
