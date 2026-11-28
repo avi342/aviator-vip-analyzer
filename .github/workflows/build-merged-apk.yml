@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - merge-radar3x-into-airjet-20261126
+      - teste-inversao-abaixo-2x-analises-curtas
   workflow_dispatch:
 
 permissions:
