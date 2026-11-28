@@ -909,13 +909,15 @@ private fun atualizarPainelVisual() {
         if (!::painelFrequencia.isInitialized) return
         val cronologico = resultados.asReversed()
 
-        // Teste de leitura invertida: mede quantas vezes o próximo resultado
-        // ficou abaixo de 2x após sequências históricas semelhantes.
-        fun analisar(casas: Int): String {
+        // Inversão separada por análise:
+        // 1 casa procura o próximo resultado de 10x ou mais.
+        // 2 e 3 casas procuram o próximo resultado abaixo de 2x.
+        fun analisar(casas: Int, alvo10x: Boolean): String {
+            val alvoTexto = if (alvo10x) "10x+" else "abaixo de 2x"
             if (cronologico.size <= casas) return "${casas} CASA(S): aguardando histórico"
             val padraoAtual = cronologico.takeLast(casas)
             var casos = 0
-            var abaixoDe2x = 0
+            var acertos = 0
             for (i in 0 until cronologico.size - casas) {
                 val janela = cronologico.subList(i, i + casas)
                 val semelhante = janela.indices.all { k ->
@@ -924,18 +926,21 @@ private fun atualizarPainelVisual() {
                 }
                 if (semelhante) {
                     casos++
-                    if (cronologico[i + casas] < 2.0) abaixoDe2x++
+                    val proximo = cronologico[i + casas]
+                    if (if (alvo10x) proximo >= 10.0 else proximo < 2.0) acertos++
                 }
             }
-            val percentual = if (casos == 0) 0 else abaixoDe2x * 100 / casos
+            val percentual = if (casos == 0) 0 else acertos * 100 / casos
             val estado = if (casos < 10) "poucos casos" else "amostra"
-            return "${casas} CASA(S) • ${abaixoDe2x}/${casos} abaixo de 2x • ${percentual}% • ${estado}"
+            return "${casas} CASA(S) • ${acertos}/${casos} ${alvoTexto} • ${percentual}% • ${estado}"
         }
 
         painelFrequencia.text = textoComDestaque(
-            "ANÁLISE INVERTIDA • PRÓXIMO ABAIXO DE 2x\n" +
-                analisar(1) + "\n" + analisar(2) + "\n" + analisar(3),
-            listOf("ANÁLISE INVERTIDA", "CASA(S)", "abaixo de 2x", "poucos casos")
+            "ANÁLISES INVERTIDAS • ALVOS SEPARADOS\n" +
+                analisar(1, true) + "\n" +
+                analisar(2, false) + "\n" +
+                analisar(3, false),
+            listOf("ANÁLISES INVERTIDAS", "CASA(S)", "10x+", "abaixo de 2x", "poucos casos")
         )
         atualizarConfluencia()
     }
