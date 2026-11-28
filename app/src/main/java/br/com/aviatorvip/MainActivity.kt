@@ -908,11 +908,14 @@ private fun atualizarPainelVisual() {
     private fun atualizarFrequencia() {
         if (!::painelFrequencia.isInitialized) return
         val cronologico = resultados.asReversed()
+
+        // Teste de leitura invertida: mede quantas vezes o próximo resultado
+        // ficou abaixo de 2x após sequências históricas semelhantes.
         fun analisar(casas: Int): String {
-            if (cronologico.size <= casas) return "${casas} CASAS: aguardando histórico"
+            if (cronologico.size <= casas) return "${casas} CASA(S): aguardando histórico"
             val padraoAtual = cronologico.takeLast(casas)
             var casos = 0
-            var acertos = 0
+            var abaixoDe2x = 0
             for (i in 0 until cronologico.size - casas) {
                 val janela = cronologico.subList(i, i + casas)
                 val semelhante = janela.indices.all { k ->
@@ -921,16 +924,18 @@ private fun atualizarPainelVisual() {
                 }
                 if (semelhante) {
                     casos++
-                    if (cronologico[i + casas] >= 2.0) acertos++
+                    if (cronologico[i + casas] < 2.0) abaixoDe2x++
                 }
             }
-            val percentual = if (casos == 0) 0 else acertos * 100 / casos
+            val percentual = if (casos == 0) 0 else abaixoDe2x * 100 / casos
             val estado = if (casos < 10) "poucos casos" else "amostra"
-            return "${casas} CASAS • ${acertos}/${casos} após 2x+ • ${percentual}% • ${estado}"
+            return "${casas} CASA(S) • ${abaixoDe2x}/${casos} abaixo de 2x • ${percentual}% • ${estado}"
         }
+
         painelFrequencia.text = textoComDestaque(
-            "ANÁLISE CURTA • PRÓXIMA 2x+\n" + analisar(2) + "\n" + analisar(3),
-            listOf("CASAS •", "CASAS:", "após 2x+", "poucos casos")
+            "ANÁLISE INVERTIDA • PRÓXIMO ABAIXO DE 2x\n" +
+                analisar(1) + "\n" + analisar(2) + "\n" + analisar(3),
+            listOf("ANÁLISE INVERTIDA", "CASA(S)", "abaixo de 2x", "poucos casos")
         )
         atualizarConfluencia()
     }
